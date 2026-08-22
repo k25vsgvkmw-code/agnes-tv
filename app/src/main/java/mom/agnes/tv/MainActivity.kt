@@ -71,21 +71,21 @@ private val demoMatches = listOf(
 fun AgnesTvHome(openApp: (String) -> Unit) {
     val now = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
 
-    val red = Color(0xFFC51F29)
-    val deepRed = Color(0xFF7C1017)
-    val cream = Color(0xFFFFF8F3)
-    val panel = Color(0xFF24171A)
-    val muted = Color(0xFFD3C9CB)
+    val red = Color(0xFFE32932)
+    val deepRed = Color(0xFF6A0E16)
+    val cream = Color(0xFFFFF7F2)
+    val panel = Color(0xFF211317)
+    val muted = Color(0xFFD6C8CB)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0xFF170D10), Color(0xFF351216), deepRed)
+                    listOf(Color(0xFF120A0C), Color(0xFF2B1015), deepRed, Color(0xFF8D111B))
                 )
             )
-            .padding(34.dp)
+            .padding(horizontal = 38.dp, vertical = 28.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
@@ -93,82 +93,55 @@ fun AgnesTvHome(openApp: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "AGNES TV",
-                        color = Color.White,
-                        fontSize = 34.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                    Text(
-                        text = "Το σπίτι σου, ζωντανά.",
-                        color = muted,
-                        fontSize = 16.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .background(red, RoundedCornerShape(17.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("A", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Black)
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column {
+                            Text("AGNES TV", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                            Text("Η AGNES έχει τον πρώτο ρόλο.", color = muted, fontSize = 15.sp)
+                        }
+                    }
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = now,
-                        color = Color.White,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Football • Family • Travel",
-                        color = muted,
-                        fontSize = 14.sp
-                    )
+                    Text(now, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                    Text("TV • Sports • Family • Travel", color = muted, fontSize = 13.sp)
                 }
             }
 
-            Spacer(Modifier.height(26.dp))
+            Spacer(Modifier.height(22.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(18.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                HomeTile(
-                    title = "CYTAVISION",
-                    subtitle = "Live TV",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        openApp("cy.com.cyta.cytavision")
-                    }
-                )
-
-                HomeTile(
-                    title = "SPORTS",
-                    subtitle = "Αγώνες & κανάλια",
-                    modifier = Modifier.weight(1f),
-                    onClick = {}
-                )
-
-                HomeTile(
-                    title = "TRAVEL",
-                    subtitle = "Προορισμοί & τιμές",
-                    modifier = Modifier.weight(1f),
-                    onClick = {}
-                )
-
-                HomeTile(
-                    title = "FAMILY",
-                    subtitle = "Σήμερα",
-                    modifier = Modifier.weight(1f),
-                    onClick = {}
-                )
+                HomeTile("CYTAVISION", "Live TV", "01", Modifier.weight(1.18f)) {
+                    openApp("cy.com.cyta.cytavision")
+                }
+                HomeTile("SPORTS", "Αγώνες & κανάλια", "02", Modifier.weight(1f)) {}
+                HomeTile("MOVIES", "Netflix • YouTube", "03", Modifier.weight(1f)) {}
+                HomeTile("TRAVEL", "Προορισμοί & τιμές", "04", Modifier.weight(1f)) {}
+                HomeTile("FAMILY", "Σήμερα", "05", Modifier.weight(1f)) {}
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(22.dp)
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 FootballPanel(
                     matches = demoMatches,
-                    modifier = Modifier.weight(1.65f),
+                    modifier = Modifier.weight(1.7f),
                     accent = red,
                     panel = panel,
                     muted = muted
@@ -176,44 +149,39 @@ fun AgnesTvHome(openApp: (String) -> Unit) {
 
                 Column(
                     modifier = Modifier
-                        .weight(0.75f)
+                        .weight(0.72f)
                         .fillMaxHeight()
-                        .background(Color(0xB3181113), RoundedCornerShape(26.dp))
-                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(26.dp))
+                        .background(
+                            Brush.verticalGradient(listOf(Color(0xFF3C161C), Color(0xFF1A1013))),
+                            RoundedCornerShape(28.dp)
+                        )
+                        .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(28.dp))
                         .padding(22.dp)
                 ) {
-                    Text(
-                        "AGNES NOW",
-                        color = red,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Text(
-                        "Απόψε έχει ποδόσφαιρο ⚽",
-                        color = cream,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
+                    Text("AGNES NOW", color = red, fontSize = 13.sp, fontWeight = FontWeight.Black)
                     Spacer(Modifier.height(10.dp))
-
+                    Text("Απόψε έχει ποδόσφαιρο ⚽", color = cream, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(10.dp))
                     Text(
-                        "Θα βλέπεις εδώ τον επόμενο αγώνα, το κανάλι και ειδοποίηση λίγο πριν τη σέντρα.",
+                        "Το panel είναι ήδη TV-first. Στην επόμενη σύνδεση API θα γεμίζει αυτόματα με πραγματικούς αγώνες, ώρες και κανάλια.",
                         color = muted,
-                        fontSize = 16.sp,
-                        lineHeight = 22.sp
+                        fontSize = 15.sp,
+                        lineHeight = 21.sp
                     )
-
+                    Spacer(Modifier.height(18.dp))
+                    InfoPill("★ Ολυμπιακός")
+                    Spacer(Modifier.height(8.dp))
+                    InfoPill("★ Liverpool")
+                    Spacer(Modifier.height(8.dp))
+                    InfoPill("★ Νέα Σαλαμίνα")
                     Spacer(Modifier.weight(1f))
-
-                    Text(
-                        "Επόμενη έκδοση: LIVE API + Cytavision channel mapping",
-                        color = muted,
-                        fontSize = 13.sp
-                    )
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0x22FFFFFF), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text("v0.2.0 • TV HOME", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -221,53 +189,57 @@ fun AgnesTvHome(openApp: (String) -> Unit) {
 }
 
 @Composable
+private fun InfoPill(text: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x18FFFFFF), RoundedCornerShape(14.dp))
+            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(text, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
 private fun HomeTile(
     title: String,
     subtitle: String,
+    number: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
     val bg by animateColorAsState(
-        if (focused) Color(0xFFE4333C) else Color(0xFF4A1B20),
+        if (focused) Color(0xFFF23842) else Color(0xFF4B1920),
         label = "tileBg"
     )
 
     Box(
         modifier = modifier
-            .height(120.dp)
-            .scale(if (focused) 1.04f else 1f)
-            .background(bg, RoundedCornerShape(24.dp))
+            .height(128.dp)
+            .scale(if (focused) 1.06f else 1f)
+            .background(bg, RoundedCornerShape(26.dp))
             .border(
                 width = if (focused) 3.dp else 1.dp,
                 color = if (focused) Color.White else Color(0x33FFFFFF),
-                shape = RoundedCornerShape(24.dp)
+                shape = RoundedCornerShape(26.dp)
             )
             .onFocusChanged { focused = it.isFocused }
             .onKeyEvent {
-                if (it.type == KeyEventType.KeyUp &&
-                    (it.key == Key.Enter || it.key == Key.DirectionCenter)
-                ) {
+                if (it.type == KeyEventType.KeyUp && (it.key == Key.Enter || it.key == Key.DirectionCenter)) {
                     onClick()
                     true
                 } else false
             }
             .focusable()
-            .padding(20.dp)
+            .padding(18.dp)
     ) {
-        Column {
-            Text(
-                title,
-                color = Color.White,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                subtitle,
-                color = Color(0xFFE8DADC),
-                fontSize = 14.sp
-            )
+        Text(number, color = Color(0x66FFFFFF), fontSize = 13.sp, modifier = Modifier.align(Alignment.TopEnd))
+        Column(modifier = Modifier.align(Alignment.BottomStart)) {
+            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(5.dp))
+            Text(subtitle, color = Color(0xFFEADBDD), fontSize = 13.sp)
         }
     }
 }
@@ -283,64 +255,41 @@ private fun FootballPanel(
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .background(panel.copy(alpha = 0.92f), RoundedCornerShape(26.dp))
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(26.dp))
+            .background(panel.copy(alpha = 0.95f), RoundedCornerShape(28.dp))
+            .border(1.dp, Color(0x3AFFFFFF), RoundedCornerShape(28.dp))
             .padding(22.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "ΠΟΔΟΣΦΑΙΡΟ",
-                    color = accent,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    "Αγώνες & Κανάλια",
-                    color = Color.White,
-                    fontSize = 27.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("AGNES FOOTBALL", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                Text("Αγώνες & Κανάλια", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             }
-            Text(
-                "ΣΗΜΕΡΑ",
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Box(
+                modifier = Modifier
+                    .background(Color(0xFF4A171D), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text("DEMO DATA", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
         }
 
         Spacer(Modifier.height(14.dp))
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(matches) { match ->
-                MatchRow(match = match, accent = accent, muted = muted)
-            }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            items(matches) { match -> MatchRow(match = match, accent = accent, muted = muted) }
         }
     }
 }
 
 @Composable
-private fun MatchRow(
-    match: MatchItem,
-    accent: Color,
-    muted: Color
-) {
+private fun MatchRow(match: MatchItem, accent: Color, muted: Color) {
     var focused by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .scale(if (focused) 1.015f else 1f)
-            .background(
-                if (focused) Color(0xFF5A2429) else Color(0xFF302126),
-                RoundedCornerShape(18.dp)
-            )
+            .scale(if (focused) 1.018f else 1f)
+            .background(if (focused) Color(0xFF5B242B) else Color(0xFF2E2024), RoundedCornerShape(18.dp))
             .border(
                 width = if (focused) 2.dp else 1.dp,
                 color = if (focused) Color.White else Color(0x22FFFFFF),
@@ -351,49 +300,20 @@ private fun MatchRow(
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier.width(86.dp)
-        ) {
-            Text(
-                match.time,
-                color = Color.White,
-                fontSize = 21.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-            if (match.favourite) {
-                Text(
-                    "★",
-                    color = accent,
-                    fontSize = 15.sp
-                )
-            }
+        Column(modifier = Modifier.width(86.dp)) {
+            Text(match.time, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black)
+            if (match.favourite) Text("★", color = accent, fontSize = 14.sp)
         }
-
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                "${match.home}  •  ${match.away}",
-                color = Color.White,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                match.competition,
-                color = muted,
-                fontSize = 13.sp
-            )
+            Text("${match.home}  •  ${match.away}", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            Text(match.competition, color = muted, fontSize = 12.sp)
         }
-
         Box(
             modifier = Modifier
-                .background(Color(0xFF1D1518), RoundedCornerShape(12.dp))
+                .background(Color(0xFF171013), RoundedCornerShape(12.dp))
                 .padding(horizontal = 12.dp, vertical = 9.dp)
         ) {
-            Text(
-                match.channel,
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text(match.channel, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
