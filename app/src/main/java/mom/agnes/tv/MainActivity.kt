@@ -15,6 +15,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -44,7 +47,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { HOME, SPORTS }
+private enum class Screen { HOME, SPORTS, APPS }
 
 private data class HubItem(
     val icon: String,
@@ -53,6 +56,11 @@ private data class HubItem(
     val keywords: List<String> = emptyList(),
     val internal: Screen? = null,
     val accent: Color
+)
+
+private data class InstalledApp(
+    val label: String,
+    val packageName: String
 )
 
 private fun openInstalledAppByLabel(context: Context, keywords: List<String>): Boolean {
@@ -67,16 +75,40 @@ private fun openInstalledAppByLabel(context: Context, keywords: List<String>): B
         val label = info.loadLabel(pm).toString()
         keywords.any { key -> label.contains(key, ignoreCase = true) }
     } ?: return false
-    val launchIntent = pm.getLaunchIntentForPackage(match.activityInfo.packageName) ?: return false
+    return launchPackage(context, match.activityInfo.packageName)
+}
+
+private fun launchPackage(context: Context, packageName: String): Boolean {
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return false
     launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     context.startActivity(launchIntent)
     return true
+}
+
+private fun installedApps(context: Context): List<InstalledApp> {
+    val pm = context.packageManager
+    val intents = listOf(
+        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER),
+        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+    )
+    return intents
+        .flatMap { pm.queryIntentActivities(it, PackageManager.MATCH_ALL) }
+        .distinctBy { it.activityInfo.packageName }
+        .filter { it.activityInfo.packageName != context.packageName }
+        .map {
+            InstalledApp(
+                label = it.loadLabel(pm).toString(),
+                packageName = it.activityInfo.packageName
+            )
+        }
+        .sortedBy { it.label.lowercase(Locale.getDefault()) }
 }
 
 @Composable
 private fun AgnesTvApp(context: Context) {
     var screen by remember { mutableStateOf(Screen.HOME) }
     BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
+
     when (screen) {
         Screen.HOME -> AgnesHome(
             onInternal = { screen = it },
@@ -87,6 +119,10 @@ private fun AgnesTvApp(context: Context) {
             }
         )
         Screen.SPORTS -> SportsScreen(onBack = { screen = Screen.HOME })
+        Screen.APPS -> AppsScreen(
+            context = context,
+            onBack = { screen = Screen.HOME }
+        )
     }
 }
 
@@ -116,17 +152,13 @@ private fun AgnesHome(
         HubItem("⚽", "SPORTS LIVE", "Αγώνες & Κανάλια", internal = Screen.SPORTS, accent = Color(0xFF24252A)),
         HubItem("🧳", "TRAVEL", "Ταξίδια", accent = Color(0xFF13305A)),
         HubItem("👥", "FAMILY", "Οικογένεια", accent = Color(0xFF3F2451)),
-        HubItem("▦", "APPS", "Εφαρμογές", accent = Color(0xFF5B3217))
+        HubItem("▦", "APPS", "Εφαρμογές", internal = Screen.APPS, accent = Color(0xFF5B3217))
     )
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(
-                Brush.linearGradient(
-                    listOf(Color(0xFF06070A), Color(0xFF171014), Color(0xFF090A0E))
-                )
-            )
+            .background(Brush.linearGradient(listOf(Color(0xFF06070A), Color(0xFF171014), Color(0xFF090A0E))))
             .padding(26.dp)
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -141,7 +173,7 @@ private fun AgnesHome(
                 Spacer(Modifier.width(18.dp))
                 Column(horizontalAlignment = Alignment.End) {
                     Text(clock, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                    Text("AGNES TV • v1.1.0", color = muted, fontSize = 12.sp)
+                    Text("AGNES TV • v1.2.0", color = muted, fontSize = 12.sp)
                 }
             }
 
@@ -198,13 +230,142 @@ private fun AgnesHome(
 }
 
 @Composable
+private fun AppsScreen(context: Context, onBack: () -> Unit) {
+    val apps = remember { installedApps(context) }
+    val pink = Color(0xFFFF4F9A)
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.linearGradient(listOf(Color(0xFF07080B), Color(0xFF171016), Color(0xFF0A0B0E))))
+            .padding(26.dp)
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TvButton("‹ AGNES HOME", onBack)
+                Spacer(Modifier.width(18.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("AGNES APPS", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
+                    Text("Όλες οι εφαρμογές του box σου, μέσα στην AGNES", color = Color(0xFFBFC3CA), fontSize = 13.sp)
+                }
+                Text("${apps.size} εφαρμογές", color = pink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                Column(
+                    Modifier
+                        .width(250.dp)
+                        .fillMaxHeight()
+                        .background(Color(0xCC15161B), RoundedCornerShape(24.dp))
+                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp))
+                        .padding(18.dp)
+                ) {
+                    Box(
+                        Modifier
+                            .size(96.dp)
+                            .background(Color(0xFF342127), CircleShape)
+                            .border(3.dp, pink.copy(alpha = .7f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("AGNES", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Text("Τι θέλεις να ανοίξουμε;", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Διάλεξε εφαρμογή με το τηλεχειριστήριο. Το BACK σε φέρνει πάντα πίσω στην AGNES.",
+                        color = Color(0xFFBFC3CA),
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp
+                    )
+                    Spacer(Modifier.height(18.dp))
+                    Text("TV • MOVIES • MUSIC • KIDS • UTILITIES", color = pink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    Text("AGNES TV • Apps Library", color = Color(0xFF8D9198), fontSize = 10.sp)
+                }
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(5),
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 10.dp)
+                ) {
+                    items(apps, key = { it.packageName }) { app ->
+                        AppTile(app = app) {
+                            if (!launchPackage(context, app.packageName)) {
+                                Toast.makeText(context, "${app.label} δεν άνοιξε", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppTile(app: InstalledApp, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val bg by animateColorAsState(
+        if (focused) Color(0xFF6F2347) else Color(0xCC1D2026),
+        label = "appTileBg"
+    )
+
+    Column(
+        Modifier
+            .height(128.dp)
+            .scale(if (focused) 1.06f else 1f)
+            .background(bg, RoundedCornerShape(20.dp))
+            .border(
+                if (focused) 3.dp else 1.dp,
+                if (focused) Color(0xFFFF83B8) else Color(0x33FFFFFF),
+                RoundedCornerShape(20.dp)
+            )
+            .onFocusChanged { focused = it.isFocused }
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
+                    onClick()
+                    true
+                } else false
+            }
+            .focusable()
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            Modifier
+                .size(46.dp)
+                .background(Color(0xFF30343C), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                app.label.take(1).uppercase(),
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+        Spacer(Modifier.height(9.dp))
+        Text(
+            app.label,
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
 private fun AssistantPanel(modifier: Modifier, pink: Color, glass: Color) {
     Column(
         modifier
-            .background(
-                Brush.verticalGradient(listOf(Color(0xFF342127), Color(0xFF181318))),
-                RoundedCornerShape(26.dp)
-            )
+            .background(Brush.verticalGradient(listOf(Color(0xFF342127), Color(0xFF181318))), RoundedCornerShape(26.dp))
             .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(26.dp))
             .padding(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -254,10 +415,7 @@ private fun GlassChip(title: String, subtitle: String) {
 @Composable
 private fun HomeTile(item: HubItem, modifier: Modifier, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
-    val bg by animateColorAsState(
-        if (focused) item.accent.copy(alpha = 1f) else item.accent.copy(alpha = .72f),
-        label = "tileBg"
-    )
+    val bg by animateColorAsState(if (focused) item.accent else item.accent.copy(alpha = .72f), label = "tileBg")
     Column(
         modifier
             .height(142.dp)
