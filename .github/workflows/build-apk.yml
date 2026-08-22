@@ -3,7 +3,12 @@ name: Build AGNES TV APK
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'releases/**'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -27,9 +32,24 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: AGNES-TV-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Publish APK in repository
+        run: |
+          VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          mkdir -p releases
+          cp app/build/outputs/apk/debug/app-debug.apk "releases/AGNES-TV-v${VERSION_NAME}.apk"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add releases/
+          if git diff --cached --quiet; then
+            echo "No APK changes to publish"
+          else
+            git commit -m "Publish AGNES TV v${VERSION_NAME} APK"
+            git push
+          fi
