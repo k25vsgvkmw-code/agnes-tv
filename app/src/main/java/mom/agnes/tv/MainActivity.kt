@@ -25,9 +25,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -113,7 +111,6 @@ private fun AgnesHome(
         }
     }
 
-    val sea = Color(0xFF3B86A5)
     val cream = Color(0xFFFFF6EA)
     val glass = Color(0xB31B2832)
     val muted = Color(0xFFD5DEE3)
