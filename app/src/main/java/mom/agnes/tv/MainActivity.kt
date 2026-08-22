@@ -1,10 +1,10 @@
 package mom.agnes.tv
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.provider.Settings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -60,50 +60,80 @@ private data class ServiceItem(
     val title: String,
     val subtitle: String,
     val detail: String,
-    val action: ServiceAction,
-    val accent: Color
+    val action: ServiceAction
 )
 
-private data class InstalledApp(val label: String, val packageName: String)
-
-private fun launchPackage(context: Context, packageName: String): Boolean {
-    val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return false
-    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    context.startActivity(launchIntent)
-    return true
-}
-
-private fun openInstalledAppByLabel(context: Context, keywords: List<String>): Boolean {
-    val pm = context.packageManager
-    val intents = listOf(
-        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER),
-        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-    )
-    val activities = intents.flatMap { pm.queryIntentActivities(it, PackageManager.MATCH_ALL) }
-        .distinctBy { it.activityInfo.packageName }
-    val match = activities.firstOrNull { info ->
-        val label = info.loadLabel(pm).toString()
-        keywords.any { key -> label.contains(key, ignoreCase = true) }
-    } ?: return false
-    return launchPackage(context, match.activityInfo.packageName)
-}
-
-private fun openPlayStore(context: Context): Boolean {
-    if (launchPackage(context, "com.android.vending")) return true
-    return openInstalledAppByLabel(context, listOf("Play Store", "Google Play"))
-}
+private data class InstalledApp(
+    val label: String,
+    val packageName: String,
+    val activityName: String,
+    val leanback: Boolean
+)
 
 private fun installedApps(context: Context): List<InstalledApp> {
     val pm = context.packageManager
-    val intents = listOf(
-        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER),
-        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+    val sources = listOf(
+        true to Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER),
+        false to Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
     )
-    return intents.flatMap { pm.queryIntentActivities(it, PackageManager.MATCH_ALL) }
-        .distinctBy { it.activityInfo.packageName }
-        .filter { it.activityInfo.packageName != context.packageName }
-        .map { InstalledApp(it.loadLabel(pm).toString(), it.activityInfo.packageName) }
-        .sortedBy { it.label.lowercase(Locale.getDefault()) }
+
+    return sources
+        .flatMap { (leanback, intent) ->
+            pm.queryIntentActivities(intent, PackageManager.MATCH_ALL).map { info ->
+                InstalledApp(
+                    label = info.loadLabel(pm).toString(),
+                    packageName = info.activityInfo.packageName,
+                    activityName = info.activityInfo.name,
+                    leanback = leanback
+                )
+            }
+        }
+        .filter { it.packageName != context.packageName }
+        .sortedWith(
+            compareByDescending<InstalledApp> { it.leanback }
+                .thenBy { it.label.lowercase(Locale.getDefault()) }
+        )
+        .distinctBy { it.packageName }
+}
+
+private fun launchInstalledApp(context: Context, app: InstalledApp): Boolean {
+    val explicit = Intent(Intent.ACTION_MAIN).apply {
+        component = ComponentName(app.packageName, app.activityName)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    }
+
+    if (runCatching { context.startActivity(explicit) }.isSuccess) return true
+
+    val fallback = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return false
+    fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    return runCatching { context.startActivity(fallback) }.isSuccess
+}
+
+private fun findInstalledApp(context: Context, keywords: List<String>): InstalledApp? {
+    val apps = installedApps(context)
+    return apps.firstOrNull { app ->
+        val haystack = "${app.label} ${app.packageName}".lowercase(Locale.getDefault())
+        keywords.any { key -> haystack.contains(key.lowercase(Locale.getDefault())) }
+    }
+}
+
+private fun findCytavision(context: Context): InstalledApp? {
+    val apps = installedApps(context)
+    return apps.firstOrNull { it.label.contains("Cytavision", true) }
+        ?: apps.firstOrNull { it.label.contains("Cyta", true) }
+        ?: apps.firstOrNull { it.packageName.contains("cyta", true) }
+}
+
+private fun openCytavision(context: Context): Boolean {
+    val app = findCytavision(context) ?: return false
+    return launchInstalledApp(context, app)
+}
+
+private fun openPlayStore(context: Context): Boolean {
+    val apps = installedApps(context)
+    val store = apps.firstOrNull { it.packageName == "com.android.vending" }
+        ?: apps.firstOrNull { it.label.contains("Play Store", true) || it.label.contains("Google Play", true) }
+    return store?.let { launchInstalledApp(context, it) } ?: false
 }
 
 @Composable
@@ -125,6 +155,13 @@ private fun AgnesTvApp(context: Context) {
 @Composable
 private fun AgnesHome(context: Context, onSports: () -> Unit, onApps: () -> Unit) {
     var clock by remember { mutableStateOf(currentTime()) }
+    var agnesMessage by remember { mutableStateOf<String?>(null) }
+    val detectedApps = remember { installedApps(context) }
+    val cytavision = remember { findCytavision(context) }
+    val spotify = remember { findInstalledApp(context, listOf("Spotify")) }
+    val smartHome = remember { findInstalledApp(context, listOf("Google Home", "Mi Home", "SmartThings")) }
+    val kids = remember { findInstalledApp(context, listOf("YouTube Kids", "Kids")) }
+
     LaunchedEffect(Unit) {
         while (true) {
             clock = currentTime()
@@ -134,30 +171,51 @@ private fun AgnesHome(context: Context, onSports: () -> Unit, onApps: () -> Unit
 
     val services = remember {
         listOf(
-            ServiceItem("📺", "TV", "Cytavision & Live TV", "Ζωντανή τηλεόραση και γρήγορη πρόσβαση στη Cytavision.", ServiceAction.CYTAVISION, Color(0xFF7A274E)),
-            ServiceItem("⚽", "SPORTS", "Αγώνες & κανάλια", "Πρόγραμμα αγώνων, ώρες και κανάλια μέσα στην AGNES.", ServiceAction.SPORTS, Color(0xFF263E64)),
-            ServiceItem("🏃", "ΓΥΜΝΑΣΤΙΚΗ", "Workout & movement", "Μεγάλη οθόνη για προπονήσεις, πρόγραμμα και καθημερινό στόχο.", ServiceAction.FITNESS, Color(0xFF315849)),
-            ServiceItem("🏠", "SMART HOME", "Το σπίτι από την TV", "Φώτα, συσκευές, κάμερες και σκηνές από ένα σημείο.", ServiceAction.SMART_HOME, Color(0xFF415B68)),
-            ServiceItem("🧸", "ΠΑΙΔΙΚΟ", "Kids World", "Παιδικό περιεχόμενο, ιστορίες, χαλάρωση και ασφαλής πρόσβαση.", ServiceAction.KIDS, Color(0xFF68517B)),
-            ServiceItem("👨‍👩‍👦", "FAMILY", "Η οικογένεια τώρα", "Πρόγραμμα, δραστηριότητες, υπενθυμίσεις και οικογενειακή ροή.", ServiceAction.FAMILY, Color(0xFF7B4B69)),
-            ServiceItem("✈", "TRAVEL", "Ταξίδια & ευκαιρίες", "Προορισμοί, ταξίδια, sports travel και οικογενειακές αποδράσεις.", ServiceAction.TRAVEL, Color(0xFF244F76)),
-            ServiceItem("🎵", "MUSIC", "Spotify", "Μουσική, πρωινή αφύπνιση και βραδινή χαλάρωση.", ServiceAction.MUSIC, Color(0xFF246044)),
-            ServiceItem("▦", "APPS", "Ό,τι είναι εγκατεστημένο", "Premium βιβλιοθήκη εφαρμογών μέσα στην AGNES, όχι έξω στο launcher.", ServiceAction.APPS, Color(0xFF6A492B))
+            ServiceItem("📺", "TV", "Cytavision", "Live TV από την εφαρμογή που είναι πραγματικά εγκατεστημένη στο box.", ServiceAction.CYTAVISION),
+            ServiceItem("⚽", "SPORTS", "Αγώνες & κανάλια", "Ανοίγει το επίσημο πρόγραμμα Cytavision για ώρες και κανάλια.", ServiceAction.SPORTS),
+            ServiceItem("🏃", "ΓΥΜΝΑΣΤΙΚΗ", "AGNES Fitness", "Υπηρεσία AGNES. Δεν ανοίγω ψεύτικη εφαρμογή αν δεν υπάρχει.", ServiceAction.FITNESS),
+            ServiceItem("🏠", "SMART HOME", "Συνδεδεμένο σπίτι", "Ανοίγει Smart Home app μόνο όταν ανιχνεύεται στο box.", ServiceAction.SMART_HOME),
+            ServiceItem("🧸", "ΠΑΙΔΙΚΟ", "Kids", "Ανοίγει παιδική εφαρμογή μόνο όταν είναι εγκατεστημένη.", ServiceAction.KIDS),
+            ServiceItem("❤", "FAMILY", "AGNES Family", "Οικογενειακές ειδοποιήσεις και πληροφορίες της AGNES.", ServiceAction.FAMILY),
+            ServiceItem("✈", "TRAVEL", "AGNES Travel", "Travel service της AGNES χωρίς ψεύτικα shortcuts.", ServiceAction.TRAVEL),
+            ServiceItem("🎵", "MUSIC", "Spotify", "Ανοίγει Spotify μόνο αν υπάρχει στο box.", ServiceAction.MUSIC),
+            ServiceItem("▦", "APPS", "Εγκατεστημένες εφαρμογές", "Δείχνει αποκλειστικά όσα apps βρίσκει πραγματικά στο Xiaomi box.", ServiceAction.APPS)
         )
     }
+
     var selectedIndex by remember { mutableIntStateOf(0) }
     val selected = services[selectedIndex]
 
     fun activate(service: ServiceItem) {
         when (service.action) {
-            ServiceAction.CYTAVISION -> if (!openInstalledAppByLabel(context, listOf("Cytavision"))) toast(context, "Η Cytavision δεν βρέθηκε")
+            ServiceAction.CYTAVISION -> {
+                if (!openCytavision(context)) {
+                    agnesMessage = if (cytavision == null) {
+                        "Δεν ανίχνευσα Cytavision στο launcher του box. Δεν θα σου δείξω ψεύτικο κουμπί."
+                    } else {
+                        "Βρήκα τη Cytavision (${cytavision.label}), αλλά το box δεν επέτρεψε να ανοίξει."
+                    }
+                }
+            }
             ServiceAction.SPORTS -> onSports()
-            ServiceAction.FITNESS -> toast(context, "AGNES Fitness • έρχεται στο επόμενο service pack")
-            ServiceAction.SMART_HOME -> if (!openInstalledAppByLabel(context, listOf("Google Home", "Home"))) toast(context, "Δεν βρέθηκε Smart Home εφαρμογή")
-            ServiceAction.KIDS -> if (!openInstalledAppByLabel(context, listOf("YouTube Kids", "Kids"))) toast(context, "AGNES Kids • έρχεται στο επόμενο service pack")
-            ServiceAction.FAMILY -> toast(context, "AGNES Family • έρχεται στο επόμενο service pack")
-            ServiceAction.TRAVEL -> toast(context, "AGNES Travel • έρχεται στο επόμενο service pack")
-            ServiceAction.MUSIC -> if (!openInstalledAppByLabel(context, listOf("Spotify"))) toast(context, "Το Spotify δεν βρέθηκε")
+            ServiceAction.FITNESS -> agnesMessage = "Το AGNES Fitness δεν είναι ακόμη ενεργή υπηρεσία. Το κρατάω καθαρό αντί να ανοίγω άσχετη εφαρμογή."
+            ServiceAction.SMART_HOME -> {
+                if (smartHome != null) {
+                    if (!launchInstalledApp(context, smartHome)) agnesMessage = "Βρήκα ${smartHome.label}, αλλά δεν άνοιξε."
+                } else agnesMessage = "Δεν βρήκα Smart Home εφαρμογή εγκατεστημένη στο box."
+            }
+            ServiceAction.KIDS -> {
+                if (kids != null) {
+                    if (!launchInstalledApp(context, kids)) agnesMessage = "Βρήκα ${kids.label}, αλλά δεν άνοιξε."
+                } else agnesMessage = "Δεν βρήκα παιδική εφαρμογή εγκατεστημένη στο box."
+            }
+            ServiceAction.FAMILY -> agnesMessage = "AGNES Family: εδώ θα εμφανίζονται μόνο πραγματικές οικογενειακές ειδοποιήσεις και υπενθυμίσεις."
+            ServiceAction.TRAVEL -> agnesMessage = "AGNES Travel: η υπηρεσία δεν είναι ακόμη συνδεδεμένη. Δεν εμφανίζω πλασματικά δεδομένα."
+            ServiceAction.MUSIC -> {
+                if (spotify != null) {
+                    if (!launchInstalledApp(context, spotify)) agnesMessage = "Βρήκα Spotify, αλλά δεν άνοιξε."
+                } else agnesMessage = "Το Spotify δεν είναι εγκατεστημένο στο box."
+            }
             ServiceAction.APPS -> onApps()
         }
     }
@@ -165,73 +223,82 @@ private fun AgnesHome(context: Context, onSports: () -> Unit, onApps: () -> Unit
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.linearGradient(listOf(Color(0xFF050608), Color(0xFF160E14), Color(0xFF081117))))
-            .padding(horizontal = 32.dp, vertical = 24.dp)
+            .background(Brush.linearGradient(listOf(Color(0xFF050608), Color(0xFF120C14), Color(0xFF081017))))
+            .padding(horizontal = 30.dp, vertical = 22.dp)
     ) {
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("AGNES", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
-                    Text("Το δικό μας Home • όλα ξεκινούν από εδώ", color = Color(0xFFD3C7CC), fontSize = 14.sp)
+                    Text("AGNES TV", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                    Text("Ό,τι υπάρχει πραγματικά στο box • χωρίς ψεύτικα shortcuts", color = Color(0xFFCAC0C7), fontSize = 13.sp)
                 }
-                StatusChip("☀ 22°C", "Κύπρος")
+                StatusChip(if (cytavision != null) "● CYTAVISION" else "○ CYTAVISION", if (cytavision != null) "DETECTED" else "NOT DETECTED")
                 Spacer(Modifier.width(10.dp))
-                StatusChip("● AGNES", "HOME ACTIVE")
-                Spacer(Modifier.width(12.dp))
                 SmallAction("PLAY STORE") {
-                    if (!openPlayStore(context)) toast(context, "Το Play Store δεν βρέθηκε")
+                    if (!openPlayStore(context)) agnesMessage = "Το Play Store δεν ανιχνεύτηκε στο box."
                 }
                 Spacer(Modifier.width(18.dp))
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(clock, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                    Text("AGNES OS • v1.4.0", color = Color(0xFFFF79B2), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(clock, color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
+                    Text("AGNES TV • v1.5.0", color = Color(0xFFFF79B2), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(18.dp))
 
-            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                AgnesPresence(Modifier.width(270.dp).fillMaxHeight())
+            ServiceRail(
+                services = services,
+                selectedIndex = selectedIndex,
+                onIndexChange = {
+                    selectedIndex = it
+                    agnesMessage = null
+                },
+                onActivate = { activate(selected) },
+                modifier = Modifier.fillMaxWidth().height(92.dp)
+            )
 
-                Column(Modifier.weight(1f).fillMaxHeight()) {
-                    Text("ΥΠΗΡΕΣΙΑ", color = Color(0xFFFF78B1), fontSize = 12.sp, fontWeight = FontWeight.Black)
-                    Spacer(Modifier.height(8.dp))
-                    ServiceCarousel(
-                        services = services,
-                        selectedIndex = selectedIndex,
-                        onIndexChange = { selectedIndex = it },
-                        onActivate = { activate(selected) },
-                        modifier = Modifier.fillMaxWidth().height(220.dp)
-                    )
+            Spacer(Modifier.height(16.dp))
 
-                    Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                ServiceHero(
+                    service = selected,
+                    cytavision = cytavision,
+                    detectedCount = detectedApps.size,
+                    modifier = Modifier.weight(1.65f).fillMaxHeight()
+                )
 
-                    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        InfoPanel("ΤΩΡΑ", Modifier.weight(1f)) {
-                            Text(selected.title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                            Spacer(Modifier.height(8.dp))
-                            Text(selected.detail, color = Color(0xFFC7CBD0), fontSize = 14.sp, lineHeight = 20.sp)
-                            Spacer(Modifier.weight(1f))
-                            Text("← / → αλλάζει υπηρεσία   •   OK ανοίγει", color = Color(0xFFFF8DBC), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                        InfoPanel("AGNES LIVE", Modifier.weight(1f)) {
-                            InfoLine("⚽", "Sports", "Αγώνες, ώρα και κανάλι")
-                            Spacer(Modifier.height(10.dp))
-                            InfoLine("🏠", "Home", "Η AGNES είναι το κεντρικό launcher")
-                            Spacer(Modifier.height(10.dp))
-                            InfoLine("▶", "Apps", "Οι εφαρμογές μένουν πίσω από την AGNES")
-                            Spacer(Modifier.weight(1f))
-                            Text("Μόνο AGNES + Play Store μπροστά.", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        }
+                Column(Modifier.weight(.85f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    InfoPanel("ΠΡΑΓΜΑΤΙΚΗ ΚΑΤΑΣΤΑΣΗ", Modifier.weight(1f)) {
+                        StatusLine("Cytavision", cytavision?.label ?: "Δεν ανιχνεύτηκε", cytavision != null)
+                        Spacer(Modifier.height(10.dp))
+                        StatusLine("Spotify", spotify?.label ?: "Δεν είναι εγκατεστημένο", spotify != null)
+                        Spacer(Modifier.height(10.dp))
+                        StatusLine("Smart Home", smartHome?.label ?: "Δεν είναι εγκατεστημένο", smartHome != null)
+                        Spacer(Modifier.height(10.dp))
+                        StatusLine("Kids", kids?.label ?: "Δεν είναι εγκατεστημένο", kids != null)
+                    }
+                    InfoPanel("APPS ΣΤΟ BOX", Modifier.weight(.72f)) {
+                        Text("${detectedApps.size}", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                        Text("launcher εφαρμογές που ανιχνεύτηκαν πραγματικά", color = Color(0xFFB9BDC5), fontSize = 12.sp)
+                        Spacer(Modifier.weight(1f))
+                        Text("APPS → για πραγματικά icons και άνοιγμα", color = Color(0xFFFF86B9), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
+        }
+
+        agnesMessage?.let { message ->
+            AgnesMessageCard(
+                message = message,
+                onDismiss = { agnesMessage = null },
+                modifier = Modifier.align(Alignment.BottomEnd).width(470.dp)
+            )
         }
     }
 }
 
 @Composable
-private fun ServiceCarousel(
+private fun ServiceRail(
     services: List<ServiceItem>,
     selectedIndex: Int,
     onIndexChange: (Int) -> Unit,
@@ -239,14 +306,10 @@ private fun ServiceCarousel(
     modifier: Modifier = Modifier
 ) {
     var focused by remember { mutableStateOf(false) }
-    val current = services[selectedIndex]
-    val prev = services[(selectedIndex - 1 + services.size) % services.size]
-    val next = services[(selectedIndex + 1) % services.size]
-
     Row(
         modifier
-            .background(Color(0xCC11151B), RoundedCornerShape(26.dp))
-            .border(if (focused) 3.dp else 1.dp, if (focused) Color(0xFFFF7EB5) else Color(0x33FFFFFF), RoundedCornerShape(26.dp))
+            .background(Color(0xCC11141A), RoundedCornerShape(22.dp))
+            .border(if (focused) 2.dp else 1.dp, if (focused) Color(0xFFFF82B8) else Color(0x22FFFFFF), RoundedCornerShape(22.dp))
             .onFocusChanged { focused = it.isFocused }
             .onKeyEvent { event ->
                 if (event.type != KeyEventType.KeyUp) return@onKeyEvent false
@@ -258,91 +321,108 @@ private fun ServiceCarousel(
                 }
             }
             .focusable()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        PeekService(prev, Modifier.weight(.72f), false)
-        Box(
-            Modifier
-                .weight(1.56f)
-                .fillMaxHeight()
-                .background(
-                    Brush.linearGradient(listOf(current.accent.copy(alpha = .95f), Color(0xFF17171D))),
-                    RoundedCornerShape(22.dp)
-                )
-                .border(1.dp, Color(0x55FFFFFF), RoundedCornerShape(22.dp))
-                .padding(22.dp)
-        ) {
-            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                Text(current.icon, fontSize = 50.sp)
-                Spacer(Modifier.width(20.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(current.title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
-                    Text(current.subtitle, color = Color(0xFFE7DDE1), fontSize = 14.sp)
-                    Spacer(Modifier.height(12.dp))
-                    Text("OK • ΑΝΟΙΓΜΑ", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
-                }
-                Text("›", color = Color.White, fontSize = 46.sp, fontWeight = FontWeight.Light)
+        services.forEachIndexed { index, item ->
+            val selected = index == selectedIndex
+            Row(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(if (selected) Color(0xFF6F2851) else Color(0xFF1A1D24), RoundedCornerShape(16.dp))
+                    .border(if (selected) 2.dp else 1.dp, if (selected) Color(0xFFFF88BC) else Color(0x22FFFFFF), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(item.icon, fontSize = 18.sp)
+                Spacer(Modifier.width(6.dp))
+                Text(item.title, color = Color.White, fontSize = 10.sp, fontWeight = if (selected) FontWeight.Black else FontWeight.Bold, maxLines = 1)
             }
         }
-        PeekService(next, Modifier.weight(.72f), true)
     }
 }
 
 @Composable
-private fun PeekService(item: ServiceItem, modifier: Modifier, right: Boolean) {
+private fun ServiceHero(service: ServiceItem, cytavision: InstalledApp?, detectedCount: Int, modifier: Modifier) {
     Column(
         modifier
-            .fillMaxHeight()
-            .background(item.accent.copy(alpha = .42f), RoundedCornerShape(20.dp))
-            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        horizontalAlignment = if (right) Alignment.End else Alignment.Start,
-        verticalArrangement = Arrangement.Center
+            .background(
+                Brush.linearGradient(listOf(Color(0xFF281520), Color(0xFF11151C), Color(0xFF0B1118))),
+                RoundedCornerShape(28.dp)
+            )
+            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(28.dp))
+            .padding(26.dp)
     ) {
-        Text(item.icon, fontSize = 30.sp)
-        Spacer(Modifier.height(8.dp))
-        Text(item.title, color = Color.White.copy(alpha = .75f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text("${service.icon}  ${service.title}", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(6.dp))
+        Text(service.subtitle, color = Color(0xFFFF86BA), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(18.dp))
+        Text(service.detail, color = Color(0xFFD0D3D8), fontSize = 16.sp, lineHeight = 23.sp)
+
+        Spacer(Modifier.height(24.dp))
+
+        when (service.action) {
+            ServiceAction.CYTAVISION -> {
+                if (cytavision != null) {
+                    Text("✓ ${cytavision.label}", color = Color(0xFF9CE5B2), fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    Text("Package: ${cytavision.packageName}", color = Color(0xFF9EA4AC), fontSize = 11.sp)
+                    Text("OK για άνοιγμα με το πραγματικό launcher activity", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                } else {
+                    Text("Δεν ανιχνεύτηκε Cytavision", color = Color(0xFFFF9AAA), fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    Text("Η AGNES δεν θα προσποιηθεί ότι υπάρχει.", color = Color(0xFFB7BBC1), fontSize = 13.sp)
+                }
+            }
+            ServiceAction.APPS -> {
+                Text("$detectedCount εφαρμογές ανιχνεύτηκαν", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                Text("Η λίστα δημιουργείται από το ίδιο το Xiaomi box.", color = Color(0xFFB7BBC1), fontSize = 13.sp)
+            }
+            ServiceAction.SPORTS -> {
+                Text("Επίσημο Cytavision Sports πρόγραμμα", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text("OK για αγώνες • ώρες • κανάλια", color = Color(0xFFB7BBC1), fontSize = 13.sp)
+            }
+            else -> {
+                Text("AGNES SERVICE", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                Text("Αν δεν υπάρχει πραγματική σύνδεση, η AGNES στο λέει καθαρά.", color = Color(0xFFB7BBC1), fontSize = 13.sp)
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+        Text("← / → ΑΛΛΑΓΗ ΥΠΗΡΕΣΙΑΣ     •     OK ΕΝΕΡΓΕΙΑ", color = Color(0xFFFF88BC), fontSize = 12.sp, fontWeight = FontWeight.Black)
     }
 }
 
 @Composable
-private fun AgnesPresence(modifier: Modifier) {
-    Column(
+private fun AgnesMessageCard(message: String, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    var focused by remember { mutableStateOf(false) }
+    Row(
         modifier
-            .background(Brush.verticalGradient(listOf(Color(0xFF3A252D), Color(0xFF171217))), RoundedCornerShape(28.dp))
-            .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(28.dp))
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(Color(0xF21B1520), RoundedCornerShape(22.dp))
+            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0xAAFF75AF), RoundedCornerShape(22.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter || event.key == Key.Back)) {
+                    onDismiss(); true
+                } else false
+            }
+            .focusable()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            Modifier
-                .size(138.dp)
-                .background(Color(0xFFE7C8AD), CircleShape)
-                .border(4.dp, Color(0xFFFF79B2), CircleShape),
+            Modifier.size(54.dp).background(Color(0xFF7A2A54), CircleShape).border(2.dp, Color(0xFFFF83B8), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text("AGNES", color = Color(0xFF2C1B20), fontSize = 25.sp, fontWeight = FontWeight.Black)
+            Text("A", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
         }
-        Spacer(Modifier.height(16.dp))
-        Text("Γεια σου Daddy 👋", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-        Text("Τι θέλεις να κάνουμε;", color = Color(0xFFD1C5CA), fontSize = 13.sp)
-        Spacer(Modifier.height(18.dp))
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(Color(0xCC101217), RoundedCornerShape(18.dp))
-                .border(1.dp, Color(0x66FF79B2), RoundedCornerShape(18.dp))
-                .padding(15.dp)
-        ) {
-            Column {
-                Text("🎙  Μίλα στην AGNES", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Text("TV • Sports • Family • Home", color = Color(0xFFB8BBC2), fontSize = 10.sp)
-            }
+        Spacer(Modifier.width(13.dp))
+        Column(Modifier.weight(1f)) {
+            Text("ΑΓΝΗ", color = Color(0xFFFF83B8), fontSize = 12.sp, fontWeight = FontWeight.Black)
+            Text(message, color = Color.White, fontSize = 13.sp, lineHeight = 18.sp)
         }
-        Spacer(Modifier.weight(1f))
-        Text("AGNES FIRST", color = Color(0xFFFF79B2), fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Text("OK", color = Color(0xFFADB1B8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -363,8 +443,10 @@ private fun AppsScreen(context: Context, onBack: () -> Unit) {
                 Spacer(Modifier.width(18.dp))
                 Column(Modifier.weight(1f)) {
                     Text("AGNES APPS", color = Color.White, fontSize = 31.sp, fontWeight = FontWeight.Black)
-                    Text("Οι εφαρμογές είναι εδώ μέσα, όχι στο κεντρικό Home", color = Color(0xFFBEC1C8), fontSize = 13.sp)
+                    Text("Μόνο όσα είναι πραγματικά εγκατεστημένα στο box", color = Color(0xFFBEC1C8), fontSize = 13.sp)
                 }
+                Text("${apps.size} APPS", color = Color(0xFFFF7EB5), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.width(14.dp))
                 SmallAction("PLAY STORE") { if (!openPlayStore(context)) toast(context, "Το Play Store δεν βρέθηκε") }
             }
 
@@ -380,7 +462,7 @@ private fun AppsScreen(context: Context, onBack: () -> Unit) {
                 ) {
                     items(apps, key = { it.packageName }) { app ->
                         AppTile(context, app, onFocus = { selected = app }) {
-                            if (!launchPackage(context, app.packageName)) toast(context, "${app.label} δεν άνοιξε")
+                            if (!launchInstalledApp(context, app)) toast(context, "${app.label} δεν άνοιξε")
                         }
                     }
                 }
@@ -402,17 +484,17 @@ private fun AppHero(context: Context, app: InstalledApp?, modifier: Modifier) {
             val icon = remember(app.packageName) {
                 runCatching { context.packageManager.getApplicationIcon(app.packageName).toBitmap(220, 220).asImageBitmap() }.getOrNull()
             }
-            if (icon != null) {
-                Image(icon, null, Modifier.size(150.dp), contentScale = ContentScale.Fit)
-            }
+            if (icon != null) Image(icon, null, Modifier.size(150.dp), contentScale = ContentScale.Fit)
             Spacer(Modifier.height(18.dp))
             Text(app.label, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black, maxLines = 2)
-            Text("Εγκατεστημένη στο Xiaomi box", color = Color(0xFFB9BDC4), fontSize = 12.sp)
+            Text(app.packageName, color = Color(0xFF9EA3AB), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(8.dp))
+            Text("OK για άνοιγμα", color = Color(0xFFFF84B9), fontSize = 12.sp, fontWeight = FontWeight.Bold)
         } else {
-            Text("APPS", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black)
+            Text("Δεν βρέθηκαν εφαρμογές", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
         }
         Spacer(Modifier.weight(1f))
-        Text("AGNES LIBRARY", color = Color(0xFFFF7EB5), fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Text("AGNES • REAL APPS ONLY", color = Color(0xFFFF7EB5), fontSize = 10.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -432,7 +514,9 @@ private fun AppTile(context: Context, app: InstalledApp, onFocus: () -> Unit, on
             .border(if (focused) 3.dp else 1.dp, if (focused) Color(0xFFFF82B8) else Color(0x22FFFFFF), RoundedCornerShape(22.dp))
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocus() }
             .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) { onClick(); true } else false
+                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
+                    onClick(); true
+                } else false
             }
             .focusable()
             .padding(14.dp),
@@ -457,7 +541,7 @@ private fun SportsScreen(onBack: () -> Unit) {
             Spacer(Modifier.width(18.dp))
             Column(Modifier.weight(1f)) {
                 Text("SPORTS LIVE", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                Text("Cytavision • αγώνες • ώρα • κανάλι", color = Color(0xFFBFC3CA), fontSize = 11.sp)
+                Text("Επίσημο Cytavision πρόγραμμα • αγώνες • ώρα • κανάλι", color = Color(0xFFBFC3CA), fontSize = 11.sp)
             }
             Text("AGNES", color = Color(0xFFFF7CB4), fontSize = 13.sp, fontWeight = FontWeight.Black)
         }
@@ -483,11 +567,28 @@ private fun SportsScreen(onBack: () -> Unit) {
 @Composable
 private fun StatusChip(title: String, subtitle: String) {
     Column(
-        Modifier.background(Color(0xAA23252B), RoundedCornerShape(17.dp)).border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(17.dp)).padding(horizontal = 14.dp, vertical = 7.dp),
+        Modifier
+            .background(Color(0xAA23252B), RoundedCornerShape(17.dp))
+            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(17.dp))
+            .padding(horizontal = 14.dp, vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Text(subtitle, color = Color(0xFFB7BBC2), fontSize = 9.sp)
+    }
+}
+
+@Composable
+private fun StatusLine(title: String, subtitle: String, ok: Boolean) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(12.dp).background(if (ok) Color(0xFF75D995) else Color(0xFF6A6E76), CircleShape)
+        )
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = Color(0xFFADB2B9), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
@@ -500,10 +601,16 @@ private fun SmallAction(text: String, onClick: () -> Unit) {
             .background(if (focused) Color(0xFFFF4F9A) else Color(0xFF24272E), RoundedCornerShape(16.dp))
             .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x33FFFFFF), RoundedCornerShape(16.dp))
             .onFocusChanged { focused = it.isFocused }
-            .onKeyEvent { event -> if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) { onClick(); true } else false }
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
+                    onClick(); true
+                } else false
+            }
             .focusable()
             .padding(horizontal = 16.dp, vertical = 11.dp)
-    ) { Text(text, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black) }
+    ) {
+        Text(text, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black)
+    }
 }
 
 @Composable
@@ -512,23 +619,15 @@ private fun TvButton(text: String, onClick: () -> Unit) = SmallAction(text, onCl
 @Composable
 private fun InfoPanel(title: String, modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier.fillMaxHeight().background(Color(0xD914171D), RoundedCornerShape(24.dp)).border(1.dp, Color(0x2FFFFFFF), RoundedCornerShape(24.dp)).padding(18.dp)
+        modifier
+            .fillMaxHeight()
+            .background(Color(0xD914171D), RoundedCornerShape(24.dp))
+            .border(1.dp, Color(0x2FFFFFFF), RoundedCornerShape(24.dp))
+            .padding(18.dp)
     ) {
         Text(title, color = Color(0xFFFF78B1), fontSize = 11.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(12.dp))
         content()
-    }
-}
-
-@Composable
-private fun InfoLine(icon: String, title: String, subtitle: String) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(icon, fontSize = 18.sp)
-        Spacer(Modifier.width(9.dp))
-        Column {
-            Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = Color(0xFFADB2B9), fontSize = 10.sp)
-        }
     }
 }
 
