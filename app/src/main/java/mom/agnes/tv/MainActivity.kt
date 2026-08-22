@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -52,20 +53,25 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Screen { HOME, SPORTS, APPS }
+private enum class ServiceAction { CYTAVISION, SPORTS, FITNESS, SMART_HOME, KIDS, FAMILY, TRAVEL, MUSIC, APPS }
 
-private data class HubItem(
+private data class ServiceItem(
     val icon: String,
     val title: String,
     val subtitle: String,
-    val keywords: List<String> = emptyList(),
-    val internal: Screen? = null,
+    val detail: String,
+    val action: ServiceAction,
     val accent: Color
 )
 
-private data class InstalledApp(
-    val label: String,
-    val packageName: String
-)
+private data class InstalledApp(val label: String, val packageName: String)
+
+private fun launchPackage(context: Context, packageName: String): Boolean {
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return false
+    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(launchIntent)
+    return true
+}
 
 private fun openInstalledAppByLabel(context: Context, keywords: List<String>): Boolean {
     val pm = context.packageManager
@@ -82,11 +88,9 @@ private fun openInstalledAppByLabel(context: Context, keywords: List<String>): B
     return launchPackage(context, match.activityInfo.packageName)
 }
 
-private fun launchPackage(context: Context, packageName: String): Boolean {
-    val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return false
-    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    context.startActivity(launchIntent)
-    return true
+private fun openPlayStore(context: Context): Boolean {
+    if (launchPackage(context, "com.android.vending")) return true
+    return openInstalledAppByLabel(context, listOf("Play Store", "Google Play"))
 }
 
 private fun installedApps(context: Context): List<InstalledApp> {
@@ -95,28 +99,11 @@ private fun installedApps(context: Context): List<InstalledApp> {
         Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER),
         Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
     )
-    return intents
-        .flatMap { pm.queryIntentActivities(it, PackageManager.MATCH_ALL) }
+    return intents.flatMap { pm.queryIntentActivities(it, PackageManager.MATCH_ALL) }
         .distinctBy { it.activityInfo.packageName }
         .filter { it.activityInfo.packageName != context.packageName }
-        .map {
-            InstalledApp(
-                label = it.loadLabel(pm).toString(),
-                packageName = it.activityInfo.packageName
-            )
-        }
+        .map { InstalledApp(it.loadLabel(pm).toString(), it.activityInfo.packageName) }
         .sortedBy { it.label.lowercase(Locale.getDefault()) }
-}
-
-private fun appCategory(label: String): String {
-    val n = label.lowercase(Locale.getDefault())
-    return when {
-        listOf("cytavision", "tv", "iptv", "smarters", "iqiyi").any { n.contains(it) } -> "TV"
-        listOf("netflix", "prime", "hbo", "disney", "apple tv", "movie").any { n.contains(it) } -> "MOVIES"
-        listOf("spotify", "music", "radio").any { n.contains(it) } -> "MUSIC"
-        listOf("kids", "games", "play games").any { n.contains(it) } -> "KIDS"
-        else -> "UTILITIES"
-    }
 }
 
 @Composable
@@ -126,12 +113,9 @@ private fun AgnesTvApp(context: Context) {
 
     when (screen) {
         Screen.HOME -> AgnesHome(
-            onInternal = { screen = it },
-            onOpenApp = { title, keywords ->
-                if (!openInstalledAppByLabel(context, keywords)) {
-                    Toast.makeText(context, "$title δεν βρέθηκε στο box", Toast.LENGTH_SHORT).show()
-                }
-            }
+            context = context,
+            onSports = { screen = Screen.SPORTS },
+            onApps = { screen = Screen.APPS }
         )
         Screen.SPORTS -> SportsScreen(onBack = { screen = Screen.HOME })
         Screen.APPS -> AppsScreen(context = context, onBack = { screen = Screen.HOME })
@@ -139,10 +123,7 @@ private fun AgnesTvApp(context: Context) {
 }
 
 @Composable
-private fun AgnesHome(
-    onInternal: (Screen) -> Unit,
-    onOpenApp: (String, List<String>) -> Unit
-) {
+private fun AgnesHome(context: Context, onSports: () -> Unit, onApps: () -> Unit) {
     var clock by remember { mutableStateOf(currentTime()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -151,88 +132,96 @@ private fun AgnesHome(
         }
     }
 
-    val pink = Color(0xFFFF4F9A)
-    val glass = Color(0xCC111319)
-    val glass2 = Color(0xD71A1D24)
-    val muted = Color(0xFFBFC3CA)
+    val services = remember {
+        listOf(
+            ServiceItem("📺", "TV", "Cytavision & Live TV", "Ζωντανή τηλεόραση και γρήγορη πρόσβαση στη Cytavision.", ServiceAction.CYTAVISION, Color(0xFF7A274E)),
+            ServiceItem("⚽", "SPORTS", "Αγώνες & κανάλια", "Πρόγραμμα αγώνων, ώρες και κανάλια μέσα στην AGNES.", ServiceAction.SPORTS, Color(0xFF263E64)),
+            ServiceItem("🏃", "ΓΥΜΝΑΣΤΙΚΗ", "Workout & movement", "Μεγάλη οθόνη για προπονήσεις, πρόγραμμα και καθημερινό στόχο.", ServiceAction.FITNESS, Color(0xFF315849)),
+            ServiceItem("🏠", "SMART HOME", "Το σπίτι από την TV", "Φώτα, συσκευές, κάμερες και σκηνές από ένα σημείο.", ServiceAction.SMART_HOME, Color(0xFF415B68)),
+            ServiceItem("🧸", "ΠΑΙΔΙΚΟ", "Kids World", "Παιδικό περιεχόμενο, ιστορίες, χαλάρωση και ασφαλής πρόσβαση.", ServiceAction.KIDS, Color(0xFF68517B)),
+            ServiceItem("👨‍👩‍👦", "FAMILY", "Η οικογένεια τώρα", "Πρόγραμμα, δραστηριότητες, υπενθυμίσεις και οικογενειακή ροή.", ServiceAction.FAMILY, Color(0xFF7B4B69)),
+            ServiceItem("✈", "TRAVEL", "Ταξίδια & ευκαιρίες", "Προορισμοί, ταξίδια, sports travel και οικογενειακές αποδράσεις.", ServiceAction.TRAVEL, Color(0xFF244F76)),
+            ServiceItem("🎵", "MUSIC", "Spotify", "Μουσική, πρωινή αφύπνιση και βραδινή χαλάρωση.", ServiceAction.MUSIC, Color(0xFF246044)),
+            ServiceItem("▦", "APPS", "Ό,τι είναι εγκατεστημένο", "Premium βιβλιοθήκη εφαρμογών μέσα στην AGNES, όχι έξω στο launcher.", ServiceAction.APPS, Color(0xFF6A492B))
+        )
+    }
+    var selectedIndex by remember { mutableIntStateOf(0) }
+    val selected = services[selectedIndex]
 
-    val items = listOf(
-        HubItem("📺", "CYTAVISION", "Live TV", listOf("Cytavision"), accent = Color(0xFF7A274E)),
-        HubItem("N", "NETFLIX", "Movies & Series", listOf("Netflix"), accent = Color(0xFF4A171C)),
-        HubItem("▶", "YOUTUBE", "Videos", listOf("YouTube"), accent = Color(0xFF461B1B)),
-        HubItem("●", "SPOTIFY", "Music", listOf("Spotify"), accent = Color(0xFF153D2B)),
-        HubItem("⚽", "SPORTS LIVE", "Αγώνες & Κανάλια", internal = Screen.SPORTS, accent = Color(0xFF24252A)),
-        HubItem("🧳", "TRAVEL", "Ταξίδια", accent = Color(0xFF13305A)),
-        HubItem("👥", "FAMILY", "Οικογένεια", accent = Color(0xFF3F2451)),
-        HubItem("▦", "APPS", "Εφαρμογές", internal = Screen.APPS, accent = Color(0xFF5B3217))
-    )
+    fun activate(service: ServiceItem) {
+        when (service.action) {
+            ServiceAction.CYTAVISION -> if (!openInstalledAppByLabel(context, listOf("Cytavision"))) toast(context, "Η Cytavision δεν βρέθηκε")
+            ServiceAction.SPORTS -> onSports()
+            ServiceAction.FITNESS -> toast(context, "AGNES Fitness • έρχεται στο επόμενο service pack")
+            ServiceAction.SMART_HOME -> if (!openInstalledAppByLabel(context, listOf("Google Home", "Home"))) toast(context, "Δεν βρέθηκε Smart Home εφαρμογή")
+            ServiceAction.KIDS -> if (!openInstalledAppByLabel(context, listOf("YouTube Kids", "Kids"))) toast(context, "AGNES Kids • έρχεται στο επόμενο service pack")
+            ServiceAction.FAMILY -> toast(context, "AGNES Family • έρχεται στο επόμενο service pack")
+            ServiceAction.TRAVEL -> toast(context, "AGNES Travel • έρχεται στο επόμενο service pack")
+            ServiceAction.MUSIC -> if (!openInstalledAppByLabel(context, listOf("Spotify"))) toast(context, "Το Spotify δεν βρέθηκε")
+            ServiceAction.APPS -> onApps()
+        }
+    }
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.linearGradient(listOf(Color(0xFF06070A), Color(0xFF171014), Color(0xFF090A0E))))
-            .padding(26.dp)
+            .background(Brush.linearGradient(listOf(Color(0xFF050608), Color(0xFF160E14), Color(0xFF081117))))
+            .padding(horizontal = 32.dp, vertical = 24.dp)
     ) {
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("AGNES TV", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
-                    Text("Η οικογένειά μας, σε 1 μέρος ♥", color = Color(0xFFE6D4D9), fontSize = 14.sp)
+                    Text("AGNES", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                    Text("Το δικό μας Home • όλα ξεκινούν από εδώ", color = Color(0xFFD3C7CC), fontSize = 14.sp)
                 }
-                GlassChip("☀ 22°C", "Λεμεσός")
+                StatusChip("☀ 22°C", "Κύπρος")
+                Spacer(Modifier.width(10.dp))
+                StatusChip("● AGNES", "HOME ACTIVE")
                 Spacer(Modifier.width(12.dp))
-                GlassChip("👨‍👩‍👧‍👦 Οικογένεια", "Όλοι καλά ♥")
+                SmallAction("PLAY STORE") {
+                    if (!openPlayStore(context)) toast(context, "Το Play Store δεν βρέθηκε")
+                }
                 Spacer(Modifier.width(18.dp))
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(clock, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                    Text("AGNES TV • v1.3.0", color = muted, fontSize = 12.sp)
+                    Text(clock, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                    Text("AGNES OS • v1.4.0", color = Color(0xFFFF79B2), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(20.dp))
 
-            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                AssistantPanel(
-                    modifier = Modifier.weight(0.78f).fillMaxHeight(),
-                    pink = pink,
-                    glass = glass
-                )
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                AgnesPresence(Modifier.width(270.dp).fillMaxHeight())
 
-                Column(Modifier.weight(2.62f).fillMaxHeight()) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items.forEach { item ->
-                            HomeTile(
-                                item = item,
-                                modifier = Modifier.weight(1f),
-                                onClick = {
-                                    item.internal?.let(onInternal)
-                                        ?: if (item.keywords.isNotEmpty()) onOpenApp(item.title, item.keywords) else Unit
-                                }
-                            )
-                        }
-                    }
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    Text("ΥΠΗΡΕΣΙΑ", color = Color(0xFFFF78B1), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                    Spacer(Modifier.height(8.dp))
+                    ServiceCarousel(
+                        services = services,
+                        selectedIndex = selectedIndex,
+                        onIndexChange = { selectedIndex = it },
+                        onActivate = { activate(selected) },
+                        modifier = Modifier.fillMaxWidth().height(220.dp)
+                    )
 
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(16.dp))
 
-                    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PanelCard("ΣΗΜΕΡΑ", Modifier.weight(1.25f), glass2) {
-                            MatchLine("⚽", "SPORTS LIVE", "Πάτησε για το επίσημο πρόγραμμα", "Cytavision")
+                    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        InfoPanel("ΤΩΡΑ", Modifier.weight(1f)) {
+                            Text(selected.title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
                             Spacer(Modifier.height(8.dp))
-                            MatchLine("★", "Ολυμπιακός / Liverpool", "Αγαπημένες ομάδες", "AGNES")
+                            Text(selected.detail, color = Color(0xFFC7CBD0), fontSize = 14.sp, lineHeight = 20.sp)
+                            Spacer(Modifier.weight(1f))
+                            Text("← / → αλλάζει υπηρεσία   •   OK ανοίγει", color = Color(0xFFFF8DBC), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
-
-                        PanelCard("🔥 ΜΗ ΧΑΣΕΙΣ", Modifier.weight(0.95f), glass2) {
-                            InfoLine("★", "ΟΛΥΜΠΙΑΚΟΣ", "Επόμενος αγώνας από SPORTS LIVE")
-                            Spacer(Modifier.height(9.dp))
-                            InfoLine("★", "LIVERPOOL", "Επόμενος αγώνας από SPORTS LIVE")
-                        }
-
-                        PanelCard("🔔 ΥΠΕΝΘΥΜΙΣΕΙΣ", Modifier.weight(1.05f), glass2) {
-                            InfoLine("🎒", "Family", "Ημέρα • δραστηριότητες • pickups")
-                            Spacer(Modifier.height(8.dp))
-                            InfoLine("🎵", "Spotify", "Music & morning flow")
-                            Spacer(Modifier.height(8.dp))
-                            InfoLine("✈", "Travel", "Ταξίδια & ευκαιρίες")
+                        InfoPanel("AGNES LIVE", Modifier.weight(1f)) {
+                            InfoLine("⚽", "Sports", "Αγώνες, ώρα και κανάλι")
+                            Spacer(Modifier.height(10.dp))
+                            InfoLine("🏠", "Home", "Η AGNES είναι το κεντρικό launcher")
+                            Spacer(Modifier.height(10.dp))
+                            InfoLine("▶", "Apps", "Οι εφαρμογές μένουν πίσω από την AGNES")
+                            Spacer(Modifier.weight(1f))
+                            Text("Μόνο AGNES + Play Store μπροστά.", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -242,103 +231,156 @@ private fun AgnesHome(
 }
 
 @Composable
-private fun AppsScreen(context: Context, onBack: () -> Unit) {
-    val allApps = remember { installedApps(context) }
-    val categories = listOf("ALL", "TV", "MOVIES", "MUSIC", "KIDS", "UTILITIES")
-    var category by remember { mutableStateOf("ALL") }
-    val visibleApps = remember(allApps, category) {
-        if (category == "ALL") allApps else allApps.filter { appCategory(it.label) == category }
+private fun ServiceCarousel(
+    services: List<ServiceItem>,
+    selectedIndex: Int,
+    onIndexChange: (Int) -> Unit,
+    onActivate: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var focused by remember { mutableStateOf(false) }
+    val current = services[selectedIndex]
+    val prev = services[(selectedIndex - 1 + services.size) % services.size]
+    val next = services[(selectedIndex + 1) % services.size]
+
+    Row(
+        modifier
+            .background(Color(0xCC11151B), RoundedCornerShape(26.dp))
+            .border(if (focused) 3.dp else 1.dp, if (focused) Color(0xFFFF7EB5) else Color(0x33FFFFFF), RoundedCornerShape(26.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .onKeyEvent { event ->
+                if (event.type != KeyEventType.KeyUp) return@onKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> { onIndexChange((selectedIndex - 1 + services.size) % services.size); true }
+                    Key.DirectionRight -> { onIndexChange((selectedIndex + 1) % services.size); true }
+                    Key.Enter, Key.DirectionCenter -> { onActivate(); true }
+                    else -> false
+                }
+            }
+            .focusable()
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        PeekService(prev, Modifier.weight(.72f), false)
+        Box(
+            Modifier
+                .weight(1.56f)
+                .fillMaxHeight()
+                .background(
+                    Brush.linearGradient(listOf(current.accent.copy(alpha = .95f), Color(0xFF17171D))),
+                    RoundedCornerShape(22.dp)
+                )
+                .border(1.dp, Color(0x55FFFFFF), RoundedCornerShape(22.dp))
+                .padding(22.dp)
+        ) {
+            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                Text(current.icon, fontSize = 50.sp)
+                Spacer(Modifier.width(20.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(current.title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                    Text(current.subtitle, color = Color(0xFFE7DDE1), fontSize = 14.sp)
+                    Spacer(Modifier.height(12.dp))
+                    Text("OK • ΑΝΟΙΓΜΑ", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                }
+                Text("›", color = Color.White, fontSize = 46.sp, fontWeight = FontWeight.Light)
+            }
+        }
+        PeekService(next, Modifier.weight(.72f), true)
     }
-    var selected by remember { mutableStateOf(allApps.firstOrNull()) }
-    val pink = Color(0xFFFF4F9A)
+}
+
+@Composable
+private fun PeekService(item: ServiceItem, modifier: Modifier, right: Boolean) {
+    Column(
+        modifier
+            .fillMaxHeight()
+            .background(item.accent.copy(alpha = .42f), RoundedCornerShape(20.dp))
+            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(20.dp))
+            .padding(16.dp),
+        horizontalAlignment = if (right) Alignment.End else Alignment.Start,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(item.icon, fontSize = 30.sp)
+        Spacer(Modifier.height(8.dp))
+        Text(item.title, color = Color.White.copy(alpha = .75f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun AgnesPresence(modifier: Modifier) {
+    Column(
+        modifier
+            .background(Brush.verticalGradient(listOf(Color(0xFF3A252D), Color(0xFF171217))), RoundedCornerShape(28.dp))
+            .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(28.dp))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier
+                .size(138.dp)
+                .background(Color(0xFFE7C8AD), CircleShape)
+                .border(4.dp, Color(0xFFFF79B2), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("AGNES", color = Color(0xFF2C1B20), fontSize = 25.sp, fontWeight = FontWeight.Black)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text("Γεια σου Daddy 👋", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+        Text("Τι θέλεις να κάνουμε;", color = Color(0xFFD1C5CA), fontSize = 13.sp)
+        Spacer(Modifier.height(18.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(Color(0xCC101217), RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0x66FF79B2), RoundedCornerShape(18.dp))
+                .padding(15.dp)
+        ) {
+            Column {
+                Text("🎙  Μίλα στην AGNES", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text("TV • Sports • Family • Home", color = Color(0xFFB8BBC2), fontSize = 10.sp)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        Text("AGNES FIRST", color = Color(0xFFFF79B2), fontSize = 11.sp, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun AppsScreen(context: Context, onBack: () -> Unit) {
+    val apps = remember { installedApps(context) }
+    var selected by remember { mutableStateOf(apps.firstOrNull()) }
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(
-                Brush.linearGradient(
-                    listOf(Color(0xFF050608), Color(0xFF140C13), Color(0xFF080A0D))
-                )
-            )
-            .padding(horizontal = 30.dp, vertical = 24.dp)
+            .background(Brush.linearGradient(listOf(Color(0xFF050608), Color(0xFF150D13), Color(0xFF081017))))
+            .padding(28.dp)
     ) {
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TvButton("‹ AGNES", onBack)
                 Spacer(Modifier.width(18.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("AGNES APPS", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
-                    Text("Premium library • πραγματικά icons • γρήγορο άνοιγμα", color = Color(0xFFB9BDC5), fontSize = 13.sp)
+                    Text("AGNES APPS", color = Color.White, fontSize = 31.sp, fontWeight = FontWeight.Black)
+                    Text("Οι εφαρμογές είναι εδώ μέσα, όχι στο κεντρικό Home", color = Color(0xFFBEC1C8), fontSize = 13.sp)
                 }
-                Text("${allApps.size} APPS", color = pink, fontSize = 13.sp, fontWeight = FontWeight.Black)
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                categories.forEach { name ->
-                    CategoryChip(
-                        label = when (name) {
-                            "ALL" -> "ΟΛΑ"
-                            "TV" -> "TV"
-                            "MOVIES" -> "MOVIES"
-                            "MUSIC" -> "MUSIC"
-                            "KIDS" -> "KIDS"
-                            else -> "UTILITIES"
-                        },
-                        selected = category == name,
-                        onClick = {
-                            category = name
-                            selected = (if (name == "ALL") allApps else allApps.filter { appCategory(it.label) == name }).firstOrNull()
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                SmallAction("PLAY STORE") { if (!openPlayStore(context)) toast(context, "Το Play Store δεν βρέθηκε") }
             }
 
             Spacer(Modifier.height(18.dp))
 
-            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                PremiumAppHero(
-                    context = context,
-                    app = selected,
-                    modifier = Modifier.width(330.dp).fillMaxHeight(),
-                    onOpen = {
-                        selected?.let {
-                            if (!launchPackage(context, it.packageName)) {
-                                Toast.makeText(context, "${it.label} δεν άνοιξε", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                )
-
-                Column(Modifier.weight(1f).fillMaxHeight()) {
-                    Text(
-                        if (category == "ALL") "ΟΛΕΣ ΟΙ ΕΦΑΡΜΟΓΕΣ" else category,
-                        color = Color(0xFFFF7CB3),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Spacer(Modifier.height(10.dp))
-
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(4),
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
-                        contentPadding = PaddingValues(end = 4.dp, bottom = 10.dp)
-                    ) {
-                        items(visibleApps, key = { it.packageName }) { app ->
-                            PremiumAppTile(
-                                context = context,
-                                app = app,
-                                onFocus = { selected = app },
-                                onClick = {
-                                    if (!launchPackage(context, app.packageName)) {
-                                        Toast.makeText(context, "${app.label} δεν άνοιξε", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            )
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                AppHero(context, selected, Modifier.width(330.dp).fillMaxHeight())
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(apps, key = { it.packageName }) { app ->
+                        AppTile(context, app, onFocus = { selected = app }) {
+                            if (!launchPackage(context, app.packageName)) toast(context, "${app.label} δεν άνοιξε")
                         }
                     }
                 }
@@ -348,352 +390,147 @@ private fun AppsScreen(context: Context, onBack: () -> Unit) {
 }
 
 @Composable
-private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    var focused by remember { mutableStateOf(false) }
-    val bg = when {
-        selected -> Color(0xFF9C2D60)
-        focused -> Color(0xFF4F2740)
-        else -> Color(0xCC17191F)
-    }
-    Box(
-        modifier
-            .height(54.dp)
-            .scale(if (focused) 1.035f else 1f)
-            .background(bg, RoundedCornerShape(17.dp))
-            .border(if (focused || selected) 2.dp else 1.dp, if (focused || selected) Color(0xFFFF82BA) else Color(0x22FFFFFF), RoundedCornerShape(17.dp))
-            .onFocusChanged { focused = it.isFocused }
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
-                    onClick(); true
-                } else false
-            }
-            .focusable(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
-    }
-}
-
-@Composable
-private fun PremiumAppHero(
-    context: Context,
-    app: InstalledApp?,
-    modifier: Modifier,
-    onOpen: () -> Unit
-) {
-    val pink = Color(0xFFFF4F9A)
+private fun AppHero(context: Context, app: InstalledApp?, modifier: Modifier) {
     Column(
         modifier
-            .background(
-                Brush.verticalGradient(listOf(Color(0xFF25151F), Color(0xFF111319))),
-                RoundedCornerShape(30.dp)
-            )
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(30.dp))
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("SELECTED", color = Color(0xFFFF7CB3), fontSize = 11.sp, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(18.dp))
-
-        if (app != null) {
-            val bitmap = remember(app.packageName) {
-                context.packageManager.getApplicationIcon(app.packageName).toBitmap(180, 180).asImageBitmap()
-            }
-            Box(
-                Modifier
-                    .size(174.dp)
-                    .background(Color(0xFF0D0F13), RoundedCornerShape(36.dp))
-                    .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(36.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = app.label,
-                    modifier = Modifier.size(126.dp),
-                    contentScale = ContentScale.Fit
-                )
-            }
-            Spacer(Modifier.height(22.dp))
-            Text(app.label, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black, maxLines = 2)
-            Spacer(Modifier.height(6.dp))
-            Text(appCategory(app.label), color = Color(0xFFB8BDC5), fontSize = 12.sp)
-            Spacer(Modifier.height(8.dp))
-            Text("Έτοιμο να ανοίξει από την AGNES", color = Color(0xFFD6D9DE), fontSize = 13.sp)
-            Spacer(Modifier.weight(1f))
-            HeroOpenButton("ΑΝΟΙΓΜΑ", onOpen)
-        } else {
-            Spacer(Modifier.weight(1f))
-            Text("Δεν βρέθηκαν εφαρμογές", color = Color.White, fontSize = 18.sp)
-            Spacer(Modifier.weight(1f))
-        }
-
-        Spacer(Modifier.height(18.dp))
-        Text("BACK → AGNES HOME", color = pink.copy(alpha = .8f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun PremiumAppTile(
-    context: Context,
-    app: InstalledApp,
-    onFocus: () -> Unit,
-    onClick: () -> Unit
-) {
-    var focused by remember { mutableStateOf(false) }
-    val bg by animateColorAsState(
-        if (focused) Color(0xFF3D2334) else Color(0xDD15181E),
-        label = "premiumAppTile"
-    )
-    val bitmap = remember(app.packageName) {
-        context.packageManager.getApplicationIcon(app.packageName).toBitmap(128, 128).asImageBitmap()
-    }
-
-    Column(
-        Modifier
-            .height(162.dp)
-            .scale(if (focused) 1.065f else 1f)
-            .background(bg, RoundedCornerShape(24.dp))
-            .border(
-                if (focused) 3.dp else 1.dp,
-                if (focused) Color(0xFFFF7CB3) else Color(0x2AFFFFFF),
-                RoundedCornerShape(24.dp)
-            )
-            .onFocusChanged {
-                focused = it.isFocused
-                if (it.isFocused) onFocus()
-            }
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
-                    onClick(); true
-                } else false
-            }
-            .focusable()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(
-            Modifier
-                .size(78.dp)
-                .background(Color(0xFF090B0F), RoundedCornerShape(22.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                bitmap = bitmap,
-                contentDescription = app.label,
-                modifier = Modifier.size(60.dp),
-                contentScale = ContentScale.Fit
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            app.label,
-            color = Color.White,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(appCategory(app.label), color = Color(0xFF9399A2), fontSize = 9.sp)
-    }
-}
-
-@Composable
-private fun HeroOpenButton(text: String, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .scale(if (focused) 1.035f else 1f)
-            .background(if (focused) Color(0xFFFF4F9A) else Color(0xFF8B2B57), RoundedCornerShape(18.dp))
-            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x55FFFFFF), RoundedCornerShape(18.dp))
-            .onFocusChanged { focused = it.isFocused }
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
-                    onClick(); true
-                } else false
-            }
-            .focusable(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black)
-    }
-}
-
-@Composable
-private fun AssistantPanel(modifier: Modifier, pink: Color, glass: Color) {
-    Column(
-        modifier
-            .background(Brush.verticalGradient(listOf(Color(0xFF342127), Color(0xFF181318))), RoundedCornerShape(26.dp))
+            .background(Color(0xD9181A20), RoundedCornerShape(26.dp))
             .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(26.dp))
-            .padding(18.dp),
+            .padding(22.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            Modifier
-                .size(132.dp)
-                .background(Color(0xFFE8C6A8), CircleShape)
-                .border(4.dp, Color(0xFFB88763), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("AGNES", color = Color(0xFF2B1C20), fontSize = 26.sp, fontWeight = FontWeight.Black)
-        }
-        Spacer(Modifier.height(14.dp))
-        Text("Γεια σου Daddy! 👋", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-        Text("Τι θέλεις να δούμε σήμερα;", color = Color(0xFFD5C7CC), fontSize = 13.sp)
-        Spacer(Modifier.height(14.dp))
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .background(glass, RoundedCornerShape(18.dp))
-                .border(1.dp, pink.copy(alpha = .45f), RoundedCornerShape(18.dp))
-                .padding(14.dp)
-        ) {
-            Text("🎙  Μίλα στην AGNES", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text("Πες μου ή πάτησε το μικρόφωνο", color = Color(0xFFBFC3CA), fontSize = 11.sp)
+        if (app != null) {
+            val icon = remember(app.packageName) {
+                runCatching { context.packageManager.getApplicationIcon(app.packageName).toBitmap(220, 220).asImageBitmap() }.getOrNull()
+            }
+            if (icon != null) {
+                Image(icon, null, Modifier.size(150.dp), contentScale = ContentScale.Fit)
+            }
+            Spacer(Modifier.height(18.dp))
+            Text(app.label, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black, maxLines = 2)
+            Text("Εγκατεστημένη στο Xiaomi box", color = Color(0xFFB9BDC4), fontSize = 12.sp)
+        } else {
+            Text("APPS", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black)
         }
         Spacer(Modifier.weight(1f))
-        Text("Η AGNES έχει τον πρώτο ρόλο.", color = Color(0xFFFF83B8), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text("AGNES LIBRARY", color = Color(0xFFFF7EB5), fontSize = 11.sp, fontWeight = FontWeight.Black)
     }
 }
 
 @Composable
-private fun GlassChip(title: String, subtitle: String) {
+private fun AppTile(context: Context, app: InstalledApp, onFocus: () -> Unit, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val bg by animateColorAsState(if (focused) Color(0xFF54283E) else Color(0xD91B1D23), label = "app")
+    val icon = remember(app.packageName) {
+        runCatching { context.packageManager.getApplicationIcon(app.packageName).toBitmap(150, 150).asImageBitmap() }.getOrNull()
+    }
+
     Column(
         Modifier
-            .background(Color(0xAA24262B), RoundedCornerShape(18.dp))
-            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(18.dp))
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = Color(0xFFC7CBD1), fontSize = 10.sp)
-    }
-}
-
-@Composable
-private fun HomeTile(item: HubItem, modifier: Modifier, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    val bg by animateColorAsState(if (focused) item.accent else item.accent.copy(alpha = .72f), label = "tileBg")
-    Column(
-        modifier
-            .height(142.dp)
+            .height(156.dp)
             .scale(if (focused) 1.055f else 1f)
-            .background(bg, RoundedCornerShape(18.dp))
-            .border(if (focused) 3.dp else 1.dp, if (focused) Color(0xFFFF83B8) else Color(0x33FFFFFF), RoundedCornerShape(18.dp))
-            .onFocusChanged { focused = it.isFocused }
+            .background(bg, RoundedCornerShape(22.dp))
+            .border(if (focused) 3.dp else 1.dp, if (focused) Color(0xFFFF82B8) else Color(0x22FFFFFF), RoundedCornerShape(22.dp))
+            .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocus() }
             .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
-                    onClick(); true
-                } else false
+                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) { onClick(); true } else false
             }
             .focusable()
-            .padding(12.dp),
+            .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(item.icon, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(7.dp))
-        Text(item.title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
-        Text(item.subtitle, color = Color(0xFFD7D9DE), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-private fun PanelCard(title: String, modifier: Modifier, bg: Color, content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier
-            .fillMaxHeight()
-            .background(bg, RoundedCornerShape(22.dp))
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(22.dp))
-            .padding(16.dp)
-    ) {
-        Text(title, color = Color(0xFFFF6CA8), fontSize = 12.sp, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(12.dp))
-        content()
-    }
-}
-
-@Composable
-private fun MatchLine(icon: String, title: String, subtitle: String, channel: String) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(icon, fontSize = 18.sp)
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = Color(0xFFADB2B9), fontSize = 10.sp)
-        }
-        Text(channel, color = Color.White, fontSize = 9.sp, modifier = Modifier.background(Color(0xFF292C32), RoundedCornerShape(10.dp)).padding(8.dp))
-    }
-}
-
-@Composable
-private fun InfoLine(icon: String, title: String, subtitle: String) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(icon, fontSize = 16.sp)
-        Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = Color(0xFFADB2B9), fontSize = 9.sp, maxLines = 2)
-        }
+        if (icon != null) Image(icon, null, Modifier.size(72.dp), contentScale = ContentScale.Fit)
+        Spacer(Modifier.height(10.dp))
+        Text(app.label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
 private fun SportsScreen(onBack: () -> Unit) {
     val url = "https://epg.cyta.com.cy/tv-live-sports-events/en"
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
-        Column(Modifier.fillMaxSize()) {
-            Row(
-                Modifier.fillMaxWidth().height(70.dp).background(Color(0xFF111318)).padding(horizontal = 22.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TvButton("‹ ΠΙΣΩ", onBack)
-                Spacer(Modifier.width(18.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("SPORTS LIVE", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                    Text("Επίσημο Cytavision πρόγραμμα • αγώνες • ώρα • κανάλι", color = Color(0xFFBFC3CA), fontSize = 11.sp)
-                }
-                Text("AGNES TV", color = Color(0xFFFF6CA8), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    Column(Modifier.fillMaxSize().background(Color.Black)) {
+        Row(
+            Modifier.fillMaxWidth().height(72.dp).background(Color(0xFF111318)).padding(horizontal = 24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TvButton("‹ AGNES", onBack)
+            Spacer(Modifier.width(18.dp))
+            Column(Modifier.weight(1f)) {
+                Text("SPORTS LIVE", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
+                Text("Cytavision • αγώνες • ώρα • κανάλι", color = Color(0xFFBFC3CA), fontSize = 11.sp)
             }
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        webViewClient = WebViewClient()
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.loadWithOverviewMode = true
-                        settings.useWideViewPort = true
-                        settings.builtInZoomControls = true
-                        settings.displayZoomControls = false
-                        loadUrl(url)
-                    }
-                },
-                update = { if (it.url == null) it.loadUrl(url) }
-            )
+            Text("AGNES", color = Color(0xFFFF7CB4), fontSize = 13.sp, fontWeight = FontWeight.Black)
         }
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { ctx ->
+                WebView(ctx).apply {
+                    webViewClient = WebViewClient()
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.loadWithOverviewMode = true
+                    settings.useWideViewPort = true
+                    settings.builtInZoomControls = true
+                    settings.displayZoomControls = false
+                    loadUrl(url)
+                }
+            },
+            update = { if (it.url == null) it.loadUrl(url) }
+        )
     }
 }
 
 @Composable
-private fun TvButton(text: String, onClick: () -> Unit) {
+private fun StatusChip(title: String, subtitle: String) {
+    Column(
+        Modifier.background(Color(0xAA23252B), RoundedCornerShape(17.dp)).border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(17.dp)).padding(horizontal = 14.dp, vertical = 7.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(subtitle, color = Color(0xFFB7BBC2), fontSize = 9.sp)
+    }
+}
+
+@Composable
+private fun SmallAction(text: String, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     Box(
         Modifier
-            .scale(if (focused) 1.05f else 1f)
-            .background(if (focused) Color(0xFFFF4F9A) else Color(0xFF2A2D33), RoundedCornerShape(14.dp))
-            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x33FFFFFF), RoundedCornerShape(14.dp))
+            .scale(if (focused) 1.04f else 1f)
+            .background(if (focused) Color(0xFFFF4F9A) else Color(0xFF24272E), RoundedCornerShape(16.dp))
+            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x33FFFFFF), RoundedCornerShape(16.dp))
             .onFocusChanged { focused = it.isFocused }
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
-                    onClick(); true
-                } else false
-            }
+            .onKeyEvent { event -> if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) { onClick(); true } else false }
             .focusable()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-    ) { Text(text, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+            .padding(horizontal = 16.dp, vertical = 11.dp)
+    ) { Text(text, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black) }
 }
 
+@Composable
+private fun TvButton(text: String, onClick: () -> Unit) = SmallAction(text, onClick)
+
+@Composable
+private fun InfoPanel(title: String, modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier.fillMaxHeight().background(Color(0xD914171D), RoundedCornerShape(24.dp)).border(1.dp, Color(0x2FFFFFFF), RoundedCornerShape(24.dp)).padding(18.dp)
+    ) {
+        Text(title, color = Color(0xFFFF78B1), fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(12.dp))
+        content()
+    }
+}
+
+@Composable
+private fun InfoLine(icon: String, title: String, subtitle: String) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(icon, fontSize = 18.sp)
+        Spacer(Modifier.width(9.dp))
+        Column {
+            Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = Color(0xFFADB2B9), fontSize = 10.sp)
+        }
+    }
+}
+
+private fun toast(context: Context, message: String) = Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 private fun currentTime(): String = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
