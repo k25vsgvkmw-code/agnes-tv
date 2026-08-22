@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: agnes-tv-apk-main
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -42,14 +48,16 @@ jobs:
       - name: Publish APK in repository
         run: |
           VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-          mkdir -p releases
-          cp app/build/outputs/apk/debug/app-debug.apk "releases/AGNES-TV-v${VERSION_NAME}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk /tmp/AGNES-TV.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add releases/
+          git pull --rebase origin main
+          mkdir -p releases
+          cp /tmp/AGNES-TV.apk "releases/AGNES-TV-v${VERSION_NAME}.apk"
+          git add "releases/AGNES-TV-v${VERSION_NAME}.apk"
           if git diff --cached --quiet; then
             echo "No APK changes to publish"
           else
             git commit -m "Publish AGNES TV v${VERSION_NAME} APK"
-            git push
+            git push origin HEAD:main
           fi
