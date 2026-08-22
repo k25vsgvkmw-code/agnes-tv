@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths-ignore:
       - 'releases/**'
+      - 'build-report.txt'
   workflow_dispatch:
 
 permissions:
@@ -36,28 +37,49 @@ jobs:
           gradle-version: '8.10.2'
 
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle assembleDebug --stacktrace 2>&1 | tee build-output.log
 
       - name: Upload APK artifact
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: AGNES-TV-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Publish APK in repository
+      - name: Publish result in repository
+        if: always()
+        shell: bash
         run: |
           VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-          cp app/build/outputs/apk/debug/app-debug.apk /tmp/AGNES-TV.apk
+          tail -n 220 build-output.log > /tmp/build-report.txt || true
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            cp app/build/outputs/apk/debug/app-debug.apk /tmp/AGNES-TV.apk
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main
-          mkdir -p releases
-          cp /tmp/AGNES-TV.apk "releases/AGNES-TV-v${VERSION_NAME}.apk"
-          git add "releases/AGNES-TV-v${VERSION_NAME}.apk"
-          if git diff --cached --quiet; then
-            echo "No APK changes to publish"
-          else
-            git commit -m "Publish AGNES TV v${VERSION_NAME} APK"
+
+          cp /tmp/build-report.txt build-report.txt
+          git add build-report.txt
+
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            mkdir -p releases
+            cp /tmp/AGNES-TV.apk "releases/AGNES-TV-v${VERSION_NAME}.apk"
+            git add "releases/AGNES-TV-v${VERSION_NAME}.apk"
+          fi
+
+          if ! git diff --cached --quiet; then
+            git commit -m "AGNES TV build result v${VERSION_NAME}"
             git push origin HEAD:main
+          fi
+
+          if [ "${{ steps.build.outcome }}" != "success" ]; then
+            exit 1
           fi
