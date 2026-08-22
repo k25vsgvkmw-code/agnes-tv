@@ -2,16 +2,19 @@ package mom.agnes.tv
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,10 +25,14 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,153 +42,226 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                AgnesTvHome(
-                    openApp = { packageName -> openExternalApp(this, packageName) }
-                )
+                AgnesTvApp(this)
             }
         }
     }
 }
 
-private fun openExternalApp(context: Context, packageName: String) {
-    val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-    if (intent != null) {
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+private enum class Screen { HOME, SPORTS }
+
+private data class HubItem(
+    val title: String,
+    val subtitle: String,
+    val keywords: List<String> = emptyList(),
+    val internal: Screen? = null
+)
+
+private fun openInstalledAppByLabel(context: Context, keywords: List<String>): Boolean {
+    val pm = context.packageManager
+    val intents = listOf(
+        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER),
+        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+    )
+
+    val activities = intents.flatMap { intent ->
+        pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
+    }.distinctBy { it.activityInfo.packageName }
+
+    val match = activities.firstOrNull { info ->
+        val label = info.loadLabel(pm).toString()
+        keywords.any { key -> label.contains(key, ignoreCase = true) }
+    } ?: return false
+
+    val launchIntent = pm.getLaunchIntentForPackage(match.activityInfo.packageName) ?: return false
+    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(launchIntent)
+    return true
+}
+
+@Composable
+private fun AgnesTvApp(context: Context) {
+    var screen by remember { mutableStateOf(Screen.HOME) }
+
+    BackHandler(enabled = screen != Screen.HOME) {
+        screen = Screen.HOME
+    }
+
+    when (screen) {
+        Screen.HOME -> AgnesHome(
+            onInternal = { screen = it },
+            onOpenApp = { title, keywords ->
+                if (!openInstalledAppByLabel(context, keywords)) {
+                    Toast.makeText(context, "$title δεν βρέθηκε στο box", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+        Screen.SPORTS -> SportsScreen(onBack = { screen = Screen.HOME })
     }
 }
 
-data class MatchItem(
-    val time: String,
-    val competition: String,
-    val home: String,
-    val away: String,
-    val channel: String,
-    val favourite: Boolean = false
-)
-
-private val demoMatches = listOf(
-    MatchItem("19:00", "Cyprus League", "Νέα Σαλαμίνα", "Αντίπαλος", "Cytavision Sports", true),
-    MatchItem("20:30", "Super League Greece", "Ολυμπιακός", "Αντίπαλος", "Sports Channel", true),
-    MatchItem("22:00", "Premier League", "Liverpool", "Αντίπαλος", "Cytavision Sports", true),
-    MatchItem("22:00", "European Football", "Team A", "Team B", "Sports Channel")
-)
-
 @Composable
-fun AgnesTvHome(openApp: (String) -> Unit) {
-    val now = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
+private fun AgnesHome(
+    onInternal: (Screen) -> Unit,
+    onOpenApp: (String, List<String>) -> Unit
+) {
+    var clock by remember { mutableStateOf(currentTime()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            clock = currentTime()
+            delay(30_000)
+        }
+    }
 
-    val red = Color(0xFFE32932)
-    val deepRed = Color(0xFF6A0E16)
-    val cream = Color(0xFFFFF7F2)
-    val panel = Color(0xFF211317)
-    val muted = Color(0xFFD6C8CB)
+    val sea = Color(0xFF3B86A5)
+    val cream = Color(0xFFFFF6EA)
+    val glass = Color(0xB31B2832)
+    val muted = Color(0xFFD5DEE3)
+    val soft = Color(0xFF8DB9C8)
+
+    val items = listOf(
+        HubItem("CYTAVISION", "Live TV", listOf("Cytavision")),
+        HubItem("SPORTS LIVE", "Αγώνες • ώρα • κανάλι", internal = Screen.SPORTS),
+        HubItem("NETFLIX", "Movies & Series", listOf("Netflix")),
+        HubItem("YOUTUBE", "Video", listOf("YouTube")),
+        HubItem("SPOTIFY", "Music", listOf("Spotify"))
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0xFF120A0C), Color(0xFF2B1015), deepRed, Color(0xFF8D111B))
+                    listOf(
+                        Color(0xFF071D29),
+                        Color(0xFF123B4B),
+                        Color(0xFF5D4B55)
+                    )
                 )
             )
-            .padding(horizontal = 38.dp, vertical = 28.dp)
+            .padding(horizontal = 42.dp, vertical = 30.dp)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .background(red, RoundedCornerShape(17.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("A", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Black)
-                        }
-                        Spacer(Modifier.width(14.dp))
-                        Column {
-                            Text("AGNES TV", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
-                            Text("Η AGNES έχει τον πρώτο ρόλο.", color = muted, fontSize = 15.sp)
-                        }
-                    }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "AGNES TV",
+                        color = Color.White,
+                        fontSize = 38.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        "Η AGNES μπροστά. Οι εφαρμογές από πίσω.",
+                        color = muted,
+                        fontSize = 17.sp
+                    )
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(now, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-                    Text("TV • Sports • Family • Travel", color = muted, fontSize = 13.sp)
+                    Text(clock, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                    Text("HOME • TV • SPORTS • MUSIC", color = soft, fontSize = 13.sp)
                 }
             }
 
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(25.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                HomeTile("CYTAVISION", "Live TV", "01", Modifier.weight(1.18f)) {
-                    openApp("cy.com.cyta.cytavision")
+                items.forEach { item ->
+                    HubTile(
+                        title = item.title,
+                        subtitle = item.subtitle,
+                        modifier = Modifier.weight(1f),
+                        accent = item.internal == Screen.SPORTS,
+                        onClick = {
+                            item.internal?.let(onInternal)
+                                ?: onOpenApp(item.title, item.keywords)
+                        }
+                    )
                 }
-                HomeTile("SPORTS", "Αγώνες & κανάλια", "02", Modifier.weight(1f)) {}
-                HomeTile("MOVIES", "Netflix • YouTube", "03", Modifier.weight(1f)) {}
-                HomeTile("TRAVEL", "Προορισμοί & τιμές", "04", Modifier.weight(1f)) {}
-                HomeTile("FAMILY", "Σήμερα", "05", Modifier.weight(1f)) {}
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(20.dp)
+                horizontalArrangement = Arrangement.spacedBy(22.dp)
             ) {
-                FootballPanel(
-                    matches = demoMatches,
-                    modifier = Modifier.weight(1.7f),
-                    accent = red,
-                    panel = panel,
-                    muted = muted
-                )
+                Column(
+                    modifier = Modifier
+                        .weight(1.55f)
+                        .fillMaxHeight()
+                        .background(glass, RoundedCornerShape(28.dp))
+                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(28.dp))
+                        .padding(26.dp)
+                ) {
+                    Text("AGNES SPORTS", color = soft, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Πρόγραμμα ποδοσφαίρου & κανάλι",
+                        color = cream,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Το SPORTS LIVE ανοίγει μέσα στην AGNES το επίσημο Live Sports πρόγραμμα της Cytavision. Βλέπεις πραγματικές ώρες, αγώνες και κανάλια χωρίς demo δεδομένα.",
+                        color = muted,
+                        fontSize = 17.sp,
+                        lineHeight = 24.sp
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        "Πάτησε SPORTS LIVE",
+                        color = Color.White,
+                        fontSize = 23.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        "BACK επιστρέφει πάντα στην AGNES.",
+                        color = soft,
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "Πηγή προγράμματος: Cytavision Live Sports",
+                        color = muted,
+                        fontSize = 13.sp
+                    )
+                }
 
                 Column(
                     modifier = Modifier
-                        .weight(0.72f)
+                        .weight(0.75f)
                         .fillMaxHeight()
-                        .background(
-                            Brush.verticalGradient(listOf(Color(0xFF3C161C), Color(0xFF1A1013))),
-                            RoundedCornerShape(28.dp)
-                        )
-                        .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(28.dp))
-                        .padding(22.dp)
+                        .background(Color(0xA6142530), RoundedCornerShape(28.dp))
+                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(28.dp))
+                        .padding(24.dp)
                 ) {
-                    Text("AGNES NOW", color = red, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                    Spacer(Modifier.height(10.dp))
-                    Text("Απόψε έχει ποδόσφαιρο ⚽", color = cream, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("AGNES NOW", color = soft, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "Το panel είναι ήδη TV-first. Στην επόμενη σύνδεση API θα γεμίζει αυτόματα με πραγματικούς αγώνες, ώρες και κανάλια.",
-                        color = muted,
-                        fontSize = 15.sp,
-                        lineHeight = 21.sp
+                        "Ένα Home για όλα",
+                        color = cream,
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                    Spacer(Modifier.height(18.dp))
-                    InfoPill("★ Ολυμπιακός")
-                    Spacer(Modifier.height(8.dp))
-                    InfoPill("★ Liverpool")
-                    Spacer(Modifier.height(8.dp))
-                    InfoPill("★ Νέα Σαλαμίνα")
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Cytavision, Sports, Netflix, YouTube και Spotify ανοίγουν από εδώ. Η AGNES μπορεί επίσης να δηλωθεί ως Home εφαρμογή όταν το Google TV box το επιτρέπει.",
+                        color = muted,
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp
+                    )
                     Spacer(Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0x22FFFFFF), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Text("v0.2.0 • TV HOME", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Text("AGNES TV • v1.0.0", color = soft, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -189,131 +269,122 @@ fun AgnesTvHome(openApp: (String) -> Unit) {
 }
 
 @Composable
-private fun InfoPill(text: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0x18FFFFFF), RoundedCornerShape(14.dp))
-            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-    ) {
-        Text(text, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
-private fun HomeTile(
+private fun HubTile(
     title: String,
     subtitle: String,
-    number: String,
     modifier: Modifier = Modifier,
+    accent: Boolean = false,
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
-    val bg by animateColorAsState(
-        if (focused) Color(0xFFF23842) else Color(0xFF4B1920),
-        label = "tileBg"
-    )
+    val focusedColor = if (accent) Color(0xFF2D9CC1) else Color(0xFF4C7180)
+    val baseColor = if (accent) Color(0xFF17536B) else Color(0xAA203843)
+    val bg by animateColorAsState(if (focused) focusedColor else baseColor, label = "hubTile")
 
     Box(
         modifier = modifier
-            .height(128.dp)
-            .scale(if (focused) 1.06f else 1f)
-            .background(bg, RoundedCornerShape(26.dp))
+            .height(126.dp)
+            .scale(if (focused) 1.055f else 1f)
+            .background(bg, RoundedCornerShape(24.dp))
             .border(
-                width = if (focused) 3.dp else 1.dp,
-                color = if (focused) Color.White else Color(0x33FFFFFF),
-                shape = RoundedCornerShape(26.dp)
+                if (focused) 3.dp else 1.dp,
+                if (focused) Color.White else Color(0x35FFFFFF),
+                RoundedCornerShape(24.dp)
             )
             .onFocusChanged { focused = it.isFocused }
-            .onKeyEvent {
-                if (it.type == KeyEventType.KeyUp && (it.key == Key.Enter || it.key == Key.DirectionCenter)) {
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyUp &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
                     onClick()
                     true
                 } else false
             }
             .focusable()
-            .padding(18.dp)
+            .padding(19.dp)
     ) {
-        Text(number, color = Color(0x66FFFFFF), fontSize = 13.sp, modifier = Modifier.align(Alignment.TopEnd))
-        Column(modifier = Modifier.align(Alignment.BottomStart)) {
-            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
-            Spacer(Modifier.height(5.dp))
-            Text(subtitle, color = Color(0xFFEADBDD), fontSize = 13.sp)
+        Column {
+            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Spacer(Modifier.height(8.dp))
+            Text(subtitle, color = Color(0xFFE0EAEE), fontSize = 13.sp)
         }
     }
 }
 
 @Composable
-private fun FootballPanel(
-    matches: List<MatchItem>,
-    modifier: Modifier = Modifier,
-    accent: Color,
-    panel: Color,
-    muted: Color
-) {
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .background(panel.copy(alpha = 0.95f), RoundedCornerShape(28.dp))
-            .border(1.dp, Color(0x3AFFFFFF), RoundedCornerShape(28.dp))
-            .padding(22.dp)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("AGNES FOOTBALL", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                Text("Αγώνες & Κανάλια", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            }
-            Box(
-                modifier = Modifier
-                    .background(Color(0xFF4A171D), RoundedCornerShape(14.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            ) {
-                Text("DEMO DATA", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-        }
+private fun SportsScreen(onBack: () -> Unit) {
+    val url = "https://epg.cyta.com.cy/tv-live-sports-events/en"
 
-        Spacer(Modifier.height(14.dp))
-
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            items(matches) { match -> MatchRow(match = match, accent = accent, muted = muted) }
-        }
-    }
-}
-
-@Composable
-private fun MatchRow(match: MatchItem, accent: Color, muted: Color) {
-    var focused by remember { mutableStateOf(false) }
-
-    Row(
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .scale(if (focused) 1.018f else 1f)
-            .background(if (focused) Color(0xFF5B242B) else Color(0xFF2E2024), RoundedCornerShape(18.dp))
-            .border(
-                width = if (focused) 2.dp else 1.dp,
-                color = if (focused) Color.White else Color(0x22FFFFFF),
-                shape = RoundedCornerShape(18.dp)
-            )
-            .onFocusChanged { focused = it.isFocused }
-            .focusable()
-            .padding(horizontal = 16.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .fillMaxSize()
+            .background(Color(0xFF071D29))
     ) {
-        Column(modifier = Modifier.width(86.dp)) {
-            Text(match.time, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black)
-            if (match.favourite) Text("★", color = accent, fontSize = 14.sp)
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text("${match.home}  •  ${match.away}", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-            Text(match.competition, color = muted, fontSize = 12.sp)
-        }
-        Box(
-            modifier = Modifier
-                .background(Color(0xFF171013), RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 9.dp)
-        ) {
-            Text(match.channel, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(78.dp)
+                    .background(Color(0xFF102E3B))
+                    .padding(horizontal = 28.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TvButton("‹  AGNES HOME", onBack)
+                Spacer(Modifier.width(24.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("SPORTS LIVE", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+                    Text("Επίσημο πρόγραμμα Cytavision • αγώνες • ώρα • κανάλι", color = Color(0xFFD4E3E8), fontSize = 13.sp)
+                }
+                Text("BACK = AGNES", color = Color(0xFF8DB9C8), fontSize = 13.sp)
+            }
+
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        webViewClient = WebViewClient()
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        settings.builtInZoomControls = true
+                        settings.displayZoomControls = false
+                        isFocusable = true
+                        isFocusableInTouchMode = true
+                        loadUrl(url)
+                    }
+                },
+                update = { webView ->
+                    if (webView.url == null) webView.loadUrl(url)
+                }
+            )
         }
     }
 }
+
+@Composable
+private fun TvButton(text: String, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .scale(if (focused) 1.05f else 1f)
+            .background(if (focused) Color(0xFF2D9CC1) else Color(0xFF214654), RoundedCornerShape(16.dp))
+            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x33FFFFFF), RoundedCornerShape(16.dp))
+            .onFocusChanged { focused = it.isFocused }
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyUp &&
+                    (event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onClick()
+                    true
+                } else false
+            }
+            .focusable()
+            .padding(horizontal = 18.dp, vertical = 12.dp)
+    ) {
+        Text(text, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+private fun currentTime(): String =
+    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
