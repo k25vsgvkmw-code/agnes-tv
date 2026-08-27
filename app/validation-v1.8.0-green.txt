@@ -1,0 +1,2 @@
+AGNES TV v1.8.0 GREEN validation trigger after Kotlin newline fix.
+Expected: assembleDebug success and 11/11 Android instrumentation tests.
