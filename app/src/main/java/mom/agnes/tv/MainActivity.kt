@@ -89,7 +89,9 @@ private data class PlayingItem(val title: String, val url: String)
 @Composable
 private fun AgnesTvApp() {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE) }
     var config by remember { mutableStateOf(loadConfig(context)) }
+    var verified by remember { mutableStateOf(prefs.getBoolean("verified", false)) }
     var editing by remember { mutableStateOf(config == null) }
 
     if (editing || config == null) {
@@ -98,11 +100,12 @@ private fun AgnesTvApp() {
             onSave = {
                 saveConfig(context, it)
                 config = it
+                verified = false
                 editing = false
             }
         )
     } else {
-        TvShell(config = config!!, onSettings = { editing = true })
+        TvShell(config = config!!, verified = verified, onSettings = { editing = true })
     }
 }
 
@@ -126,7 +129,7 @@ private fun SetupScreen(initial: XtreamConfig?, onSave: (XtreamConfig) -> Unit) 
                 Text("AGNES TV", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
                 Text("Σύνδεση XTREAM IPTV", color = Green, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Βάλε μία φορά τα στοιχεία της δικής σου IPTV συνδρομής. Η AGNES θα χρησιμοποιήσει το EPG για τους σημερινούς αγώνες και το VOD για ταινίες/παιδικά.",
+                    "Προχωρημένες ρυθμίσεις XTREAM. Η κατάσταση CONNECTED εμφανίζεται μόνο μετά από πραγματικό authentication.",
                     color = Muted,
                     fontSize = 15.sp
                 )
@@ -162,7 +165,7 @@ private fun SetupScreen(initial: XtreamConfig?, onSave: (XtreamConfig) -> Unit) 
                     colors = ButtonDefaults.buttonColors(containerColor = Purple),
                     modifier = Modifier.fillMaxWidth().height(58.dp)
                 ) {
-                    Text("ΣΥΝΔΕΣΗ & ΑΝΟΙΓΜΑ AGNES TV", fontWeight = FontWeight.Black)
+                    Text("ΑΠΟΘΗΚΕΥΣΗ • ΑΠΑΙΤΕΙ ΝΕΟ VERIFY", fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -170,7 +173,7 @@ private fun SetupScreen(initial: XtreamConfig?, onSave: (XtreamConfig) -> Unit) 
 }
 
 @Composable
-private fun TvShell(config: XtreamConfig, onSettings: () -> Unit) {
+private fun TvShell(config: XtreamConfig, verified: Boolean, onSettings: () -> Unit) {
     var tab by remember { mutableStateOf(Tab.SPORTS) }
     var playing by remember { mutableStateOf<PlayingItem?>(null) }
 
@@ -183,7 +186,12 @@ private fun TvShell(config: XtreamConfig, onSettings: () -> Unit) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("AGNES TV", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
-                Text("v1.6.0 • XTREAM CONNECTED", color = Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (verified) "v1.7.1 • XTREAM CONNECTED" else "v1.7.1 • XTREAM NOT VERIFIED",
+                    color = if (verified) Green else Color(0xFFFFA36C),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
             NavButton("⚽ ΑΓΩΝΕΣ", tab == Tab.SPORTS) { tab = Tab.SPORTS }
             Spacer(Modifier.width(10.dp))
@@ -521,6 +529,7 @@ private fun saveConfig(context: Context, config: XtreamConfig) {
         .putString("server", config.server.trimEnd('/'))
         .putString("username", config.username)
         .putString("password", config.password)
+        .putBoolean("verified", false)
         .apply()
 }
 
@@ -540,7 +549,7 @@ private suspend fun httpGet(url: String): String = withContext(Dispatchers.IO) {
     conn.connectTimeout = 12_000
     conn.readTimeout = 18_000
     conn.requestMethod = "GET"
-    conn.setRequestProperty("User-Agent", "AGNES-TV/1.6.0")
+    conn.setRequestProperty("User-Agent", "AGNES-TV/1.7.1")
     try {
         val code = conn.responseCode
         if (code !in 200..299) throw IllegalStateException("HTTP $code από Xtream server")
