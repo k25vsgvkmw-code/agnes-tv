@@ -64,7 +64,7 @@ class VodMemoryRegressionTest {
 
             compose.onNodeWithText("🎬 ΤΑΙΝΙΕΣ").performClick()
             compose.waitUntil(12_000) {
-                compose.onAllNodes(hasText("Test Movie Greek Subs")).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("AGNES CINEMA")).fetchSemanticsNodes().isNotEmpty()
             }
 
             assertTrue(
@@ -86,7 +86,7 @@ class VodMemoryRegressionTest {
 
             compose.onNodeWithText("🧸 ΠΑΙΔΙΚΑ").performClick()
             compose.waitUntil(12_000) {
-                compose.onAllNodes(hasText("Kids Test Cartoon")).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("AGNES KIDS")).fetchSemanticsNodes().isNotEmpty()
             }
 
             val paths = synchronized(requestPaths) { requestPaths.toList() }

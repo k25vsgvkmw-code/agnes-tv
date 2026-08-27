@@ -75,7 +75,7 @@ class CinematicUiRegressionTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.onNodeWithText("🎬 ΤΑΙΝΙΕΣ").performClick()
             compose.waitUntil(10_000) {
-                compose.onAllNodes(hasText("Cinema Test Movie")).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("AGNES CINEMA")).fetchSemanticsNodes().isNotEmpty()
             }
             assertTrue(compose.onAllNodes(hasText("AGNES CINEMA")).fetchSemanticsNodes().isNotEmpty())
             assertTrue(compose.onAllNodes(hasText("ΓΙΑ ΑΠΟΨΕ")).fetchSemanticsNodes().isNotEmpty())
@@ -88,7 +88,7 @@ class CinematicUiRegressionTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.onNodeWithText("🧸 ΠΑΙΔΙΚΑ").performClick()
             compose.waitUntil(10_000) {
-                compose.onAllNodes(hasText("Kids Cinema Test")).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("AGNES KIDS")).fetchSemanticsNodes().isNotEmpty()
             }
             assertTrue(compose.onAllNodes(hasText("AGNES KIDS")).fetchSemanticsNodes().isNotEmpty())
             assertTrue(compose.onAllNodes(hasText("ΓΙΑ ΠΑΙΔΙΑ")).fetchSemanticsNodes().isNotEmpty())

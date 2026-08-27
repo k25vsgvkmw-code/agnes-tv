@@ -86,6 +86,8 @@ class AgnesTvFlowTest {
             assertTrue(prefs.getBoolean("verified", false))
             assertEquals("tester", prefs.getString("username", null))
             assertEquals("secret", prefs.getString("password", null))
+            device.pressBack()
+            compose.waitForIdle()
         }
     }
 
@@ -117,6 +119,8 @@ class AgnesTvFlowTest {
                 compose.onAllNodes(hasText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ")).fetchSemanticsNodes().isNotEmpty()
             }
             assertTrue(compose.onAllNodes(hasText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ")).fetchSemanticsNodes().isNotEmpty())
+            device.pressBack()
+            compose.waitForIdle()
         }
     }
 
@@ -194,9 +198,9 @@ class AgnesTvFlowTest {
 
             compose.onNodeWithText("🎬 ΤΑΙΝΙΕΣ").performClick()
             compose.waitUntil(10_000) {
-                compose.onAllNodes(hasText("Test Movie Greek Subs")).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("AGNES CINEMA")).fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithText("Test Movie Greek Subs").performClick()
+            compose.onNodeWithText("▶ ΔΕΣ ΤΩΡΑ").performClick()
             compose.waitUntil(8_000) {
                 compose.onAllNodes(hasText("Test Movie Greek Subs")).fetchSemanticsNodes().isNotEmpty()
             }
@@ -208,9 +212,9 @@ class AgnesTvFlowTest {
 
             compose.onNodeWithText("🧸 ΠΑΙΔΙΚΑ").performClick()
             compose.waitUntil(10_000) {
-                compose.onAllNodes(hasText("Kids Test Cartoon")).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("AGNES KIDS")).fetchSemanticsNodes().isNotEmpty()
             }
-            assertTrue(compose.onAllNodes(hasText("Kids Test Cartoon")).fetchSemanticsNodes().isNotEmpty())
+            assertTrue(compose.onAllNodes(hasText("AGNES KIDS")).fetchSemanticsNodes().isNotEmpty())
 
             val paths = synchronized(requestPaths) { requestPaths.toList() }
             assertTrue(paths.any { it.contains("action=get_live_streams") })
