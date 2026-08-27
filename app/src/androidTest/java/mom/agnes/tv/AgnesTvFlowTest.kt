@@ -84,12 +84,57 @@ class AgnesTvFlowTest {
     }
 
     @Test
+    fun staleSavedConfigMustNotBypassPasswordLogin() {
+        val base = server.url("/").toString().trimEnd('/')
+        target.getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE).edit()
+            .putString("server", base)
+            .putString("username", "stale-user")
+            .putString("password", "stale-password")
+            .remove("verified")
+            .commit()
+
+        val intent = Intent(target, LoginActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(LoginActivity.EXTRA_TEST_SERVERS, arrayOf(base))
+        }
+
+        ActivityScenario.launch<LoginActivity>(intent).use {
+            compose.waitUntil(10_000) {
+                compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()
+            }
+            assertTrue(compose.onAllNodes(hasText("Password")).fetchSemanticsNodes().isNotEmpty())
+            assertTrue(compose.onAllNodes(hasText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ")).fetchSemanticsNodes().isEmpty())
+        }
+    }
+
+    @Test
+    fun unverifiedMainDoesNotClaimXtreamConnected() {
+        val base = server.url("/").toString().trimEnd('/')
+        target.getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE).edit()
+            .putString("server", base)
+            .putString("username", "tester")
+            .putString("password", "secret")
+            .putBoolean("verified", false)
+            .commit()
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(10_000) {
+                compose.onAllNodes(hasText("AGNES TV")).fetchSemanticsNodes().isNotEmpty()
+            }
+            assertTrue(
+                compose.onAllNodes(hasText("XTREAM CONNECTED", substring = true)).fetchSemanticsNodes().isEmpty()
+            )
+        }
+    }
+
+    @Test
     fun fullTvFlowShowsMatchesChannelsMoviesKidsAndPlayer() {
         val base = server.url("/").toString().trimEnd('/')
         target.getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE).edit()
             .putString("server", base)
             .putString("username", "tester")
             .putString("password", "secret")
+            .putBoolean("verified", true)
             .commit()
 
         ActivityScenario.launch(MainActivity::class.java).use {
