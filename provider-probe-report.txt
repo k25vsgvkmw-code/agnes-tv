@@ -1,0 +1,64 @@
+Probe time UTC: 2026-08-27T12:44:02Z
+=== DNS ===
+103.211.100.215 STREAM comepitv.online
+103.211.100.215 DGRAM  
+103.211.100.215 RAW    
+=== TCP/HTTP probe ===
+--- PORT 80 ---
+TCP OPEN 80
+http status=511
+
+
+https status=000
+
+curl: (35) OpenSSL/3.0.13: error:0A00010B:SSL routines::wrong version number 
+--- PORT 81 ---
+TCP CLOSED/REFUSED 81
+--- PORT 82 ---
+TCP CLOSED/REFUSED 82
+--- PORT 443 ---
+TCP CLOSED/REFUSED 443
+--- PORT 8000 ---
+TCP CLOSED/REFUSED 8000
+--- PORT 8001 ---
+TCP CLOSED/REFUSED 8001
+--- PORT 8080 ---
+TCP OPEN 8080
+http status=511
+
+
+https status=000
+
+curl: (35) OpenSSL/3.0.13: error:0A00010B:SSL routines::wrong version number 
+--- PORT 8081 ---
+TCP CLOSED/REFUSED 8081
+--- PORT 8082 ---
+TCP CLOSED/REFUSED 8082
+--- PORT 8088 ---
+TCP CLOSED/REFUSED 8088
+--- PORT 8443 ---
+TCP CLOSED/REFUSED 8443
+--- PORT 8880 ---
+TCP CLOSED/REFUSED 8880
+--- PORT 8888 ---
+TCP CLOSED/REFUSED 8888
+--- PORT 9090 ---
+TCP CLOSED/REFUSED 9090
+--- PORT 2095 ---
+TCP OPEN 2095
+http status=511
+
+
+https status=000
+
+curl: (35) OpenSSL/3.0.13: error:0A00010B:SSL routines::wrong version number 
+--- PORT 2082 ---
+TCP CLOSED/REFUSED 2082
+--- PORT 2052 ---
+TCP CLOSED/REFUSED 2052
+--- PORT 25461 ---
+TCP CLOSED/REFUSED 25461
+--- PORT 25462 ---
+TCP CLOSED/REFUSED 25462
+--- PORT 25463 ---
+TCP CLOSED/REFUSED 25463
