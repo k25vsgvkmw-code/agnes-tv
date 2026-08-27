@@ -14,6 +14,7 @@
     <application
         android:allowBackup="true"
         android:banner="@drawable/tv_banner"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@drawable/ic_launcher"
         android:label="AGNES TV"
         android:theme="@style/Theme.AGNESTV"
