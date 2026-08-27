@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -31,20 +31,43 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 
-private const val DEFAULT_SERVER = "https://comepitv.online"
+/*
+ * This placeholder is deliberately public and contains no account data.
+ * The private APK handoff replaces it locally with the user's 12-character
+ * Xtream username without committing that value to GitHub.
+ */
+private const val DEFAULT_USERNAME = "USER00000000"
+
+private val DEFAULT_SERVER_CANDIDATES = listOf(
+    "http://comepitv.online",
+    "http://comepitv.online:8080",
+    "http://comepitv.online:2095"
+)
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,13 +78,21 @@ class LoginActivity : ComponentActivity() {
             return
         }
 
+        val candidates = if (BuildConfig.DEBUG) {
+            intent.getStringArrayExtra(EXTRA_TEST_SERVERS)?.toList()?.filter { it.isNotBlank() }
+                ?.takeIf { it.isNotEmpty() } ?: DEFAULT_SERVER_CANDIDATES
+        } else {
+            DEFAULT_SERVER_CANDIDATES
+        }
+
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 TvXtreamLogin(
-                    onSave = { username, password ->
+                    serverCandidates = candidates,
+                    onVerified = { server, password ->
                         getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE).edit()
-                            .putString("server", DEFAULT_SERVER)
-                            .putString("username", username.trim())
+                            .putString("server", server.trim().trimEnd('/'))
+                            .putString("username", DEFAULT_USERNAME)
                             .putString("password", password)
                             .apply()
                         openAgnesTv()
@@ -82,6 +113,10 @@ class LoginActivity : ComponentActivity() {
         startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
+
+    companion object {
+        const val EXTRA_TEST_SERVERS = "agnes_test_servers"
+    }
 }
 
 private val LoginBg = Color(0xFF040810)
@@ -89,21 +124,37 @@ private val LoginPanel = Color(0xFF0B1420)
 private val LoginPurple = Color(0xFF9B4DFF)
 private val LoginGreen = Color(0xFF78FF50)
 private val LoginMuted = Color(0xFF98A6B8)
+private val LoginError = Color(0xFFFF8E8E)
 
 @Composable
-private fun TvXtreamLogin(onSave: (String, String) -> Unit) {
-    var username by remember { mutableStateOf("") }
+private fun TvXtreamLogin(
+    serverCandidates: List<String>,
+    onVerified: (String, String) -> Unit
+) {
     var password by remember { mutableStateOf("") }
+    var checking by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
-    val usernameFocus = remember { FocusRequester() }
     val passwordFocus = remember { FocusRequester() }
     val connectFocus = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) { usernameFocus.requestFocus() }
+    LaunchedEffect(Unit) { passwordFocus.requestFocus() }
 
     fun submit() {
-        if (username.isNotBlank() && password.isNotBlank()) {
-            onSave(username, password)
+        if (password.isBlank() || checking) return
+        checking = true
+        status = "Ελέγχω τη σύνδεση XTREAM…"
+        scope.launch {
+            val server = discoverXtreamServer(serverCandidates, password)
+            checking = false
+            if (server != null) {
+                status = "Η σύνδεση επιβεβαιώθηκε."
+                onVerified(server, password)
+            } else {
+                status = "Δεν έγινε επιβεβαίωση XTREAM. Έλεγξε μόνο το Password."
+                passwordFocus.requestFocus()
+            }
         }
     }
 
@@ -114,43 +165,18 @@ private fun TvXtreamLogin(onSave: (String, String) -> Unit) {
         Surface(
             color = LoginPanel,
             shape = RoundedCornerShape(28.dp),
-            modifier = Modifier.width(760.dp)
+            modifier = Modifier.width(720.dp)
         ) {
             Column(
-                Modifier.padding(34.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                Modifier.padding(36.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Text("AGNES TV", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
-                Text("Σύνδεση XTREAM IPTV", color = LoginGreen, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-                Surface(color = Color(0xFF111D2B), shape = RoundedCornerShape(16.dp)) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp)) {
-                        Text("Server", color = LoginMuted, modifier = Modifier.width(110.dp))
-                        Text(DEFAULT_SERVER, color = Color.White, fontWeight = FontWeight.Bold)
-                    }
-                }
-
+                Text("XTREAM IPTV", color = LoginGreen, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Ο server είναι ήδη περασμένος. Γράψε Username και Password.",
+                    "Ο λογαριασμός είναι προρυθμισμένος. Γράψε μόνο το Password.",
                     color = LoginMuted,
-                    fontSize = 15.sp
-                )
-
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("Username") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { passwordFocus.requestFocus() }),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(usernameFocus)
-                        .onPreviewKeyEvent { event ->
-                            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
-                                passwordFocus.requestFocus(); true
-                            } else false
-                        }
+                    fontSize = 16.sp
                 )
 
                 OutlinedTextField(
@@ -158,6 +184,7 @@ private fun TvXtreamLogin(onSave: (String, String) -> Unit) {
                     onValueChange = { password = it },
                     label = { Text("Password") },
                     singleLine = true,
+                    enabled = !checking,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { submit() }),
@@ -165,15 +192,10 @@ private fun TvXtreamLogin(onSave: (String, String) -> Unit) {
                         .fillMaxWidth()
                         .focusRequester(passwordFocus)
                         .onPreviewKeyEvent { event ->
-                            when {
-                                event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown -> {
-                                    connectFocus.requestFocus(); true
-                                }
-                                event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp -> {
-                                    usernameFocus.requestFocus(); true
-                                }
-                                else -> false
-                            }
+                            if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
+                                connectFocus.requestFocus()
+                                true
+                            } else false
                         }
                 )
 
@@ -181,22 +203,76 @@ private fun TvXtreamLogin(onSave: (String, String) -> Unit) {
 
                 Button(
                     onClick = { submit() },
+                    enabled = password.isNotBlank() && !checking,
                     colors = ButtonDefaults.buttonColors(containerColor = LoginPurple),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(58.dp)
+                        .height(60.dp)
                         .focusRequester(connectFocus)
                         .onPreviewKeyEvent { event ->
                             if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp) {
-                                passwordFocus.requestFocus(); true
+                                passwordFocus.requestFocus()
+                                true
                             } else false
                         }
                 ) {
-                    Text("ΣΥΝΔΕΣΗ & ΑΝΟΙΓΜΑ AGNES TV", fontWeight = FontWeight.Black)
+                    if (checking) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.width(24.dp).height(24.dp),
+                            strokeWidth = 3.dp,
+                            color = Color.White
+                        )
+                    } else {
+                        Text("ΣΥΝΔΕΣΗ", fontWeight = FontWeight.Black, fontSize = 17.sp)
+                    }
                 }
 
-                Text("AGNES TV v1.6.2", color = LoginMuted, fontSize = 11.sp)
+                status?.let {
+                    Text(
+                        it,
+                        color = if (it.startsWith("Δεν")) LoginError else LoginGreen,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Text("AGNES TV v1.7.0", color = LoginMuted, fontSize = 11.sp)
             }
         }
     }
 }
+
+private suspend fun discoverXtreamServer(candidates: List<String>, password: String): String? =
+    withContext(Dispatchers.IO) {
+        for (candidate in candidates.distinct()) {
+            val server = candidate.trim().trimEnd('/')
+            val url = "$server/player_api.php?username=${encLogin(DEFAULT_USERNAME)}&password=${encLogin(password)}"
+            val ok = runCatching {
+                val conn = URL(url).openConnection() as HttpURLConnection
+                conn.connectTimeout = 6_000
+                conn.readTimeout = 8_000
+                conn.requestMethod = "GET"
+                conn.instanceFollowRedirects = true
+                conn.setRequestProperty("User-Agent", "AGNES-TV/1.7.0")
+                try {
+                    if (conn.responseCode !in 200..299) return@runCatching false
+                    val body = conn.inputStream.bufferedReader().use { it.readText() }
+                    val root = JSONObject(body)
+                    val userInfo = root.optJSONObject("user_info") ?: return@runCatching false
+                    when (val auth = userInfo.opt("auth")) {
+                        is Number -> auth.toInt() == 1
+                        is String -> auth == "1" || auth.equals("true", ignoreCase = true)
+                        is Boolean -> auth
+                        else -> false
+                    }
+                } finally {
+                    conn.disconnect()
+                }
+            }.getOrDefault(false)
+
+            if (ok) return@withContext server
+        }
+        null
+    }
+
+private fun encLogin(value: String): String = URLEncoder.encode(value, "UTF-8")
