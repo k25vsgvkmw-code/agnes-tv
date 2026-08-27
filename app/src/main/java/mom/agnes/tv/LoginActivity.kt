@@ -56,10 +56,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-/*
- * Public placeholder only. The personalized APK replaces this locally with
- * the account username without committing that value to the public repo.
- */
+/* Public fallback only. Personalized APKs use a private asset added after CI build. */
 private const val DEFAULT_USERNAME = "USER00000000"
 
 private val DEFAULT_SERVER_CANDIDATES = listOf(
@@ -77,21 +74,41 @@ class LoginActivity : ComponentActivity() {
             return
         }
 
+        var prefill = loadPrefillConfig(this)
+        if (BuildConfig.DEBUG) {
+            val testUsername = intent.getStringExtra(EXTRA_TEST_USERNAME)
+            val testPassword = intent.getStringExtra(EXTRA_TEST_PASSWORD)
+            if (!testUsername.isNullOrBlank() || testPassword != null) {
+                prefill = prefill.copy(
+                    username = testUsername?.takeIf { it.isNotBlank() } ?: prefill.username,
+                    password = testPassword ?: prefill.password
+                )
+            }
+        }
+
+        val username = prefill.username.ifBlank { DEFAULT_USERNAME }
+        val prefillCandidates = prefill.server.takeIf { it.isNotBlank() }
+            ?.let { listOf(it) + DEFAULT_SERVER_CANDIDATES }
+            ?: DEFAULT_SERVER_CANDIDATES
+
         val candidates = if (BuildConfig.DEBUG) {
             intent.getStringArrayExtra(EXTRA_TEST_SERVERS)?.toList()?.filter { it.isNotBlank() }
-                ?.takeIf { it.isNotEmpty() } ?: DEFAULT_SERVER_CANDIDATES
+                ?.takeIf { it.isNotEmpty() } ?: prefillCandidates
         } else {
-            DEFAULT_SERVER_CANDIDATES
+            prefillCandidates
         }
 
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 TvXtreamLogin(
                     serverCandidates = candidates,
+                    username = username,
+                    initialPassword = prefill.password,
+                    autoConnect = prefill.username.isNotBlank() && prefill.password.isNotBlank(),
                     onVerified = { server, password ->
                         getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE).edit()
                             .putString("server", server.trim().trimEnd('/'))
-                            .putString("username", DEFAULT_USERNAME)
+                            .putString("username", username)
                             .putString("password", password)
                             .putBoolean("verified", true)
                             .apply()
@@ -117,6 +134,8 @@ class LoginActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_TEST_SERVERS = "agnes_test_servers"
+        const val EXTRA_TEST_USERNAME = "agnes_test_username"
+        const val EXTRA_TEST_PASSWORD = "agnes_test_password"
     }
 }
 
@@ -130,9 +149,12 @@ private val LoginError = Color(0xFFFF8E8E)
 @Composable
 private fun TvXtreamLogin(
     serverCandidates: List<String>,
+    username: String,
+    initialPassword: String,
+    autoConnect: Boolean,
     onVerified: (String, String) -> Unit
 ) {
-    var password by remember { mutableStateOf("") }
+    var password by remember(initialPassword) { mutableStateOf(initialPassword) }
     var checking by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -140,22 +162,28 @@ private fun TvXtreamLogin(
     val passwordFocus = remember { FocusRequester() }
     val connectFocus = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) { passwordFocus.requestFocus() }
-
     fun submit() {
         if (password.isBlank() || checking) return
         checking = true
         status = "Ελέγχω τη σύνδεση XTREAM…"
         scope.launch {
-            val server = discoverXtreamServer(serverCandidates, password)
+            val server = discoverXtreamServer(serverCandidates, username, password)
             checking = false
             if (server != null) {
                 status = "Η σύνδεση επιβεβαιώθηκε."
                 onVerified(server, password)
             } else {
-                status = "Δεν έγινε επιβεβαίωση XTREAM. Έλεγξε μόνο το Password."
+                status = "Δεν έγινε επιβεβαίωση XTREAM. Έλεγξε το Password."
                 passwordFocus.requestFocus()
             }
+        }
+    }
+
+    LaunchedEffect(autoConnect, initialPassword) {
+        if (autoConnect && initialPassword.isNotBlank()) {
+            submit()
+        } else {
+            passwordFocus.requestFocus()
         }
     }
 
@@ -175,7 +203,8 @@ private fun TvXtreamLogin(
                 Text("AGNES TV", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
                 Text("XTREAM IPTV", color = LoginGreen, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Ο λογαριασμός είναι προρυθμισμένος. Γράψε μόνο το Password.",
+                    if (autoConnect) "Αυτόματη σύνδεση λογαριασμού…"
+                    else "Ο λογαριασμός είναι προρυθμισμένος. Γράψε μόνο το Password.",
                     color = LoginMuted,
                     fontSize = 16.sp
                 )
@@ -237,43 +266,46 @@ private fun TvXtreamLogin(
                     )
                 }
 
-                Text("AGNES TV v1.7.1", color = LoginMuted, fontSize = 11.sp)
+                Text("AGNES TV v${BuildConfig.VERSION_NAME}", color = LoginMuted, fontSize = 11.sp)
             }
         }
     }
 }
 
-private suspend fun discoverXtreamServer(candidates: List<String>, password: String): String? =
-    withContext(Dispatchers.IO) {
-        for (candidate in candidates.distinct()) {
-            val server = candidate.trim().trimEnd('/')
-            val url = "$server/player_api.php?username=${encLogin(DEFAULT_USERNAME)}&password=${encLogin(password)}"
-            val ok = runCatching {
-                val conn = URL(url).openConnection() as HttpURLConnection
-                conn.connectTimeout = 6_000
-                conn.readTimeout = 8_000
-                conn.requestMethod = "GET"
-                conn.instanceFollowRedirects = true
-                conn.setRequestProperty("User-Agent", "AGNES-TV/1.7.1")
-                try {
-                    if (conn.responseCode !in 200..299) return@runCatching false
-                    val body = conn.inputStream.bufferedReader().use { it.readText() }
-                    val root = JSONObject(body)
-                    val userInfo = root.optJSONObject("user_info") ?: return@runCatching false
-                    when (val auth = userInfo.opt("auth")) {
-                        is Number -> auth.toInt() == 1
-                        is String -> auth == "1" || auth.equals("true", ignoreCase = true)
-                        is Boolean -> auth
-                        else -> false
-                    }
-                } finally {
-                    conn.disconnect()
+private suspend fun discoverXtreamServer(
+    candidates: List<String>,
+    username: String,
+    password: String
+): String? = withContext(Dispatchers.IO) {
+    for (candidate in candidates.distinct()) {
+        val server = candidate.trim().trimEnd('/')
+        val url = "$server/player_api.php?username=${encLogin(username)}&password=${encLogin(password)}"
+        val ok = runCatching {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.connectTimeout = 6_000
+            conn.readTimeout = 8_000
+            conn.requestMethod = "GET"
+            conn.instanceFollowRedirects = true
+            conn.setRequestProperty("User-Agent", "AGNES-TV/${BuildConfig.VERSION_NAME}")
+            try {
+                if (conn.responseCode !in 200..299) return@runCatching false
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                val root = JSONObject(body)
+                val userInfo = root.optJSONObject("user_info") ?: return@runCatching false
+                when (val auth = userInfo.opt("auth")) {
+                    is Number -> auth.toInt() == 1
+                    is String -> auth == "1" || auth.equals("true", ignoreCase = true)
+                    is Boolean -> auth
+                    else -> false
                 }
-            }.getOrDefault(false)
+            } finally {
+                conn.disconnect()
+            }
+        }.getOrDefault(false)
 
-            if (ok) return@withContext server
-        }
-        null
+        if (ok) return@withContext server
     }
+    null
+}
 
 private fun encLogin(value: String): String = URLEncoder.encode(value, "UTF-8")
