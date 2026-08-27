@@ -40,6 +40,24 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
+      - name: Export Android signing tools
+        shell: bash
+        run: |
+          BT=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          test -x "$BT/apksigner"
+          test -x "$BT/zipalign"
+          mkdir -p /tmp/android-signing-tools
+          cp "$BT/apksigner" /tmp/android-signing-tools/
+          cp "$BT/zipalign" /tmp/android-signing-tools/
+          cp -R "$BT/lib" /tmp/android-signing-tools/
+
+      - name: Upload Android signing tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: AGNES-TV-signing-tools
+          path: /tmp/android-signing-tools/
+          if-no-files-found: error
+
       - name: Build debug APK
         id: build
         continue-on-error: true
