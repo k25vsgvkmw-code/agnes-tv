@@ -20,7 +20,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PasswordVisualTransformation
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
@@ -110,12 +109,16 @@ private fun TvXtreamLogin(onSave: (String, String, String) -> Unit) {
             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when (event.key) {
                 Key.DirectionDown -> {
-                    down?.requestFocus()
-                    down != null
+                    if (down != null) {
+                        down.requestFocus()
+                        true
+                    } else false
                 }
                 Key.DirectionUp -> {
-                    up?.requestFocus()
-                    up != null
+                    if (up != null) {
+                        up.requestFocus()
+                        true
+                    } else false
                 }
                 else -> false
             }
@@ -137,7 +140,7 @@ private fun TvXtreamLogin(onSave: (String, String, String) -> Unit) {
                 Text("AGNES TV", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
                 Text("Σύνδεση XTREAM IPTV", color = LoginGreen, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Με το τηλεχειριστήριο: ↓ επόμενο πεδίο, ↑ προηγούμενο πεδίο, OK για πληκτρολόγηση.",
+                    "Τηλεχειριστήριο: ↓ επόμενο, ↑ προηγούμενο, OK για πληκτρολόγηση.",
                     color = LoginMuted,
                     fontSize = 15.sp
                 )
