@@ -4,7 +4,8 @@ import android.content.Context
 
 internal data class PrefillConfig(
     val server: String = "",
-    val username: String = ""
+    val username: String = "",
+    val password: String = ""
 )
 
 internal fun loadPrefillConfig(context: Context): PrefillConfig {
@@ -28,6 +29,7 @@ internal fun parsePrefillConfig(text: String): PrefillConfig {
 
     return PrefillConfig(
         server = values["server"].orEmpty().trim().trimEnd('/'),
-        username = values["username"].orEmpty().trim()
+        username = values["username"].orEmpty().trim(),
+        password = values["password"].orEmpty()
     )
 }
