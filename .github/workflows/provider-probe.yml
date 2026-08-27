@@ -1,0 +1,37 @@
+name: Provider Probe
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/provider-probe.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe comepitv.online
+        shell: bash
+        run: |
+          set +e
+          HOST=comepitv.online
+          echo '=== DNS ==='
+          getent ahostsv4 "$HOST" || true
+          echo '=== TCP/HTTP probe ==='
+          ports='80 81 82 443 8000 8001 8080 8081 8082 8088 8443 8880 8888 9090 2095 2082 2052 25461 25462 25463'
+          for p in $ports; do
+            echo "--- PORT $p ---"
+            timeout 3 bash -c "</dev/tcp/$HOST/$p" >/dev/null 2>&1
+            if [ $? -eq 0 ]; then
+              echo "TCP OPEN $p"
+              for scheme in http https; do
+                code=$(curl -k -sS -m 4 -o /tmp/body -w '%{http_code}' "$scheme://$HOST:$p/player_api.php" 2>/tmp/err)
+                echo "$scheme status=$code"
+                head -c 220 /tmp/body 2>/dev/null | tr '\n' ' '; echo
+                head -c 180 /tmp/err 2>/dev/null | tr '\n' ' '; echo
+              done
+            else
+              echo "TCP CLOSED/REFUSED $p"
+            fi
+          done
