@@ -12,8 +12,8 @@ android {
         applicationId = "mom.agnes.tv"
         minSdk = 26
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.5.0"
+        versionCode = 16
+        versionName = "1.6.0"
     }
 
     compileOptions {
@@ -43,5 +43,8 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("androidx.media3:media3-exoplayer:1.6.1")
+    implementation("androidx.media3:media3-ui:1.6.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
