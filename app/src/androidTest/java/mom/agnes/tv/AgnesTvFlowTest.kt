@@ -17,6 +17,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -50,6 +51,42 @@ class AgnesTvFlowTest {
     fun tearDown() {
         target.getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE).edit().clear().commit()
         server.shutdown()
+    }
+
+    @Test
+    fun privatePrefillParserReadsUsernameAndPassword() {
+        val config = parsePrefillConfig(
+            """
+            server=http://example.test:8080/
+            username=test-user
+            password=test-pass
+            """.trimIndent()
+        )
+
+        assertEquals("http://example.test:8080", config.server)
+        assertEquals("test-user", config.username)
+        assertEquals("test-pass", config.password)
+    }
+
+    @Test
+    fun embeddedCredentialsAutoLoginWithoutTyping() {
+        val base = server.url("/").toString().trimEnd('/')
+        val intent = Intent(target, LoginActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(LoginActivity.EXTRA_TEST_SERVERS, arrayOf(base))
+            putExtra(LoginActivity.EXTRA_TEST_USERNAME, "tester")
+            putExtra(LoginActivity.EXTRA_TEST_PASSWORD, "secret")
+        }
+
+        ActivityScenario.launch<LoginActivity>(intent).use {
+            compose.waitUntil(15_000) {
+                compose.onAllNodes(hasText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ")).fetchSemanticsNodes().isNotEmpty()
+            }
+            val prefs = target.getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE)
+            assertTrue(prefs.getBoolean("verified", false))
+            assertEquals("tester", prefs.getString("username", null))
+            assertEquals("secret", prefs.getString("password", null))
+        }
     }
 
     @Test
