@@ -1,0 +1,2 @@
+AGNES TV v1.8.0 cinematic validation trigger.
+Expected suite: 11 Android instrumentation tests, including cinematic Movies/Kids regressions.
