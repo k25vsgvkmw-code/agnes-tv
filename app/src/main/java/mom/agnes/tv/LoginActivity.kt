@@ -3,6 +3,8 @@ package mom.agnes.tv
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -117,6 +119,18 @@ class LoginActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN &&
+            (event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN || event.keyCode == KeyEvent.KEYCODE_DPAD_UP)
+        ) {
+            currentFocus?.let { focusedView ->
+                (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+                    ?.hideSoftInputFromWindow(focusedView.windowToken, 0)
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     private fun hasSavedXtream(): Boolean {
