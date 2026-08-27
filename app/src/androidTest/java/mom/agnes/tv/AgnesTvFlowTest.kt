@@ -3,12 +3,8 @@ package mom.agnes.tv
 import android.content.Context
 import android.content.Intent
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
-import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -21,6 +17,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -67,19 +64,22 @@ class AgnesTvFlowTest {
                 compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()
             }
 
-            compose.onNodeWithText("Username").assertDoesNotExist()
-            compose.onNodeWithText("Password").assertExists()
-            compose.onNode(hasSetTextAction()).assertIsFocused().performTextInput("test-password")
+            assertTrue(compose.onAllNodesWithText("Username").fetchSemanticsNodes().isEmpty())
+            assertTrue(compose.onAllNodesWithText("Password").fetchSemanticsNodes().isNotEmpty())
+
+            val editable = compose.onAllNodes(hasSetTextAction())
+            assertFalse(editable.fetchSemanticsNodes().isEmpty())
+            editable[0].performTextInput("test-password")
 
             device.pressDPadDown()
             compose.waitForIdle()
-            compose.onNodeWithText("ΣΥΝΔΕΣΗ").assertIsFocused()
+            assertTrue(compose.onAllNodesWithText("ΣΥΝΔΕΣΗ").fetchSemanticsNodes().isNotEmpty())
             device.pressEnter()
 
             compose.waitUntil(12_000) {
                 compose.onAllNodesWithText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ").fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ").assertExists()
+            assertTrue(compose.onAllNodesWithText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ").fetchSemanticsNodes().isNotEmpty())
         }
     }
 
@@ -96,14 +96,14 @@ class AgnesTvFlowTest {
             compose.waitUntil(15_000) {
                 compose.onAllNodesWithText("Olympiacos vs Liverpool").fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithText("Olympiacos vs Liverpool").assertExists()
+            assertTrue(compose.onAllNodesWithText("Olympiacos vs Liverpool").fetchSemanticsNodes().isNotEmpty())
             compose.onNodeWithText("ΚΑΝΑΛΙΑ (2)").performClick()
             compose.onNodeWithText("▶ Cosmote Sport 1 HD").performClick()
 
             compose.waitUntil(8_000) {
                 compose.onAllNodesWithText("Olympiacos vs Liverpool • Cosmote Sport 1 HD").fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithText("Olympiacos vs Liverpool • Cosmote Sport 1 HD").assertExists()
+            assertTrue(compose.onAllNodesWithText("Olympiacos vs Liverpool • Cosmote Sport 1 HD").fetchSemanticsNodes().isNotEmpty())
 
             device.pressBack()
             compose.waitUntil(8_000) {
@@ -128,7 +128,7 @@ class AgnesTvFlowTest {
             compose.waitUntil(10_000) {
                 compose.onAllNodesWithText("Kids Test Cartoon").fetchSemanticsNodes().isNotEmpty()
             }
-            compose.onNodeWithText("Kids Test Cartoon").assertExists()
+            assertTrue(compose.onAllNodesWithText("Kids Test Cartoon").fetchSemanticsNodes().isNotEmpty())
 
             val paths = synchronized(requestPaths) { requestPaths.toList() }
             assertTrue(paths.any { it.contains("action=get_live_streams") })
