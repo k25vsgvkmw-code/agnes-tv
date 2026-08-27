@@ -57,9 +57,8 @@ import java.net.URL
 import java.net.URLEncoder
 
 /*
- * This placeholder is deliberately public and contains no account data.
- * The private APK handoff replaces it locally with the user's 12-character
- * Xtream username without committing that value to GitHub.
+ * Public placeholder only. The personalized APK replaces this locally with
+ * the account username without committing that value to the public repo.
  */
 private const val DEFAULT_USERNAME = "USER00000000"
 
@@ -94,6 +93,7 @@ class LoginActivity : ComponentActivity() {
                             .putString("server", server.trim().trimEnd('/'))
                             .putString("username", DEFAULT_USERNAME)
                             .putString("password", password)
+                            .putBoolean("verified", true)
                             .apply()
                         openAgnesTv()
                     }
@@ -104,7 +104,8 @@ class LoginActivity : ComponentActivity() {
 
     private fun hasSavedXtream(): Boolean {
         val p = getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE)
-        return !p.getString("server", null).isNullOrBlank() &&
+        return p.getBoolean("verified", false) &&
+            !p.getString("server", null).isNullOrBlank() &&
             !p.getString("username", null).isNullOrBlank() &&
             !p.getString("password", null).isNullOrBlank()
     }
@@ -236,7 +237,7 @@ private fun TvXtreamLogin(
                     )
                 }
 
-                Text("AGNES TV v1.7.0", color = LoginMuted, fontSize = 11.sp)
+                Text("AGNES TV v1.7.1", color = LoginMuted, fontSize = 11.sp)
             }
         }
     }
@@ -253,7 +254,7 @@ private suspend fun discoverXtreamServer(candidates: List<String>, password: Str
                 conn.readTimeout = 8_000
                 conn.requestMethod = "GET"
                 conn.instanceFollowRedirects = true
-                conn.setRequestProperty("User-Agent", "AGNES-TV/1.7.0")
+                conn.setRequestProperty("User-Agent", "AGNES-TV/1.7.1")
                 try {
                     if (conn.responseCode !in 200..299) return@runCatching false
                     val body = conn.inputStream.bufferedReader().use { it.readText() }
