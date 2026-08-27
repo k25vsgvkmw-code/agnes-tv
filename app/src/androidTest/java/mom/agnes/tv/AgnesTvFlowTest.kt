@@ -2,8 +2,8 @@ package mom.agnes.tv
 
 import android.content.Context
 import android.content.Intent
-import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -59,13 +59,13 @@ class AgnesTvFlowTest {
             putExtra(LoginActivity.EXTRA_TEST_SERVERS, arrayOf(server.url("/").toString().trimEnd('/')))
         }
 
-        ActivityScenario.launch<ComponentActivity>(intent).use {
+        ActivityScenario.launch<LoginActivity>(intent).use {
             compose.waitUntil(10_000) {
                 compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()
             }
 
-            assertTrue(compose.onAllNodesWithText("Username").fetchSemanticsNodes().isEmpty())
-            assertTrue(compose.onAllNodesWithText("Password").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(compose.onAllNodes(hasText("Username")).fetchSemanticsNodes().isEmpty())
+            assertTrue(compose.onAllNodes(hasText("Password")).fetchSemanticsNodes().isNotEmpty())
 
             val editable = compose.onAllNodes(hasSetTextAction())
             assertFalse(editable.fetchSemanticsNodes().isEmpty())
@@ -73,13 +73,13 @@ class AgnesTvFlowTest {
 
             device.pressDPadDown()
             compose.waitForIdle()
-            assertTrue(compose.onAllNodesWithText("ΣΥΝΔΕΣΗ").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(compose.onAllNodes(hasText("ΣΥΝΔΕΣΗ")).fetchSemanticsNodes().isNotEmpty())
             device.pressEnter()
 
             compose.waitUntil(12_000) {
-                compose.onAllNodesWithText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ")).fetchSemanticsNodes().isNotEmpty()
             }
-            assertTrue(compose.onAllNodesWithText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(compose.onAllNodes(hasText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ")).fetchSemanticsNodes().isNotEmpty())
         }
     }
 
@@ -94,41 +94,41 @@ class AgnesTvFlowTest {
 
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitUntil(15_000) {
-                compose.onAllNodesWithText("Olympiacos vs Liverpool").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("Olympiacos vs Liverpool")).fetchSemanticsNodes().isNotEmpty()
             }
-            assertTrue(compose.onAllNodesWithText("Olympiacos vs Liverpool").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(compose.onAllNodes(hasText("Olympiacos vs Liverpool")).fetchSemanticsNodes().isNotEmpty())
             compose.onNodeWithText("ΚΑΝΑΛΙΑ (2)").performClick()
             compose.onNodeWithText("▶ Cosmote Sport 1 HD").performClick()
 
             compose.waitUntil(8_000) {
-                compose.onAllNodesWithText("Olympiacos vs Liverpool • Cosmote Sport 1 HD").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("Olympiacos vs Liverpool • Cosmote Sport 1 HD")).fetchSemanticsNodes().isNotEmpty()
             }
-            assertTrue(compose.onAllNodesWithText("Olympiacos vs Liverpool • Cosmote Sport 1 HD").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(compose.onAllNodes(hasText("Olympiacos vs Liverpool • Cosmote Sport 1 HD")).fetchSemanticsNodes().isNotEmpty())
 
             device.pressBack()
             compose.waitUntil(8_000) {
-                compose.onAllNodesWithText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ")).fetchSemanticsNodes().isNotEmpty()
             }
 
             compose.onNodeWithText("🎬 ΤΑΙΝΙΕΣ").performClick()
             compose.waitUntil(10_000) {
-                compose.onAllNodesWithText("Test Movie Greek Subs").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("Test Movie Greek Subs")).fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText("Test Movie Greek Subs").performClick()
             compose.waitUntil(8_000) {
-                compose.onAllNodesWithText("Test Movie Greek Subs").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("Test Movie Greek Subs")).fetchSemanticsNodes().isNotEmpty()
             }
 
             device.pressBack()
             compose.waitUntil(8_000) {
-                compose.onAllNodesWithText("ΤΑΙΝΙΕΣ ΓΙΑ ΑΠΟΨΕ").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("ΤΑΙΝΙΕΣ ΓΙΑ ΑΠΟΨΕ")).fetchSemanticsNodes().isNotEmpty()
             }
 
             compose.onNodeWithText("🧸 ΠΑΙΔΙΚΑ").performClick()
             compose.waitUntil(10_000) {
-                compose.onAllNodesWithText("Kids Test Cartoon").fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(hasText("Kids Test Cartoon")).fetchSemanticsNodes().isNotEmpty()
             }
-            assertTrue(compose.onAllNodesWithText("Kids Test Cartoon").fetchSemanticsNodes().isNotEmpty())
+            assertTrue(compose.onAllNodes(hasText("Kids Test Cartoon")).fetchSemanticsNodes().isNotEmpty())
 
             val paths = synchronized(requestPaths) { requestPaths.toList() }
             assertTrue(paths.any { it.contains("action=get_live_streams") })
