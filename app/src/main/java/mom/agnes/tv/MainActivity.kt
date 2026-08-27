@@ -479,8 +479,7 @@ private fun VodScreen(
             Spacer(Modifier.height(12.dp))
             EmptyBox(
                 if (kids) "Δεν βρέθηκε παιδική VOD κατηγορία στο Xtream σου."
-                else "Δεν βρέθηκαν VOD κατηγορίες που να δηλώνουν Greek/GR subtitles.
-Δεν θα εμφανιστεί επιβεβαιωμένο 🇬🇷 αν δεν βρεθεί πραγματικό Greek subtitle track."
+                else "Δεν βρέθηκαν VOD κατηγορίες που να δηλώνουν Greek/GR subtitles.\nΔεν θα εμφανιστεί επιβεβαιωμένο 🇬🇷 αν δεν βρεθεί πραγματικό Greek subtitle track."
             )
         }
         else -> CinematicVodContent(
