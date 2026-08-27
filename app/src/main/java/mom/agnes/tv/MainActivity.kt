@@ -17,17 +17,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -85,6 +85,9 @@ private val Red = Color(0xFFD92E35)
 private val Muted = Color(0xFF98A6B8)
 private val FocusWhite = Color(0xFFFFFFFF)
 private val SelectedLine = Color(0xFFFFFFFF)
+private val PurpleDeep = Color(0xFF321A58)
+private val Glass = Color(0xB2121A27)
+private val Cyan = Color(0xFF72D5FF)
 
 private enum class Tab { SPORTS, MOVIES, KIDS }
 
@@ -446,7 +449,7 @@ private fun VodScreen(
     onPlay: (PlayingItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var items by remember(config, kids) { mutableStateOf<List<VodItem>>(emptyList()) }
+    var vods by remember(config, kids) { mutableStateOf<List<VodItem>>(emptyList()) }
     var loading by remember(config, kids) { mutableStateOf(true) }
     var error by remember(config, kids) { mutableStateOf<String?>(null) }
     var refresh by remember { mutableIntStateOf(0) }
@@ -456,52 +459,191 @@ private fun VodScreen(
         error = null
         if (refresh > 0) clearVodCache(config, kids)
         runCatching { fetchVods(config, kids) }
-            .onSuccess { items = it }
+            .onSuccess { vods = it }
             .onFailure { error = it.message ?: "Αποτυχία φόρτωσης VOD" }
         loading = false
     }
 
-    Column(modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    if (kids) "ΠΑΙΔΙΚΑ" else "ΤΑΙΝΙΕΣ ΓΙΑ ΑΠΟΨΕ",
-                    color = Color.White,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    if (kids) "Γρήγορη φόρτωση μόνο από παιδικές κατηγορίες" else "🇬🇷 Πιθανόν Ελληνικά = δηλώνεται από τον πάροχο • Ελληνικοί υπότιτλοι = επιβεβαιωμένο track",
-                    color = if (kids) Color(0xFFFFD44C) else Color(0xFF72D5FF),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text("${items.size} διαθέσιμα", color = Muted, modifier = Modifier.padding(end = 14.dp))
-            TvOutlinedButton("↻ ΑΝΑΝΕΩΣΗ") { refresh++ }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        if (error != null) {
+    when {
+        error != null -> Column(modifier.fillMaxWidth()) {
+            VodCompactHeader(kids, vods.size) { refresh++ }
+            Spacer(Modifier.height(12.dp))
             ErrorBox(error!!)
-        } else if (loading) {
+        }
+        loading -> Column(modifier.fillMaxWidth()) {
+            VodCompactHeader(kids, vods.size) { refresh++ }
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Purple) }
-        } else if (items.isEmpty()) {
+        }
+        vods.isEmpty() -> Column(modifier.fillMaxWidth()) {
+            VodCompactHeader(kids, 0) { refresh++ }
+            Spacer(Modifier.height(12.dp))
             EmptyBox(
                 if (kids) "Δεν βρέθηκε παιδική VOD κατηγορία στο Xtream σου."
-                else "Δεν βρέθηκαν VOD κατηγορίες που να δηλώνουν Greek/GR subtitles.\nΔεν θα εμφανιστεί επιβεβαιωμένο 🇬🇷 αν δεν βρεθεί πραγματικό Greek subtitle track."
+                else "Δεν βρέθηκαν VOD κατηγορίες που να δηλώνουν Greek/GR subtitles.
+Δεν θα εμφανιστεί επιβεβαιωμένο 🇬🇷 αν δεν βρεθεί πραγματικό Greek subtitle track."
             )
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(6),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                gridItems(items, key = { it.id }) { vod ->
-                    VodCard(vod = vod, kids = kids) {
-                        onPlay(PlayingItem(vod.name, vodUrl(config, vod), vodId = vod.id))
-                    }
+        }
+        else -> CinematicVodContent(
+            config = config,
+            items = vods,
+            kids = kids,
+            onRefresh = { refresh++ },
+            onPlay = onPlay,
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
+private fun VodCompactHeader(kids: Boolean, count: Int, onRefresh: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(if (kids) "ΠΑΙΔΙΚΑ" else "ΤΑΙΝΙΕΣ ΓΙΑ ΑΠΟΨΕ", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
+            Text(
+                if (kids) "Γρήγορη φόρτωση μόνο από παιδικές κατηγορίες" else "Φόρτωση μόνο σχετικών VOD κατηγοριών",
+                color = if (kids) Color(0xFFFFD44C) else Cyan,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Text("$count διαθέσιμα", color = Muted, modifier = Modifier.padding(end = 14.dp))
+        TvOutlinedButton("↻ ΑΝΑΝΕΩΣΗ", onRefresh)
+    }
+}
+
+@Composable
+private fun CinematicVodContent(
+    config: XtreamConfig,
+    items: List<VodItem>,
+    kids: Boolean,
+    onRefresh: () -> Unit,
+    onPlay: (PlayingItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var featured by remember(items, kids) { mutableStateOf(items.first()) }
+    val topRated = remember(items) { items.sortedByDescending { it.rating.toDoubleOrNull() ?: -1.0 } }
+    val latest = remember(items) { items.asReversed() }
+
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            CinematicHero(
+                vod = featured,
+                kids = kids,
+                onPlay = { onPlay(PlayingItem(featured.name, vodUrl(config, featured), featured.id)) },
+                onRefresh = onRefresh
+            )
+        }
+        item {
+            VodRail(
+                title = if (kids) "ΓΙΑ ΠΑΙΔΙΑ" else "ΓΙΑ ΑΠΟΨΕ",
+                items = items,
+                secondary = false,
+                onFocused = { featured = it },
+                onPlay = { onPlay(PlayingItem(it.name, vodUrl(config, it), it.id)) }
+            )
+        }
+        item {
+            VodRail(
+                title = if (kids) "ΔΗΜΟΦΙΛΗ ΤΩΡΑ" else "ΚΑΛΥΤΕΡΗ ΒΑΘΜΟΛΟΓΙΑ",
+                items = topRated,
+                secondary = true,
+                onFocused = { featured = it },
+                onPlay = { onPlay(PlayingItem(it.name, vodUrl(config, it), it.id)) }
+            )
+        }
+        item {
+            VodRail(
+                title = if (kids) "ΟΙΚΟΓΕΝΕΙΑΚΕΣ ΕΠΙΛΟΓΕΣ" else "ΝΕΕΣ ΠΡΟΣΘΗΚΕΣ",
+                items = latest,
+                secondary = true,
+                onFocused = { featured = it },
+                onPlay = { onPlay(PlayingItem(it.name, vodUrl(config, it), it.id)) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CinematicHero(vod: VodItem, kids: Boolean, onPlay: () -> Unit, onRefresh: () -> Unit) {
+    val context = LocalContext.current
+    val verifiedGreek = remember(vod.id) {
+        context.getSharedPreferences("agnes_media_meta", Context.MODE_PRIVATE)
+            .getBoolean("greek_subtitle_${vod.id}", false)
+    }
+    val shape = RoundedCornerShape(26.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(270.dp)
+            .shadow(20.dp, shape)
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(Panel.copy(alpha = 0.98f), PurpleDeep.copy(alpha = 0.82f), Color(0xFF101D2C).copy(alpha = 0.88f))
+                ),
+                shape
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .padding(26.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(if (kids) "AGNES KIDS" else "AGNES CINEMA", color = if (kids) Color(0xFFFFD86B) else Green, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            Text(if (kids) "ΠΑΙΔΙΚΑ" else "ΤΑΙΝΙΕΣ ΓΙΑ ΑΠΟΨΕ", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(7.dp))
+            Text(vod.name.uppercase(Locale.getDefault()), color = Color.White, fontSize = 36.sp, lineHeight = 39.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (vod.rating.isNotBlank()) HeroChip("★ ${vod.rating}", Green)
+                HeroChip(vod.category.ifBlank { if (kids) "Kids" else "VOD" }, Color.White)
+                if (!kids) {
+                    HeroChip(
+                        when {
+                            verifiedGreek -> "🇬🇷 Ελληνικοί υπότιτλοι"
+                            vod.likelyGreek -> "🇬🇷 Πιθανόν Ελληνικά"
+                            else -> "Υπότιτλοι: άγνωστο"
+                        },
+                        if (verifiedGreek) Green else Cyan
+                    )
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                if (kids) "Επιλογή από τις παιδικές κατηγορίες του δικού σου Xtream VOD."
+                else "Το hero αλλάζει αμέσως καθώς μετακινείσαι στα posters.",
+                color = Color(0xFFD7DDE8),
+                fontSize = 14.sp,
+                maxLines = 2
+            )
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                val playShape = RoundedCornerShape(13.dp)
+                Button(
+                    onClick = onPlay,
+                    colors = ButtonDefaults.buttonColors(containerColor = Red),
+                    shape = playShape,
+                    modifier = Modifier.height(50.dp).tvFocus("ΔΕΣ ΤΩΡΑ ${vod.name}", shape = playShape)
+                ) { Text("▶ ΔΕΣ ΤΩΡΑ", fontWeight = FontWeight.Black) }
+                TvOutlinedButton("↻ ΑΝΑΝΕΩΣΗ", onRefresh)
+            }
+        }
+        Spacer(Modifier.width(28.dp))
+        Surface(
+            color = Glass,
+            shape = RoundedCornerShape(22.dp),
+            modifier = Modifier.width(200.dp).height(230.dp).shadow(18.dp, RoundedCornerShape(22.dp))
+        ) {
+            Box(Modifier.fillMaxSize().padding(8.dp)) {
+                RemotePoster(vod.icon, Modifier.fillMaxSize())
+                Surface(
+                    color = Color.Black.copy(alpha = 0.60f),
+                    shape = RoundedCornerShape(9.dp),
+                    modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
+                ) {
+                    Text(if (kids) "KIDS" else "VOD", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
                 }
             }
         }
@@ -509,41 +651,78 @@ private fun VodScreen(
 }
 
 @Composable
-private fun VodCard(vod: VodItem, kids: Boolean, onClick: () -> Unit) {
+private fun HeroChip(label: String, color: Color) {
+    Surface(
+        color = Color.Black.copy(alpha = 0.28f),
+        shape = RoundedCornerShape(20.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
+    ) {
+        Text(label, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+    }
+}
+
+@Composable
+private fun VodRail(
+    title: String,
+    items: List<VodItem>,
+    secondary: Boolean,
+    onFocused: (VodItem) -> Unit,
+    onPlay: (VodItem) -> Unit
+) {
+    Column {
+        Text(title, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 2.dp, bottom = 8.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
+            contentPadding = PaddingValues(horizontal = 5.dp, vertical = 10.dp)
+        ) {
+            items(items, key = { "${title}-${it.id}" }) { vod ->
+                CinematicVodCard(vod, secondary, { onFocused(vod) }, { onPlay(vod) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun CinematicVodCard(vod: VodItem, secondary: Boolean, onFocused: () -> Unit, onClick: () -> Unit) {
     val context = LocalContext.current
     val verifiedGreek = remember(vod.id) {
         context.getSharedPreferences("agnes_media_meta", Context.MODE_PRIVATE)
             .getBoolean("greek_subtitle_${vod.id}", false)
     }
     val shape = RoundedCornerShape(16.dp)
+    var focused by remember { mutableStateOf(false) }
     Button(
         onClick = onClick,
-        colors = ButtonDefaults.buttonColors(containerColor = Panel),
+        colors = ButtonDefaults.buttonColors(containerColor = if (focused) Color(0xFF182435) else Panel),
         contentPadding = PaddingValues(0.dp),
         shape = shape,
         modifier = Modifier
-            .fillMaxWidth()
-            .height(255.dp)
+            .width(178.dp)
+            .height(252.dp)
+            .onFocusChanged {
+                focused = it.isFocused || it.hasFocus
+                if (focused) onFocused()
+            }
+            .scale(if (focused) 1.08f else 1f)
+            .shadow(if (focused) 22.dp else 8.dp, shape)
             .tvFocus(vod.name, shape = shape)
     ) {
         Column(Modifier.fillMaxSize()) {
             RemotePoster(vod.icon, Modifier.fillMaxWidth().weight(1f))
             Column(Modifier.padding(10.dp)) {
-                Text(vod.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (secondary) "• ${vod.name}" else vod.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     when {
-                        kids -> vod.category
                         verifiedGreek -> "🇬🇷 Ελληνικοί υπότιτλοι"
                         vod.likelyGreek -> "🇬🇷 Πιθανόν Ελληνικά"
-                        else -> "Υπότιτλοι: άγνωστο"
+                        else -> vod.category
                     },
                     color = when {
-                        kids -> Color(0xFFFFD86B)
                         verifiedGreek -> Green
-                        vod.likelyGreek -> Color(0xFF72D5FF)
+                        vod.likelyGreek -> Cyan
                         else -> Muted
                     },
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

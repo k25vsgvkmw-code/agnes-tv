@@ -12,8 +12,8 @@ android {
         applicationId = "mom.agnes.tv"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "1.7.3"
+        versionCode = 23
+        versionName = "1.8.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
