@@ -1,468 +1,337 @@
 package mom.agnes.tv
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.Toast
+import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.graphics.drawable.toBitmap
-import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
-import java.util.Date
+import androidx.compose.ui.window.Dialog
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { AgnesTvApp(this) } }
+        setContent {
+            MaterialTheme(colorScheme = darkColorScheme()) {
+                AgnesTvApp()
+            }
+        }
     }
 }
 
-private enum class Screen { HOME, SPORTS, APPS }
-private enum class ServiceAction { CYTAVISION, SPORTS, FITNESS, SMART_HOME, KIDS, FAMILY, TRAVEL, MUSIC, APPS }
+private val Bg = Color(0xFF040810)
+private val Panel = Color(0xFF0B1420)
+private val Panel2 = Color(0xFF111D2B)
+private val Purple = Color(0xFF9B4DFF)
+private val Green = Color(0xFF78FF50)
+private val Red = Color(0xFFD92E35)
+private val Muted = Color(0xFF98A6B8)
 
-private data class ServiceItem(
+private enum class Tab { SPORTS, MOVIES, KIDS }
+
+private data class XtreamConfig(val server: String, val username: String, val password: String)
+private data class LiveStream(val id: Int, val name: String)
+private data class MatchItem(val title: String, val startMs: Long, val channels: List<LiveStream>)
+private data class VodItem(
+    val id: Int,
+    val name: String,
     val icon: String,
-    val title: String,
-    val subtitle: String,
-    val detail: String,
-    val action: ServiceAction
+    val extension: String,
+    val category: String,
+    val rating: String
 )
-
-private data class InstalledApp(
-    val label: String,
-    val packageName: String,
-    val activityName: String,
-    val leanback: Boolean
-)
-
-private fun installedApps(context: Context): List<InstalledApp> {
-    val pm = context.packageManager
-    val sources = listOf(
-        true to Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER),
-        false to Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-    )
-
-    return sources
-        .flatMap { (leanback, intent) ->
-            pm.queryIntentActivities(intent, PackageManager.MATCH_ALL).map { info ->
-                InstalledApp(
-                    label = info.loadLabel(pm).toString(),
-                    packageName = info.activityInfo.packageName,
-                    activityName = info.activityInfo.name,
-                    leanback = leanback
-                )
-            }
-        }
-        .filter { it.packageName != context.packageName }
-        .sortedWith(
-            compareByDescending<InstalledApp> { it.leanback }
-                .thenBy { it.label.lowercase(Locale.getDefault()) }
-        )
-        .distinctBy { it.packageName }
-}
-
-private fun launchInstalledApp(context: Context, app: InstalledApp): Boolean {
-    val explicit = Intent(Intent.ACTION_MAIN).apply {
-        component = ComponentName(app.packageName, app.activityName)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-    }
-
-    if (runCatching { context.startActivity(explicit) }.isSuccess) return true
-
-    val fallback = context.packageManager.getLaunchIntentForPackage(app.packageName) ?: return false
-    fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-    return runCatching { context.startActivity(fallback) }.isSuccess
-}
-
-private fun findInstalledApp(context: Context, keywords: List<String>): InstalledApp? {
-    val apps = installedApps(context)
-    return apps.firstOrNull { app ->
-        val haystack = "${app.label} ${app.packageName}".lowercase(Locale.getDefault())
-        keywords.any { key -> haystack.contains(key.lowercase(Locale.getDefault())) }
-    }
-}
-
-private fun findCytavision(context: Context): InstalledApp? {
-    val apps = installedApps(context)
-    return apps.firstOrNull { it.label.contains("Cytavision", true) }
-        ?: apps.firstOrNull { it.label.contains("Cyta", true) }
-        ?: apps.firstOrNull { it.packageName.contains("cyta", true) }
-}
-
-private fun openCytavision(context: Context): Boolean {
-    val app = findCytavision(context) ?: return false
-    return launchInstalledApp(context, app)
-}
-
-private fun openPlayStore(context: Context): Boolean {
-    val apps = installedApps(context)
-    val store = apps.firstOrNull { it.packageName == "com.android.vending" }
-        ?: apps.firstOrNull { it.label.contains("Play Store", true) || it.label.contains("Google Play", true) }
-    return store?.let { launchInstalledApp(context, it) } ?: false
-}
+private data class PlayingItem(val title: String, val url: String)
 
 @Composable
-private fun AgnesTvApp(context: Context) {
-    var screen by remember { mutableStateOf(Screen.HOME) }
-    BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
+private fun AgnesTvApp() {
+    val context = LocalContext.current
+    var config by remember { mutableStateOf(loadConfig(context)) }
+    var editing by remember { mutableStateOf(config == null) }
 
-    when (screen) {
-        Screen.HOME -> AgnesHome(
-            context = context,
-            onSports = { screen = Screen.SPORTS },
-            onApps = { screen = Screen.APPS }
+    if (editing || config == null) {
+        SetupScreen(
+            initial = config,
+            onSave = {
+                saveConfig(context, it)
+                config = it
+                editing = false
+            }
         )
-        Screen.SPORTS -> SportsScreen(onBack = { screen = Screen.HOME })
-        Screen.APPS -> AppsScreen(context = context, onBack = { screen = Screen.HOME })
+    } else {
+        TvShell(config = config!!, onSettings = { editing = true })
     }
 }
 
 @Composable
-private fun AgnesHome(context: Context, onSports: () -> Unit, onApps: () -> Unit) {
-    var clock by remember { mutableStateOf(currentTime()) }
-    var agnesMessage by remember { mutableStateOf<String?>(null) }
-    val detectedApps = remember { installedApps(context) }
-    val cytavision = remember { findCytavision(context) }
-    val spotify = remember { findInstalledApp(context, listOf("Spotify")) }
-    val smartHome = remember { findInstalledApp(context, listOf("Google Home", "Mi Home", "SmartThings")) }
-    val kids = remember { findInstalledApp(context, listOf("YouTube Kids", "Kids")) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            clock = currentTime()
-            delay(30_000)
-        }
-    }
-
-    val services = remember {
-        listOf(
-            ServiceItem("📺", "TV", "Cytavision", "Live TV από την εφαρμογή που είναι πραγματικά εγκατεστημένη στο box.", ServiceAction.CYTAVISION),
-            ServiceItem("⚽", "SPORTS", "Αγώνες & κανάλια", "Ανοίγει το επίσημο πρόγραμμα Cytavision για ώρες και κανάλια.", ServiceAction.SPORTS),
-            ServiceItem("🏃", "ΓΥΜΝΑΣΤΙΚΗ", "AGNES Fitness", "Υπηρεσία AGNES. Δεν ανοίγω ψεύτικη εφαρμογή αν δεν υπάρχει.", ServiceAction.FITNESS),
-            ServiceItem("🏠", "SMART HOME", "Συνδεδεμένο σπίτι", "Ανοίγει Smart Home app μόνο όταν ανιχνεύεται στο box.", ServiceAction.SMART_HOME),
-            ServiceItem("🧸", "ΠΑΙΔΙΚΟ", "Kids", "Ανοίγει παιδική εφαρμογή μόνο όταν είναι εγκατεστημένη.", ServiceAction.KIDS),
-            ServiceItem("❤", "FAMILY", "AGNES Family", "Οικογενειακές ειδοποιήσεις και πληροφορίες της AGNES.", ServiceAction.FAMILY),
-            ServiceItem("✈", "TRAVEL", "AGNES Travel", "Travel service της AGNES χωρίς ψεύτικα shortcuts.", ServiceAction.TRAVEL),
-            ServiceItem("🎵", "MUSIC", "Spotify", "Ανοίγει Spotify μόνο αν υπάρχει στο box.", ServiceAction.MUSIC),
-            ServiceItem("▦", "APPS", "Εγκατεστημένες εφαρμογές", "Δείχνει αποκλειστικά όσα apps βρίσκει πραγματικά στο Xiaomi box.", ServiceAction.APPS)
-        )
-    }
-
-    var selectedIndex by remember { mutableIntStateOf(0) }
-    val selected = services[selectedIndex]
-
-    fun activate(service: ServiceItem) {
-        when (service.action) {
-            ServiceAction.CYTAVISION -> {
-                if (!openCytavision(context)) {
-                    agnesMessage = if (cytavision == null) {
-                        "Δεν ανίχνευσα Cytavision στο launcher του box. Δεν θα σου δείξω ψεύτικο κουμπί."
-                    } else {
-                        "Βρήκα τη Cytavision (${cytavision.label}), αλλά το box δεν επέτρεψε να ανοίξει."
-                    }
-                }
-            }
-            ServiceAction.SPORTS -> onSports()
-            ServiceAction.FITNESS -> agnesMessage = "Το AGNES Fitness δεν είναι ακόμη ενεργή υπηρεσία. Το κρατάω καθαρό αντί να ανοίγω άσχετη εφαρμογή."
-            ServiceAction.SMART_HOME -> {
-                if (smartHome != null) {
-                    if (!launchInstalledApp(context, smartHome)) agnesMessage = "Βρήκα ${smartHome.label}, αλλά δεν άνοιξε."
-                } else agnesMessage = "Δεν βρήκα Smart Home εφαρμογή εγκατεστημένη στο box."
-            }
-            ServiceAction.KIDS -> {
-                if (kids != null) {
-                    if (!launchInstalledApp(context, kids)) agnesMessage = "Βρήκα ${kids.label}, αλλά δεν άνοιξε."
-                } else agnesMessage = "Δεν βρήκα παιδική εφαρμογή εγκατεστημένη στο box."
-            }
-            ServiceAction.FAMILY -> agnesMessage = "AGNES Family: εδώ θα εμφανίζονται μόνο πραγματικές οικογενειακές ειδοποιήσεις και υπενθυμίσεις."
-            ServiceAction.TRAVEL -> agnesMessage = "AGNES Travel: η υπηρεσία δεν είναι ακόμη συνδεδεμένη. Δεν εμφανίζω πλασματικά δεδομένα."
-            ServiceAction.MUSIC -> {
-                if (spotify != null) {
-                    if (!launchInstalledApp(context, spotify)) agnesMessage = "Βρήκα Spotify, αλλά δεν άνοιξε."
-                } else agnesMessage = "Το Spotify δεν είναι εγκατεστημένο στο box."
-            }
-            ServiceAction.APPS -> onApps()
-        }
-    }
+private fun SetupScreen(initial: XtreamConfig?, onSave: (XtreamConfig) -> Unit) {
+    var server by remember { mutableStateOf(initial?.server.orEmpty()) }
+    var username by remember { mutableStateOf(initial?.username.orEmpty()) }
+    var password by remember { mutableStateOf(initial?.password.orEmpty()) }
 
     Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.linearGradient(listOf(Color(0xFF050608), Color(0xFF120C14), Color(0xFF081017))))
-            .padding(horizontal = 30.dp, vertical = 22.dp)
+        Modifier.fillMaxSize().background(Bg).padding(48.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("AGNES TV", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
-                    Text("Ό,τι υπάρχει πραγματικά στο box • χωρίς ψεύτικα shortcuts", color = Color(0xFFCAC0C7), fontSize = 13.sp)
-                }
-                StatusChip(if (cytavision != null) "● CYTAVISION" else "○ CYTAVISION", if (cytavision != null) "DETECTED" else "NOT DETECTED")
-                Spacer(Modifier.width(10.dp))
-                SmallAction("PLAY STORE") {
-                    if (!openPlayStore(context)) agnesMessage = "Το Play Store δεν ανιχνεύτηκε στο box."
-                }
-                Spacer(Modifier.width(18.dp))
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(clock, color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
-                    Text("AGNES TV • v1.5.0", color = Color(0xFFFF79B2), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Spacer(Modifier.height(18.dp))
-
-            ServiceRail(
-                services = services,
-                selectedIndex = selectedIndex,
-                onIndexChange = {
-                    selectedIndex = it
-                    agnesMessage = null
-                },
-                onActivate = { activate(selected) },
-                modifier = Modifier.fillMaxWidth().height(92.dp)
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ServiceHero(
-                    service = selected,
-                    cytavision = cytavision,
-                    detectedCount = detectedApps.size,
-                    modifier = Modifier.weight(1.65f).fillMaxHeight()
-                )
-
-                Column(Modifier.weight(.85f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    InfoPanel("ΠΡΑΓΜΑΤΙΚΗ ΚΑΤΑΣΤΑΣΗ", Modifier.weight(1f)) {
-                        StatusLine("Cytavision", cytavision?.label ?: "Δεν ανιχνεύτηκε", cytavision != null)
-                        Spacer(Modifier.height(10.dp))
-                        StatusLine("Spotify", spotify?.label ?: "Δεν είναι εγκατεστημένο", spotify != null)
-                        Spacer(Modifier.height(10.dp))
-                        StatusLine("Smart Home", smartHome?.label ?: "Δεν είναι εγκατεστημένο", smartHome != null)
-                        Spacer(Modifier.height(10.dp))
-                        StatusLine("Kids", kids?.label ?: "Δεν είναι εγκατεστημένο", kids != null)
-                    }
-                    InfoPanel("APPS ΣΤΟ BOX", Modifier.weight(.72f)) {
-                        Text("${detectedApps.size}", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
-                        Text("launcher εφαρμογές που ανιχνεύτηκαν πραγματικά", color = Color(0xFFB9BDC5), fontSize = 12.sp)
-                        Spacer(Modifier.weight(1f))
-                        Text("APPS → για πραγματικά icons και άνοιγμα", color = Color(0xFFFF86B9), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        agnesMessage?.let { message ->
-            AgnesMessageCard(
-                message = message,
-                onDismiss = { agnesMessage = null },
-                modifier = Modifier.align(Alignment.BottomEnd).width(470.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ServiceRail(
-    services: List<ServiceItem>,
-    selectedIndex: Int,
-    onIndexChange: (Int) -> Unit,
-    onActivate: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var focused by remember { mutableStateOf(false) }
-    Row(
-        modifier
-            .background(Color(0xCC11141A), RoundedCornerShape(22.dp))
-            .border(if (focused) 2.dp else 1.dp, if (focused) Color(0xFFFF82B8) else Color(0x22FFFFFF), RoundedCornerShape(22.dp))
-            .onFocusChanged { focused = it.isFocused }
-            .onKeyEvent { event ->
-                if (event.type != KeyEventType.KeyUp) return@onKeyEvent false
-                when (event.key) {
-                    Key.DirectionLeft -> { onIndexChange((selectedIndex - 1 + services.size) % services.size); true }
-                    Key.DirectionRight -> { onIndexChange((selectedIndex + 1) % services.size); true }
-                    Key.Enter, Key.DirectionCenter -> { onActivate(); true }
-                    else -> false
-                }
-            }
-            .focusable()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        services.forEachIndexed { index, item ->
-            val selected = index == selectedIndex
-            Row(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .background(if (selected) Color(0xFF6F2851) else Color(0xFF1A1D24), RoundedCornerShape(16.dp))
-                    .border(if (selected) 2.dp else 1.dp, if (selected) Color(0xFFFF88BC) else Color(0x22FFFFFF), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(item.icon, fontSize = 18.sp)
-                Spacer(Modifier.width(6.dp))
-                Text(item.title, color = Color.White, fontSize = 10.sp, fontWeight = if (selected) FontWeight.Black else FontWeight.Bold, maxLines = 1)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ServiceHero(service: ServiceItem, cytavision: InstalledApp?, detectedCount: Int, modifier: Modifier) {
-    Column(
-        modifier
-            .background(
-                Brush.linearGradient(listOf(Color(0xFF281520), Color(0xFF11151C), Color(0xFF0B1118))),
-                RoundedCornerShape(28.dp)
-            )
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(28.dp))
-            .padding(26.dp)
-    ) {
-        Text("${service.icon}  ${service.title}", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(6.dp))
-        Text(service.subtitle, color = Color(0xFFFF86BA), fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(18.dp))
-        Text(service.detail, color = Color(0xFFD0D3D8), fontSize = 16.sp, lineHeight = 23.sp)
-
-        Spacer(Modifier.height(24.dp))
-
-        when (service.action) {
-            ServiceAction.CYTAVISION -> {
-                if (cytavision != null) {
-                    Text("✓ ${cytavision.label}", color = Color(0xFF9CE5B2), fontSize = 18.sp, fontWeight = FontWeight.Black)
-                    Text("Package: ${cytavision.packageName}", color = Color(0xFF9EA4AC), fontSize = 11.sp)
-                    Text("OK για άνοιγμα με το πραγματικό launcher activity", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                } else {
-                    Text("Δεν ανιχνεύτηκε Cytavision", color = Color(0xFFFF9AAA), fontSize = 18.sp, fontWeight = FontWeight.Black)
-                    Text("Η AGNES δεν θα προσποιηθεί ότι υπάρχει.", color = Color(0xFFB7BBC1), fontSize = 13.sp)
-                }
-            }
-            ServiceAction.APPS -> {
-                Text("$detectedCount εφαρμογές ανιχνεύτηκαν", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                Text("Η λίστα δημιουργείται από το ίδιο το Xiaomi box.", color = Color(0xFFB7BBC1), fontSize = 13.sp)
-            }
-            ServiceAction.SPORTS -> {
-                Text("Επίσημο Cytavision Sports πρόγραμμα", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text("OK για αγώνες • ώρες • κανάλια", color = Color(0xFFB7BBC1), fontSize = 13.sp)
-            }
-            else -> {
-                Text("AGNES SERVICE", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text("Αν δεν υπάρχει πραγματική σύνδεση, η AGNES στο λέει καθαρά.", color = Color(0xFFB7BBC1), fontSize = 13.sp)
-            }
-        }
-
-        Spacer(Modifier.weight(1f))
-        Text("← / → ΑΛΛΑΓΗ ΥΠΗΡΕΣΙΑΣ     •     OK ΕΝΕΡΓΕΙΑ", color = Color(0xFFFF88BC), fontSize = 12.sp, fontWeight = FontWeight.Black)
-    }
-}
-
-@Composable
-private fun AgnesMessageCard(message: String, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
-    var focused by remember { mutableStateOf(false) }
-    Row(
-        modifier
-            .background(Color(0xF21B1520), RoundedCornerShape(22.dp))
-            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0xAAFF75AF), RoundedCornerShape(22.dp))
-            .onFocusChanged { focused = it.isFocused }
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter || event.key == Key.Back)) {
-                    onDismiss(); true
-                } else false
-            }
-            .focusable()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            Modifier.size(54.dp).background(Color(0xFF7A2A54), CircleShape).border(2.dp, Color(0xFFFF83B8), CircleShape),
-            contentAlignment = Alignment.Center
+        Surface(
+            color = Panel,
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 4.dp,
+            modifier = Modifier.width(760.dp)
         ) {
-            Text("A", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Column(Modifier.padding(34.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Text("AGNES TV", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
+                Text("Σύνδεση XTREAM IPTV", color = Green, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Βάλε μία φορά τα στοιχεία της δικής σου IPTV συνδρομής. Η AGNES θα χρησιμοποιήσει το EPG για τους σημερινούς αγώνες και το VOD για ταινίες/παιδικά.",
+                    color = Muted,
+                    fontSize = 15.sp
+                )
+                OutlinedTextField(
+                    value = server,
+                    onValueChange = { server = it },
+                    label = { Text("Server (π.χ. http://server:port)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Username") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = {
+                        val normalized = server.trim().trimEnd('/')
+                        if (normalized.isNotBlank() && username.isNotBlank() && password.isNotBlank()) {
+                            onSave(XtreamConfig(normalized, username.trim(), password))
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Purple),
+                    modifier = Modifier.fillMaxWidth().height(58.dp)
+                ) {
+                    Text("ΣΥΝΔΕΣΗ & ΑΝΟΙΓΜΑ AGNES TV", fontWeight = FontWeight.Black)
+                }
+            }
         }
-        Spacer(Modifier.width(13.dp))
-        Column(Modifier.weight(1f)) {
-            Text("ΑΓΝΗ", color = Color(0xFFFF83B8), fontSize = 12.sp, fontWeight = FontWeight.Black)
-            Text(message, color = Color.White, fontSize = 13.sp, lineHeight = 18.sp)
-        }
-        Text("OK", color = Color(0xFFADB1B8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
-private fun AppsScreen(context: Context, onBack: () -> Unit) {
-    val apps = remember { installedApps(context) }
-    var selected by remember { mutableStateOf(apps.firstOrNull()) }
+private fun TvShell(config: XtreamConfig, onSettings: () -> Unit) {
+    var tab by remember { mutableStateOf(Tab.SPORTS) }
+    var playing by remember { mutableStateOf<PlayingItem?>(null) }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.linearGradient(listOf(Color(0xFF050608), Color(0xFF150D13), Color(0xFF081017))))
-            .padding(28.dp)
-    ) {
-        Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TvButton("‹ AGNES", onBack)
-                Spacer(Modifier.width(18.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("AGNES APPS", color = Color.White, fontSize = 31.sp, fontWeight = FontWeight.Black)
-                    Text("Μόνο όσα είναι πραγματικά εγκατεστημένα στο box", color = Color(0xFFBEC1C8), fontSize = 13.sp)
-                }
-                Text("${apps.size} APPS", color = Color(0xFFFF7EB5), fontSize = 12.sp, fontWeight = FontWeight.Black)
-                Spacer(Modifier.width(14.dp))
-                SmallAction("PLAY STORE") { if (!openPlayStore(context)) toast(context, "Το Play Store δεν βρέθηκε") }
+    if (playing != null) {
+        PlayerScreen(item = playing!!, onBack = { playing = null })
+        return
+    }
+
+    Column(Modifier.fillMaxSize().background(Bg).padding(horizontal = 28.dp, vertical = 18.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("AGNES TV", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                Text("v1.6.0 • XTREAM CONNECTED", color = Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
+            NavButton("⚽ ΑΓΩΝΕΣ", tab == Tab.SPORTS) { tab = Tab.SPORTS }
+            Spacer(Modifier.width(10.dp))
+            NavButton("🎬 ΤΑΙΝΙΕΣ", tab == Tab.MOVIES) { tab = Tab.MOVIES }
+            Spacer(Modifier.width(10.dp))
+            NavButton("🧸 ΠΑΙΔΙΚΑ", tab == Tab.KIDS) { tab = Tab.KIDS }
+            Spacer(Modifier.width(10.dp))
+            OutlinedButton(onClick = onSettings) { Text("⚙ XTREAM") }
+        }
 
-            Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(16.dp))
 
-            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                AppHero(context, selected, Modifier.width(330.dp).fillMaxHeight())
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    items(apps, key = { it.packageName }) { app ->
-                        AppTile(context, app, onFocus = { selected = app }) {
-                            if (!launchInstalledApp(context, app)) toast(context, "${app.label} δεν άνοιξε")
+        when (tab) {
+            Tab.SPORTS -> SportsScreen(config = config, onPlay = { playing = it }, modifier = Modifier.weight(1f))
+            Tab.MOVIES -> VodScreen(config = config, kids = false, onPlay = { playing = it }, modifier = Modifier.weight(1f))
+            Tab.KIDS -> VodScreen(config = config, kids = true, onPlay = { playing = it }, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun NavButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = if (selected) Purple else Panel2),
+        modifier = Modifier.height(52.dp)
+    ) {
+        Text(label, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun SportsScreen(config: XtreamConfig, onPlay: (PlayingItem) -> Unit, modifier: Modifier = Modifier) {
+    var matches by remember(config) { mutableStateOf<List<MatchItem>>(emptyList()) }
+    var loading by remember(config) { mutableStateOf(true) }
+    var error by remember(config) { mutableStateOf<String?>(null) }
+    var refresh by remember { mutableIntStateOf(0) }
+    var selectedMatch by remember { mutableStateOf<MatchItem?>(null) }
+
+    LaunchedEffect(config, refresh) {
+        loading = true
+        error = null
+        runCatching { fetchTodaysMatches(config) }
+            .onSuccess { matches = it }
+            .onFailure { error = it.message ?: "Αποτυχία φόρτωσης EPG" }
+        loading = false
+    }
+
+    Column(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("ΟΛΟΙ ΟΙ ΑΓΩΝΕΣ ΣΗΜΕΡΑ", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
+                Text(
+                    when {
+                        loading -> "Ψάχνω τα sports κανάλια και το EPG…"
+                        error != null -> "Πρόβλημα σύνδεσης"
+                        else -> "${matches.size} αγώνες • πάτησε ΔΕΣ ή ΚΑΝΑΛΙΑ"
+                    },
+                    color = if (error == null) Green else Color(0xFFFF7777),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            OutlinedButton(onClick = { refresh++ }) { Text("↻ ΑΝΑΝΕΩΣΗ") }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        if (error != null) {
+            ErrorBox(error!!)
+        } else if (loading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Purple) }
+        } else if (matches.isEmpty()) {
+            EmptyBox("Δεν βρέθηκαν ποδοσφαιρικοί αγώνες στο σημερινό Xtream EPG.\nΑυτό εξαρτάται από το EPG που δίνει ο πάροχός σου.")
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
+                items(matches, key = { "${it.startMs}-${it.title}" }) { match ->
+                    MatchRow(
+                        config = config,
+                        match = match,
+                        onAutoPlay = {
+                            match.channels.firstOrNull()?.let { channel ->
+                                onPlay(PlayingItem(match.title, liveUrl(config, channel.id)))
+                            }
+                        },
+                        onChannels = { selectedMatch = match }
+                    )
+                }
+            }
+        }
+    }
+
+    selectedMatch?.let { match ->
+        ChannelDialog(
+            match = match,
+            onDismiss = { selectedMatch = null },
+            onChannel = { channel ->
+                selectedMatch = null
+                onPlay(PlayingItem("${match.title} • ${channel.name}", liveUrl(config, channel.id)))
+            }
+        )
+    }
+}
+
+@Composable
+private fun MatchRow(config: XtreamConfig, match: MatchItem, onAutoPlay: () -> Unit, onChannels: () -> Unit) {
+    Surface(color = Panel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(matchTime(match.startMs), color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black, modifier = Modifier.width(92.dp))
+            Column(Modifier.weight(1f)) {
+                Text(match.title, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    match.channels.joinToString(" • ") { it.name },
+                    color = Muted,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Button(onClick = onAutoPlay, colors = ButtonDefaults.buttonColors(containerColor = Red)) {
+                Text("▶ ΔΕΣ", fontWeight = FontWeight.Black)
+            }
+            Spacer(Modifier.width(8.dp))
+            OutlinedButton(onClick = onChannels) {
+                Text("ΚΑΝΑΛΙΑ (${match.channels.size})", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChannelDialog(match: MatchItem, onDismiss: () -> Unit, onChannel: (LiveStream) -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(color = Panel, shape = RoundedCornerShape(24.dp), modifier = Modifier.width(720.dp).heightIn(max = 620.dp)) {
+            Column(Modifier.padding(26.dp)) {
+                Text("ΕΠΙΛΕΞΕ ΚΑΝΑΛΙ", color = Green, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(match.title, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(16.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(match.channels, key = { it.id }) { channel ->
+                        Button(
+                            onClick = { onChannel(channel) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Panel2),
+                            modifier = Modifier.fillMaxWidth().height(56.dp)
+                        ) {
+                            Text("▶ ${channel.name}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -472,164 +341,353 @@ private fun AppsScreen(context: Context, onBack: () -> Unit) {
 }
 
 @Composable
-private fun AppHero(context: Context, app: InstalledApp?, modifier: Modifier) {
-    Column(
-        modifier
-            .background(Color(0xD9181A20), RoundedCornerShape(26.dp))
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(26.dp))
-            .padding(22.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (app != null) {
-            val icon = remember(app.packageName) {
-                runCatching { context.packageManager.getApplicationIcon(app.packageName).toBitmap(220, 220).asImageBitmap() }.getOrNull()
-            }
-            if (icon != null) Image(icon, null, Modifier.size(150.dp), contentScale = ContentScale.Fit)
-            Spacer(Modifier.height(18.dp))
-            Text(app.label, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black, maxLines = 2)
-            Text(app.packageName, color = Color(0xFF9EA3AB), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(8.dp))
-            Text("OK για άνοιγμα", color = Color(0xFFFF84B9), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        } else {
-            Text("Δεν βρέθηκαν εφαρμογές", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
-        }
-        Spacer(Modifier.weight(1f))
-        Text("AGNES • REAL APPS ONLY", color = Color(0xFFFF7EB5), fontSize = 10.sp, fontWeight = FontWeight.Black)
-    }
-}
+private fun VodScreen(
+    config: XtreamConfig,
+    kids: Boolean,
+    onPlay: (PlayingItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var items by remember(config, kids) { mutableStateOf<List<VodItem>>(emptyList()) }
+    var loading by remember(config, kids) { mutableStateOf(true) }
+    var error by remember(config, kids) { mutableStateOf<String?>(null) }
+    var refresh by remember { mutableIntStateOf(0) }
 
-@Composable
-private fun AppTile(context: Context, app: InstalledApp, onFocus: () -> Unit, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    val bg by animateColorAsState(if (focused) Color(0xFF54283E) else Color(0xD91B1D23), label = "app")
-    val icon = remember(app.packageName) {
-        runCatching { context.packageManager.getApplicationIcon(app.packageName).toBitmap(150, 150).asImageBitmap() }.getOrNull()
+    LaunchedEffect(config, kids, refresh) {
+        loading = true
+        error = null
+        runCatching { fetchVods(config, kids) }
+            .onSuccess { items = it }
+            .onFailure { error = it.message ?: "Αποτυχία φόρτωσης VOD" }
+        loading = false
     }
 
-    Column(
-        Modifier
-            .height(156.dp)
-            .scale(if (focused) 1.055f else 1f)
-            .background(bg, RoundedCornerShape(22.dp))
-            .border(if (focused) 3.dp else 1.dp, if (focused) Color(0xFFFF82B8) else Color(0x22FFFFFF), RoundedCornerShape(22.dp))
-            .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocus() }
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
-                    onClick(); true
-                } else false
-            }
-            .focusable()
-            .padding(14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        if (icon != null) Image(icon, null, Modifier.size(72.dp), contentScale = ContentScale.Fit)
-        Spacer(Modifier.height(10.dp))
-        Text(app.label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-private fun SportsScreen(onBack: () -> Unit) {
-    val url = "https://epg.cyta.com.cy/tv-live-sports-events/en"
-    Column(Modifier.fillMaxSize().background(Color.Black)) {
-        Row(
-            Modifier.fillMaxWidth().height(72.dp).background(Color(0xFF111318)).padding(horizontal = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TvButton("‹ AGNES", onBack)
-            Spacer(Modifier.width(18.dp))
+    Column(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("SPORTS LIVE", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                Text("Επίσημο Cytavision πρόγραμμα • αγώνες • ώρα • κανάλι", color = Color(0xFFBFC3CA), fontSize = 11.sp)
+                Text(
+                    if (kids) "ΠΑΙΔΙΚΑ" else "ΤΑΙΝΙΕΣ ΓΙΑ ΑΠΟΨΕ",
+                    color = Color.White,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    if (kids) "Από τις παιδικές κατηγορίες του Xtream VOD" else "Μόνο κατηγορίες/τίτλοι που δηλώνουν Ελληνικούς υπότιτλους",
+                    color = if (kids) Color(0xFFFFD44C) else Color(0xFF66C8FF),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
-            Text("AGNES", color = Color(0xFFFF7CB4), fontSize = 13.sp, fontWeight = FontWeight.Black)
+            Text("${items.size} διαθέσιμα", color = Muted, modifier = Modifier.padding(end = 14.dp))
+            OutlinedButton(onClick = { refresh++ }) { Text("↻ ΑΝΑΝΕΩΣΗ") }
         }
+        Spacer(Modifier.height(12.dp))
+
+        if (error != null) {
+            ErrorBox(error!!)
+        } else if (loading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Purple) }
+        } else if (items.isEmpty()) {
+            EmptyBox(
+                if (kids) "Δεν βρέθηκε παιδική VOD κατηγορία στο Xtream σου."
+                else "Δεν βρέθηκαν VOD κατηγορίες που να δηλώνουν Greek/GR subtitles.\nΔεν θα σου βαφτίσω ταινίες ως ελληνικούς υπότιτλους αν ο πάροχος δεν το δηλώνει."
+            )
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(6),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                gridItems(items, key = { it.id }) { vod ->
+                    VodCard(vod = vod, kids = kids) {
+                        onPlay(PlayingItem(vod.name, vodUrl(config, vod)))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VodCard(vod: VodItem, kids: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = Panel),
+        contentPadding = PaddingValues(0.dp),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().height(255.dp)
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            RemotePoster(vod.icon, Modifier.fillMaxWidth().weight(1f))
+            Column(Modifier.padding(10.dp)) {
+                Text(vod.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    if (kids) vod.category else "🇬🇷 ${vod.category}",
+                    color = if (kids) Color(0xFFFFD86B) else Color(0xFF72D5FF),
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (vod.rating.isNotBlank()) Text("★ ${vod.rating}", color = Muted, fontSize = 10.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RemotePoster(url: String, modifier: Modifier = Modifier) {
+    var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(url) {
+        if (url.isNotBlank()) {
+            bitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    val conn = URL(url).openConnection() as HttpURLConnection
+                    conn.connectTimeout = 7000
+                    conn.readTimeout = 7000
+                    conn.inputStream.use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+                }.getOrNull()
+            }
+        }
+    }
+    if (bitmap != null) {
+        Image(bitmap = bitmap!!, contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier)
+    } else {
+        Box(modifier.background(if (url.isBlank()) Panel2 else Color(0xFF172437)), contentAlignment = Alignment.Center) {
+            Text("AGNES", color = Purple, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun PlayerScreen(item: PlayingItem, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val player = remember(item.url) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(item.url))
+            prepare()
+            playWhenReady = true
+        }
+    }
+
+    DisposableEffect(player) { onDispose { player.release() } }
+    BackHandler { onBack() }
+
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
-                WebView(ctx).apply {
-                    webViewClient = WebViewClient()
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.loadWithOverviewMode = true
-                    settings.useWideViewPort = true
-                    settings.builtInZoomControls = true
-                    settings.displayZoomControls = false
-                    loadUrl(url)
+                PlayerView(ctx).apply {
+                    this.player = player
+                    useController = true
+                    keepScreenOn = true
+                    requestFocus()
                 }
             },
-            update = { if (it.url == null) it.loadUrl(url) }
+            modifier = Modifier.fillMaxSize()
         )
-    }
-}
-
-@Composable
-private fun StatusChip(title: String, subtitle: String) {
-    Column(
-        Modifier
-            .background(Color(0xAA23252B), RoundedCornerShape(17.dp))
-            .border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(17.dp))
-            .padding(horizontal = 14.dp, vertical = 7.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = Color(0xFFB7BBC2), fontSize = 9.sp)
-    }
-}
-
-@Composable
-private fun StatusLine(title: String, subtitle: String, ok: Boolean) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier.size(12.dp).background(if (ok) Color(0xFF75D995) else Color(0xFF6A6E76), CircleShape)
-        )
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = Color(0xFFADB2B9), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Surface(
+            color = Color.Black.copy(alpha = 0.62f),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.align(Alignment.TopStart).padding(18.dp)
+        ) {
+            Text(item.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(10.dp, 7.dp))
         }
     }
 }
 
 @Composable
-private fun SmallAction(text: String, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    Box(
-        Modifier
-            .scale(if (focused) 1.04f else 1f)
-            .background(if (focused) Color(0xFFFF4F9A) else Color(0xFF24272E), RoundedCornerShape(16.dp))
-            .border(if (focused) 2.dp else 1.dp, if (focused) Color.White else Color(0x33FFFFFF), RoundedCornerShape(16.dp))
-            .onFocusChanged { focused = it.isFocused }
-            .onKeyEvent { event ->
-                if (event.type == KeyEventType.KeyUp && (event.key == Key.Enter || event.key == Key.DirectionCenter)) {
-                    onClick(); true
-                } else false
+private fun ErrorBox(message: String) {
+    Surface(color = Color(0xFF321519), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+        Text(message, color = Color(0xFFFFA3A3), fontSize = 16.sp, modifier = Modifier.padding(22.dp))
+    }
+}
+
+@Composable
+private fun EmptyBox(message: String) {
+    Box(Modifier.fillMaxSize().background(Panel, RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
+        Text(message, color = Muted, fontSize = 18.sp, modifier = Modifier.padding(30.dp))
+    }
+}
+
+private fun loadConfig(context: Context): XtreamConfig? {
+    val p = context.getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE)
+    val server = p.getString("server", null)?.trim().orEmpty()
+    val username = p.getString("username", null)?.trim().orEmpty()
+    val password = p.getString("password", null).orEmpty()
+    return if (server.isNotBlank() && username.isNotBlank() && password.isNotBlank()) XtreamConfig(server, username, password) else null
+}
+
+private fun saveConfig(context: Context, config: XtreamConfig) {
+    context.getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE).edit()
+        .putString("server", config.server.trimEnd('/'))
+        .putString("username", config.username)
+        .putString("password", config.password)
+        .apply()
+}
+
+private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
+
+private fun apiUrl(config: XtreamConfig, action: String, extra: String = ""): String =
+    "${config.server.trimEnd('/')}/player_api.php?username=${enc(config.username)}&password=${enc(config.password)}&action=$action$extra"
+
+private fun liveUrl(config: XtreamConfig, streamId: Int): String =
+    "${config.server.trimEnd('/')}/live/${enc(config.username)}/${enc(config.password)}/$streamId.ts"
+
+private fun vodUrl(config: XtreamConfig, vod: VodItem): String =
+    "${config.server.trimEnd('/')}/movie/${enc(config.username)}/${enc(config.password)}/${vod.id}.${vod.extension.ifBlank { "mp4" }}"
+
+private suspend fun httpGet(url: String): String = withContext(Dispatchers.IO) {
+    val conn = URL(url).openConnection() as HttpURLConnection
+    conn.connectTimeout = 12_000
+    conn.readTimeout = 18_000
+    conn.requestMethod = "GET"
+    conn.setRequestProperty("User-Agent", "AGNES-TV/1.6.0")
+    try {
+        val code = conn.responseCode
+        if (code !in 200..299) throw IllegalStateException("HTTP $code από Xtream server")
+        conn.inputStream.bufferedReader().use { it.readText() }
+    } finally {
+        conn.disconnect()
+    }
+}
+
+private suspend fun fetchTodaysMatches(config: XtreamConfig): List<MatchItem> {
+    val liveArray = JSONArray(httpGet(apiUrl(config, "get_live_streams")))
+    val sports = buildList {
+        for (i in 0 until liveArray.length()) {
+            val o = liveArray.optJSONObject(i) ?: continue
+            val id = o.optInt("stream_id")
+            val name = o.optString("name")
+            if (id > 0 && looksLikeSportsChannel(name)) add(LiveStream(id, name))
+        }
+    }.distinctBy { it.id }.take(80)
+
+    if (sports.isEmpty()) return emptyList()
+
+    val entries = coroutineScope {
+        sports.map { stream ->
+            async(Dispatchers.IO) {
+                runCatching {
+                    val root = JSONObject(httpGet(apiUrl(config, "get_short_epg", "&stream_id=${stream.id}&limit=20")))
+                    val epg = root.optJSONArray("epg_listings") ?: JSONArray()
+                    buildList {
+                        for (i in 0 until epg.length()) {
+                            val e = epg.optJSONObject(i) ?: continue
+                            val title = decodeMaybeBase64(e.optString("title")).replace(Regex("\\s+"), " ").trim()
+                            val startMs = epgStartMs(e)
+                            if (startMs > 0L && isToday(startMs) && looksLikeFootballMatch(title)) {
+                                add(Triple(title, startMs, stream))
+                            }
+                        }
+                    }
+                }.getOrElse { emptyList() }
             }
-            .focusable()
-            .padding(horizontal = 16.dp, vertical = 11.dp)
-    ) {
-        Text(text, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        }.awaitAll().flatten()
     }
+
+    val grouped = linkedMapOf<String, MutableList<Triple<String, Long, LiveStream>>>()
+    entries.forEach { entry ->
+        val key = normalizeTitle(entry.first) + "|" + (entry.second / 60_000L)
+        grouped.getOrPut(key) { mutableListOf() }.add(entry)
+    }
+
+    return grouped.values.map { group ->
+        val first = group.first()
+        MatchItem(
+            title = first.first,
+            startMs = first.second,
+            channels = group.map { it.third }.distinctBy { it.id }
+        )
+    }.sortedBy { it.startMs }
 }
 
-@Composable
-private fun TvButton(text: String, onClick: () -> Unit) = SmallAction(text, onClick)
-
-@Composable
-private fun InfoPanel(title: String, modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier
-            .fillMaxHeight()
-            .background(Color(0xD914171D), RoundedCornerShape(24.dp))
-            .border(1.dp, Color(0x2FFFFFFF), RoundedCornerShape(24.dp))
-            .padding(18.dp)
-    ) {
-        Text(title, color = Color(0xFFFF78B1), fontSize = 11.sp, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(12.dp))
-        content()
-    }
+private fun looksLikeSportsChannel(name: String): Boolean {
+    val n = name.lowercase(Locale.getDefault())
+    return listOf(
+        "sport", "sports", "cosmote", "nova sport", "novasport", "cytavision sport",
+        "sky sport", "dazn", "bein", "arena sport", "match!", "football"
+    ).any { n.contains(it) }
 }
 
-private fun toast(context: Context, message: String) = Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-private fun currentTime(): String = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+private fun looksLikeFootballMatch(title: String): Boolean {
+    if (title.isBlank()) return false
+    val t = title.lowercase(Locale.getDefault())
+    val excluded = listOf("news", "highlights", "magazine", "review", "replay", "documentary")
+    if (excluded.any { t.contains(it) }) return false
+    val football = listOf(
+        "football", "soccer", "premier league", "champions league", "europa league", "conference league",
+        "super league", "la liga", "laliga", "serie a", "bundesliga", "ligue 1", "eredivisie",
+        "fa cup", "coppa", "copa", "κύπελλο", "ποδόσφαιρο"
+    ).any { t.contains(it) }
+    val matchup = Regex("\\s(vs?\\.?|versus)\\s|\\s[-–—]\\s", RegexOption.IGNORE_CASE).containsMatchIn(title)
+    return football || matchup
+}
+
+private fun epgStartMs(o: JSONObject): Long {
+    val ts = o.optLong("start_timestamp", 0L)
+    if (ts > 0L) return ts * 1000L
+    val raw = o.optString("start")
+    return runCatching {
+        val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        java.time.LocalDateTime.parse(raw, fmt).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }.getOrDefault(0L)
+}
+
+private fun isToday(ms: Long): Boolean =
+    Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).toLocalDate() == LocalDate.now()
+
+private fun decodeMaybeBase64(value: String): String {
+    if (value.isBlank()) return value
+    return runCatching {
+        val decoded = String(Base64.decode(value, Base64.DEFAULT), Charsets.UTF_8)
+        if (decoded.any { !it.isISOControl() || it == '\n' || it == '\r' || it == '\t' }) decoded else value
+    }.getOrDefault(value)
+}
+
+private fun normalizeTitle(title: String): String =
+    title.lowercase(Locale.getDefault()).replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
+
+private fun matchTime(ms: Long): String =
+    Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))
+
+private suspend fun fetchVods(config: XtreamConfig, kids: Boolean): List<VodItem> {
+    val categoryArray = JSONArray(httpGet(apiUrl(config, "get_vod_categories")))
+    val categories = mutableMapOf<String, String>()
+    for (i in 0 until categoryArray.length()) {
+        val o = categoryArray.optJSONObject(i) ?: continue
+        categories[o.optString("category_id")] = o.optString("category_name")
+    }
+
+    val streams = JSONArray(httpGet(apiUrl(config, "get_vod_streams")))
+    val result = mutableListOf<VodItem>()
+    for (i in 0 until streams.length()) {
+        val o = streams.optJSONObject(i) ?: continue
+        val id = o.optInt("stream_id")
+        if (id <= 0) continue
+        val name = o.optString("name")
+        val category = categories[o.optString("category_id")].orEmpty()
+        val hay = "$category $name".lowercase(Locale.getDefault())
+        val include = if (kids) isKidsVod(hay) else isGreekSubtitleVod(hay)
+        if (!include) continue
+        result += VodItem(
+            id = id,
+            name = name,
+            icon = o.optString("stream_icon"),
+            extension = o.optString("container_extension", "mp4"),
+            category = category.ifBlank { if (kids) "Kids" else "Greek Subs" },
+            rating = o.optString("rating")
+        )
+        if (result.size >= 180) break
+    }
+    return result
+}
+
+private fun isGreekSubtitleVod(hay: String): Boolean {
+    return listOf(
+        "greek sub", "greek-sub", "greek subtitles", "greek subtitle", "gr sub", "gr-sub",
+        "ελληνικοί υπότιτ", "ελληνικοι υποτιτ", "ελλ. υποτιτ", "υπότιτλοι gr"
+    ).any { hay.contains(it) }
+}
+
+private fun isKidsVod(hay: String): Boolean {
+    return listOf("kids", "kid ", "children", "childrens", "παιδικ", "cartoon", "animation", "family kids").any { hay.contains(it) }
+}
