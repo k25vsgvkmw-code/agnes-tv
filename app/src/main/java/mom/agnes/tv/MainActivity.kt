@@ -1,15 +1,20 @@
 package mom.agnes.tv
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
+import android.util.JsonReader
+import android.util.JsonToken
+import android.util.LruCache
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,11 +26,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,7 +42,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +55,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -70,21 +83,40 @@ private val Purple = Color(0xFF9B4DFF)
 private val Green = Color(0xFF78FF50)
 private val Red = Color(0xFFD92E35)
 private val Muted = Color(0xFF98A6B8)
+private val FocusWhite = Color(0xFFFFFFFF)
+private val SelectedLine = Color(0xFFFFFFFF)
 
 private enum class Tab { SPORTS, MOVIES, KIDS }
 
 private data class XtreamConfig(val server: String, val username: String, val password: String)
 private data class LiveStream(val id: Int, val name: String)
 private data class MatchItem(val title: String, val startMs: Long, val channels: List<LiveStream>)
+private data class VodCategory(val id: String, val name: String)
 private data class VodItem(
     val id: Int,
     val name: String,
     val icon: String,
     val extension: String,
     val category: String,
-    val rating: String
+    val rating: String,
+    val likelyGreek: Boolean
 )
-private data class PlayingItem(val title: String, val url: String)
+private data class PlayingItem(
+    val title: String,
+    val url: String,
+    val vodId: Int? = null
+)
+private data class VodCacheEntry(val createdAt: Long, val items: List<VodItem>)
+
+private val vodCache = mutableMapOf<String, VodCacheEntry>()
+private const val VOD_CACHE_MS = 10 * 60 * 1000L
+private const val MAX_VODS = 120
+private const val MAX_VOD_CATEGORIES = 12
+private const val MAX_VODS_PER_CATEGORY = 40
+
+private object PosterCache : LruCache<String, Bitmap>(12 * 1024) {
+    override fun sizeOf(key: String, value: Bitmap): Int = (value.byteCount / 1024).coerceAtLeast(1)
+}
 
 @Composable
 private fun AgnesTvApp() {
@@ -187,7 +219,7 @@ private fun TvShell(config: XtreamConfig, verified: Boolean, onSettings: () -> U
             Column(Modifier.weight(1f)) {
                 Text("AGNES TV", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
                 Text(
-                    if (verified) "v1.7.1 • XTREAM CONNECTED" else "v1.7.1 • XTREAM NOT VERIFIED",
+                    if (verified) "v${BuildConfig.VERSION_NAME} • XTREAM CONNECTED" else "v${BuildConfig.VERSION_NAME} • XTREAM NOT VERIFIED",
                     color = if (verified) Green else Color(0xFFFFA36C),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -199,7 +231,7 @@ private fun TvShell(config: XtreamConfig, verified: Boolean, onSettings: () -> U
             Spacer(Modifier.width(10.dp))
             NavButton("🧸 ΠΑΙΔΙΚΑ", tab == Tab.KIDS) { tab = Tab.KIDS }
             Spacer(Modifier.width(10.dp))
-            OutlinedButton(onClick = onSettings) { Text("⚙ XTREAM") }
+            TvOutlinedButton("⚙ XTREAM", onSettings)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -213,11 +245,58 @@ private fun TvShell(config: XtreamConfig, verified: Boolean, onSettings: () -> U
 }
 
 @Composable
+private fun Modifier.tvFocus(label: String, selected: Boolean = false, shape: RoundedCornerShape = RoundedCornerShape(14.dp)): Modifier {
+    var focused by remember { mutableStateOf(false) }
+    return this
+        .onFocusChanged { focused = it.isFocused || it.hasFocus }
+        .scale(if (focused) 1.055f else 1f)
+        .border(
+            width = when {
+                focused -> 4.dp
+                selected -> 2.dp
+                else -> 1.dp
+            },
+            color = when {
+                focused -> FocusWhite
+                selected -> Green
+                else -> Color.Transparent
+            },
+            shape = shape
+        )
+        .semantics {
+            contentDescription = if (selected) "SELECTED: $label" else if (focused) "FOCUS: $label" else label
+        }
+}
+
+@Composable
 private fun NavButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(containerColor = if (selected) Purple else Panel2),
-        modifier = Modifier.height(52.dp)
+        shape = shape,
+        modifier = Modifier.height(58.dp).tvFocus(label, selected, shape)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(3.dp))
+            Box(
+                Modifier
+                    .width(if (selected) 30.dp else 1.dp)
+                    .height(4.dp)
+                    .background(if (selected) SelectedLine else Color.Transparent, RoundedCornerShape(4.dp))
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvOutlinedButton(label: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    OutlinedButton(
+        onClick = onClick,
+        shape = shape,
+        modifier = Modifier.height(54.dp).tvFocus(label, shape = shape)
     ) {
         Text(label, fontWeight = FontWeight.Bold)
     }
@@ -255,7 +334,7 @@ private fun SportsScreen(config: XtreamConfig, onPlay: (PlayingItem) -> Unit, mo
                     fontWeight = FontWeight.Bold
                 )
             }
-            OutlinedButton(onClick = { refresh++ }) { Text("↻ ΑΝΑΝΕΩΣΗ") }
+            TvOutlinedButton("↻ ΑΝΑΝΕΩΣΗ") { refresh++ }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -269,7 +348,6 @@ private fun SportsScreen(config: XtreamConfig, onPlay: (PlayingItem) -> Unit, mo
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
                 items(matches, key = { "${it.startMs}-${it.title}" }) { match ->
                     MatchRow(
-                        config = config,
                         match = match,
                         onAutoPlay = {
                             match.channels.firstOrNull()?.let { channel ->
@@ -296,7 +374,7 @@ private fun SportsScreen(config: XtreamConfig, onPlay: (PlayingItem) -> Unit, mo
 }
 
 @Composable
-private fun MatchRow(config: XtreamConfig, match: MatchItem, onAutoPlay: () -> Unit, onChannels: () -> Unit) {
+private fun MatchRow(match: MatchItem, onAutoPlay: () -> Unit, onChannels: () -> Unit) {
     Surface(color = Panel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 13.dp),
@@ -313,11 +391,22 @@ private fun MatchRow(config: XtreamConfig, match: MatchItem, onAutoPlay: () -> U
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Button(onClick = onAutoPlay, colors = ButtonDefaults.buttonColors(containerColor = Red)) {
+            val watchShape = RoundedCornerShape(12.dp)
+            Button(
+                onClick = onAutoPlay,
+                colors = ButtonDefaults.buttonColors(containerColor = Red),
+                shape = watchShape,
+                modifier = Modifier.tvFocus("▶ ΔΕΣ ${match.title}", shape = watchShape)
+            ) {
                 Text("▶ ΔΕΣ", fontWeight = FontWeight.Black)
             }
             Spacer(Modifier.width(8.dp))
-            OutlinedButton(onClick = onChannels) {
+            val channelShape = RoundedCornerShape(12.dp)
+            OutlinedButton(
+                onClick = onChannels,
+                shape = channelShape,
+                modifier = Modifier.tvFocus("ΚΑΝΑΛΙΑ ${match.title}", shape = channelShape)
+            ) {
                 Text("ΚΑΝΑΛΙΑ (${match.channels.size})", fontWeight = FontWeight.Bold)
             }
         }
@@ -334,10 +423,12 @@ private fun ChannelDialog(match: MatchItem, onDismiss: () -> Unit, onChannel: (L
                 Spacer(Modifier.height(16.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(match.channels, key = { it.id }) { channel ->
+                        val shape = RoundedCornerShape(12.dp)
                         Button(
                             onClick = { onChannel(channel) },
                             colors = ButtonDefaults.buttonColors(containerColor = Panel2),
-                            modifier = Modifier.fillMaxWidth().height(56.dp)
+                            shape = shape,
+                            modifier = Modifier.fillMaxWidth().height(60.dp).tvFocus(channel.name, shape = shape)
                         ) {
                             Text("▶ ${channel.name}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
@@ -363,6 +454,7 @@ private fun VodScreen(
     LaunchedEffect(config, kids, refresh) {
         loading = true
         error = null
+        if (refresh > 0) clearVodCache(config, kids)
         runCatching { fetchVods(config, kids) }
             .onSuccess { items = it }
             .onFailure { error = it.message ?: "Αποτυχία φόρτωσης VOD" }
@@ -379,14 +471,14 @@ private fun VodScreen(
                     fontWeight = FontWeight.Black
                 )
                 Text(
-                    if (kids) "Από τις παιδικές κατηγορίες του Xtream VOD" else "Μόνο κατηγορίες/τίτλοι που δηλώνουν Ελληνικούς υπότιτλους",
-                    color = if (kids) Color(0xFFFFD44C) else Color(0xFF66C8FF),
+                    if (kids) "Γρήγορη φόρτωση μόνο από παιδικές κατηγορίες" else "🇬🇷 Πιθανόν Ελληνικά = δηλώνεται από τον πάροχο • Ελληνικοί υπότιτλοι = επιβεβαιωμένο track",
+                    color = if (kids) Color(0xFFFFD44C) else Color(0xFF72D5FF),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
             Text("${items.size} διαθέσιμα", color = Muted, modifier = Modifier.padding(end = 14.dp))
-            OutlinedButton(onClick = { refresh++ }) { Text("↻ ΑΝΑΝΕΩΣΗ") }
+            TvOutlinedButton("↻ ΑΝΑΝΕΩΣΗ") { refresh++ }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -397,7 +489,7 @@ private fun VodScreen(
         } else if (items.isEmpty()) {
             EmptyBox(
                 if (kids) "Δεν βρέθηκε παιδική VOD κατηγορία στο Xtream σου."
-                else "Δεν βρέθηκαν VOD κατηγορίες που να δηλώνουν Greek/GR subtitles.\nΔεν θα σου βαφτίσω ταινίες ως ελληνικούς υπότιτλους αν ο πάροχος δεν το δηλώνει."
+                else "Δεν βρέθηκαν VOD κατηγορίες που να δηλώνουν Greek/GR subtitles.\nΔεν θα εμφανιστεί επιβεβαιωμένο 🇬🇷 αν δεν βρεθεί πραγματικό Greek subtitle track."
             )
         } else {
             LazyVerticalGrid(
@@ -408,7 +500,7 @@ private fun VodScreen(
             ) {
                 gridItems(items, key = { it.id }) { vod ->
                     VodCard(vod = vod, kids = kids) {
-                        onPlay(PlayingItem(vod.name, vodUrl(config, vod)))
+                        onPlay(PlayingItem(vod.name, vodUrl(config, vod), vodId = vod.id))
                     }
                 }
             }
@@ -418,21 +510,41 @@ private fun VodScreen(
 
 @Composable
 private fun VodCard(vod: VodItem, kids: Boolean, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val verifiedGreek = remember(vod.id) {
+        context.getSharedPreferences("agnes_media_meta", Context.MODE_PRIVATE)
+            .getBoolean("greek_subtitle_${vod.id}", false)
+    }
+    val shape = RoundedCornerShape(16.dp)
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(containerColor = Panel),
         contentPadding = PaddingValues(0.dp),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth().height(255.dp)
+        shape = shape,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(255.dp)
+            .tvFocus(vod.name, shape = shape)
     ) {
         Column(Modifier.fillMaxSize()) {
             RemotePoster(vod.icon, Modifier.fillMaxWidth().weight(1f))
             Column(Modifier.padding(10.dp)) {
                 Text(vod.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    if (kids) vod.category else "🇬🇷 ${vod.category}",
-                    color = if (kids) Color(0xFFFFD86B) else Color(0xFF72D5FF),
+                    when {
+                        kids -> vod.category
+                        verifiedGreek -> "🇬🇷 Ελληνικοί υπότιτλοι"
+                        vod.likelyGreek -> "🇬🇷 Πιθανόν Ελληνικά"
+                        else -> "Υπότιτλοι: άγνωστο"
+                    },
+                    color = when {
+                        kids -> Color(0xFFFFD86B)
+                        verifiedGreek -> Green
+                        vod.likelyGreek -> Color(0xFF72D5FF)
+                        else -> Muted
+                    },
                     fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -444,16 +556,11 @@ private fun VodCard(vod: VodItem, kids: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun RemotePoster(url: String, modifier: Modifier = Modifier) {
-    var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(PosterCache.get(url)?.asImageBitmap()) }
     LaunchedEffect(url) {
-        if (url.isNotBlank()) {
+        if (url.isNotBlank() && bitmap == null) {
             bitmap = withContext(Dispatchers.IO) {
-                runCatching {
-                    val conn = URL(url).openConnection() as HttpURLConnection
-                    conn.connectTimeout = 7000
-                    conn.readTimeout = 7000
-                    conn.inputStream.use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
-                }.getOrNull()
+                loadPosterBitmap(url)?.also { PosterCache.put(url, it) }?.asImageBitmap()
             }
         }
     }
@@ -466,18 +573,58 @@ private fun RemotePoster(url: String, modifier: Modifier = Modifier) {
     }
 }
 
+private fun loadPosterBitmap(url: String): Bitmap? {
+    val cached = PosterCache.get(url)
+    if (cached != null) return cached
+    val conn = runCatching { URL(url).openConnection() as HttpURLConnection }.getOrNull() ?: return null
+    return try {
+        conn.connectTimeout = 4_000
+        conn.readTimeout = 5_000
+        conn.setRequestProperty("User-Agent", "AGNES-TV/${BuildConfig.VERSION_NAME}")
+        if (conn.responseCode !in 200..299) return null
+        val options = BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.RGB_565
+            inSampleSize = 2
+        }
+        conn.inputStream.use { BitmapFactory.decodeStream(it, null, options) }
+    } catch (_: Throwable) {
+        null
+    } finally {
+        conn.disconnect()
+    }
+}
+
 @Composable
 private fun PlayerScreen(item: PlayingItem, onBack: () -> Unit) {
     val context = LocalContext.current
+    val mediaPrefs = remember { context.getSharedPreferences("agnes_media_meta", Context.MODE_PRIVATE) }
     val player = remember(item.url) {
         ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(item.url))
+            setMediaItem(MediaItem.fromUri(Uri.parse(item.url)))
             prepare()
             playWhenReady = true
         }
     }
 
-    DisposableEffect(player) { onDispose { player.release() } }
+    DisposableEffect(player, item.vodId) {
+        fun rememberGreekIfPresent(tracks: Tracks) {
+            val id = item.vodId ?: return
+            if (tracksHasGreekText(tracks)) {
+                mediaPrefs.edit().putBoolean("greek_subtitle_$id", true).apply()
+            }
+        }
+        val listener = object : Player.Listener {
+            override fun onTracksChanged(tracks: Tracks) {
+                rememberGreekIfPresent(tracks)
+            }
+        }
+        player.addListener(listener)
+        rememberGreekIfPresent(player.currentTracks)
+        onDispose {
+            player.removeListener(listener)
+            player.release()
+        }
+    }
     BackHandler { onBack() }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -500,6 +647,19 @@ private fun PlayerScreen(item: PlayingItem, onBack: () -> Unit) {
             Text(item.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(10.dp, 7.dp))
         }
     }
+}
+
+private fun tracksHasGreekText(tracks: Tracks): Boolean {
+    for (group in tracks.groups) {
+        if (group.type != C.TRACK_TYPE_TEXT) continue
+        for (i in 0 until group.length) {
+            val language = group.getTrackFormat(i).language?.lowercase(Locale.ROOT).orEmpty()
+            if (language == "el" || language == "ell" || language == "gre" || language == "gr" || language.startsWith("el-")) {
+                return true
+            }
+        }
+    }
+    return false
 }
 
 @Composable
@@ -549,7 +709,7 @@ private suspend fun httpGet(url: String): String = withContext(Dispatchers.IO) {
     conn.connectTimeout = 12_000
     conn.readTimeout = 18_000
     conn.requestMethod = "GET"
-    conn.setRequestProperty("User-Agent", "AGNES-TV/1.7.1")
+    conn.setRequestProperty("User-Agent", "AGNES-TV/${BuildConfig.VERSION_NAME}")
     try {
         val code = conn.responseCode
         if (code !in 200..299) throw IllegalStateException("HTTP $code από Xtream server")
@@ -568,7 +728,7 @@ private suspend fun fetchTodaysMatches(config: XtreamConfig): List<MatchItem> {
             val name = o.optString("name")
             if (id > 0 && looksLikeSportsChannel(name)) add(LiveStream(id, name))
         }
-    }.distinctBy { it.id }.take(80)
+    }.distinctBy { it.id }.take(60)
 
     if (sports.isEmpty()) return emptyList()
 
@@ -658,36 +818,130 @@ private fun normalizeTitle(title: String): String =
 private fun matchTime(ms: Long): String =
     Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))
 
+private fun vodCacheKey(config: XtreamConfig, kids: Boolean): String =
+    "${config.server}|${config.username}|$kids"
+
+private fun clearVodCache(config: XtreamConfig, kids: Boolean) {
+    synchronized(vodCache) { vodCache.remove(vodCacheKey(config, kids)) }
+}
+
 private suspend fun fetchVods(config: XtreamConfig, kids: Boolean): List<VodItem> {
-    val categoryArray = JSONArray(httpGet(apiUrl(config, "get_vod_categories")))
-    val categories = mutableMapOf<String, String>()
-    for (i in 0 until categoryArray.length()) {
-        val o = categoryArray.optJSONObject(i) ?: continue
-        categories[o.optString("category_id")] = o.optString("category_name")
+    val key = vodCacheKey(config, kids)
+    synchronized(vodCache) {
+        vodCache[key]?.let { cached ->
+            if (System.currentTimeMillis() - cached.createdAt < VOD_CACHE_MS) return cached.items
+            vodCache.remove(key)
+        }
     }
 
-    val streams = JSONArray(httpGet(apiUrl(config, "get_vod_streams")))
+    val categories = fetchVodCategories(config)
+    val targetCategories = categories.filter { category ->
+        val hay = category.name.lowercase(Locale.getDefault())
+        if (kids) isKidsVod(hay) else isGreekSubtitleVod(hay)
+    }.take(MAX_VOD_CATEGORIES)
+
+    if (targetCategories.isEmpty()) return emptyList()
+
     val result = mutableListOf<VodItem>()
-    for (i in 0 until streams.length()) {
-        val o = streams.optJSONObject(i) ?: continue
-        val id = o.optInt("stream_id")
-        if (id <= 0) continue
-        val name = o.optString("name")
-        val category = categories[o.optString("category_id")].orEmpty()
-        val hay = "$category $name".lowercase(Locale.getDefault())
-        val include = if (kids) isKidsVod(hay) else isGreekSubtitleVod(hay)
-        if (!include) continue
-        result += VodItem(
-            id = id,
-            name = name,
-            icon = o.optString("stream_icon"),
-            extension = o.optString("container_extension", "mp4"),
-            category = category.ifBlank { if (kids) "Kids" else "Greek Subs" },
-            rating = o.optString("rating")
-        )
-        if (result.size >= 180) break
+    for (category in targetCategories) {
+        if (result.size >= MAX_VODS) break
+        val limit = minOf(MAX_VODS_PER_CATEGORY, MAX_VODS - result.size)
+        result += fetchVodCategoryStreams(config, category, kids, limit)
     }
-    return result
+
+    val distinct = result.distinctBy { it.id }.take(MAX_VODS)
+    synchronized(vodCache) { vodCache[key] = VodCacheEntry(System.currentTimeMillis(), distinct) }
+    return distinct
+}
+
+private suspend fun fetchVodCategories(config: XtreamConfig): List<VodCategory> =
+    withJsonReader(apiUrl(config, "get_vod_categories")) { reader ->
+        val result = mutableListOf<VodCategory>()
+        reader.beginArray()
+        while (reader.hasNext()) {
+            var id = ""
+            var name = ""
+            reader.beginObject()
+            while (reader.hasNext()) {
+                when (reader.nextName()) {
+                    "category_id" -> id = reader.flexString()
+                    "category_name" -> name = reader.flexString()
+                    else -> reader.skipValue()
+                }
+            }
+            reader.endObject()
+            if (id.isNotBlank() && name.isNotBlank()) result += VodCategory(id, name)
+        }
+        reader.endArray()
+        result
+    }
+
+private suspend fun fetchVodCategoryStreams(
+    config: XtreamConfig,
+    category: VodCategory,
+    kids: Boolean,
+    limit: Int
+): List<VodItem> = withJsonReader(
+    apiUrl(config, "get_vod_streams", "&category_id=${enc(category.id)}")
+) { reader ->
+    val result = mutableListOf<VodItem>()
+    reader.beginArray()
+    while (reader.hasNext()) {
+        var id = 0
+        var name = ""
+        var icon = ""
+        var extension = "mp4"
+        var rating = ""
+        reader.beginObject()
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "stream_id" -> id = reader.flexString().toIntOrNull() ?: 0
+                "name" -> name = reader.flexString()
+                "stream_icon" -> icon = reader.flexString()
+                "container_extension" -> extension = reader.flexString().ifBlank { "mp4" }
+                "rating" -> rating = reader.flexString()
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+        if (id > 0 && name.isNotBlank() && result.size < limit) {
+            result += VodItem(
+                id = id,
+                name = name,
+                icon = icon,
+                extension = extension,
+                category = category.name,
+                rating = rating,
+                likelyGreek = !kids && isGreekSubtitleVod("${category.name} $name".lowercase(Locale.getDefault()))
+            )
+        }
+    }
+    reader.endArray()
+    result
+}
+
+private suspend fun <T> withJsonReader(url: String, block: (JsonReader) -> T): T = withContext(Dispatchers.IO) {
+    val conn = URL(url).openConnection() as HttpURLConnection
+    conn.connectTimeout = 8_000
+    conn.readTimeout = 12_000
+    conn.requestMethod = "GET"
+    conn.setRequestProperty("User-Agent", "AGNES-TV/${BuildConfig.VERSION_NAME}")
+    try {
+        val code = conn.responseCode
+        if (code !in 200..299) throw IllegalStateException("HTTP $code από Xtream server")
+        InputStreamReader(conn.inputStream, Charsets.UTF_8).use { input ->
+            JsonReader(input).use { reader -> block(reader) }
+        }
+    } finally {
+        conn.disconnect()
+    }
+}
+
+private fun JsonReader.flexString(): String = when (peek()) {
+    JsonToken.STRING, JsonToken.NUMBER -> nextString()
+    JsonToken.BOOLEAN -> nextBoolean().toString()
+    JsonToken.NULL -> { nextNull(); "" }
+    else -> { skipValue(); "" }
 }
 
 private fun isGreekSubtitleVod(hay: String): Boolean {
