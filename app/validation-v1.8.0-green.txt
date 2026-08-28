@@ -1,3 +1,4 @@
 AGNES TV v1.8.0 GREEN validation trigger after Kotlin newline fix.
 Expected: assembleDebug success and 11/11 Android instrumentation tests.
 Final rerun: cinematic UI test contract aligned and activity isolation fixed.
+TV 1080p deterministic cinematic-scroll validation.
