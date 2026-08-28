@@ -1,0 +1,61 @@
+name: Tag Cinematic Column Once
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add deterministic cinematic scroll test target
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          main = Path('app/src/main/java/mom/agnes/tv/MainActivity.kt')
+          s = main.read_text(encoding='utf-8')
+          if 'import androidx.compose.ui.platform.testTag' not in s:
+              anchor = 'import androidx.compose.ui.platform.LocalContext\n'
+              if anchor not in s:
+                  raise SystemExit('LocalContext import anchor not found')
+              s = s.replace(anchor, anchor + 'import androidx.compose.ui.platform.testTag\n', 1)
+          old = 'modifier = modifier.fillMaxWidth(),\n        contentPadding = PaddingValues(bottom = 40.dp),'
+          new = 'modifier = modifier.fillMaxWidth().testTag("cinematic-vod-column"),\n        contentPadding = PaddingValues(bottom = 40.dp),'
+          if old not in s:
+              raise SystemExit('Cinematic LazyColumn modifier anchor not found')
+          s = s.replace(old, new, 1)
+          main.write_text(s, encoding='utf-8')
+
+          test = Path('app/src/androidTest/java/mom/agnes/tv/CinematicUiRegressionTest.kt')
+          t = test.read_text(encoding='utf-8')
+          t = t.replace('import androidx.compose.ui.test.hasScrollAction\n', '')
+          if 'import androidx.compose.ui.test.onNodeWithTag\n' not in t:
+              t = t.replace('import androidx.compose.ui.test.onNodeWithText\n', 'import androidx.compose.ui.test.onNodeWithTag\nimport androidx.compose.ui.test.onNodeWithText\n', 1)
+          old_test = '''            compose.onNode(hasScrollAction())
+                .performScrollToNode(hasText("ΚΑΛΥΤΕΡΗ ΒΑΘΜΟΛΟΓΙΑ"))'''
+          new_test = '''            compose.onNodeWithTag("cinematic-vod-column")
+                .performScrollToNode(hasText("ΚΑΛΥΤΕΡΗ ΒΑΘΜΟΛΟΓΙΑ"))'''
+          if old_test not in t:
+              raise SystemExit('Ambiguous scroll selector not found')
+          t = t.replace(old_test, new_test, 1)
+          test.write_text(t, encoding='utf-8')
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/tag-cinematic-column-once.yml
+          git add app/src/main/java/mom/agnes/tv/MainActivity.kt \
+                  app/src/androidTest/java/mom/agnes/tv/CinematicUiRegressionTest.kt \
+                  .github/workflows/tag-cinematic-column-once.yml
+          git commit -m "Tag cinematic column for deterministic TV test"
+          git push origin HEAD:main
