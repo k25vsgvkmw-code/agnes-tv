@@ -29,25 +29,20 @@ jobs:
               if anchor not in s:
                   raise SystemExit('LocalContext import anchor not found')
               s = s.replace(anchor, anchor + 'import androidx.compose.ui.platform.testTag\n', 1)
-          old = 'modifier = modifier.fillMaxWidth(),\n        contentPadding = PaddingValues(bottom = 40.dp),'
-          new = 'modifier = modifier.fillMaxWidth().testTag("cinematic-vod-column"),\n        contentPadding = PaddingValues(bottom = 40.dp),'
-          if old not in s:
+          anchor = 'modifier = modifier.fillMaxWidth(),\n        contentPadding = PaddingValues(bottom = 40.dp),'
+          if anchor not in s:
               raise SystemExit('Cinematic LazyColumn modifier anchor not found')
-          s = s.replace(old, new, 1)
+          s = s.replace(anchor, 'modifier = modifier.fillMaxWidth().testTag("cinematic-vod-column"),\n        contentPadding = PaddingValues(bottom = 40.dp),', 1)
           main.write_text(s, encoding='utf-8')
 
           test = Path('app/src/androidTest/java/mom/agnes/tv/CinematicUiRegressionTest.kt')
           t = test.read_text(encoding='utf-8')
+          if 'compose.onNode(hasScrollAction())' not in t:
+              raise SystemExit('Ambiguous scroll selector not found')
           t = t.replace('import androidx.compose.ui.test.hasScrollAction\n', '')
           if 'import androidx.compose.ui.test.onNodeWithTag\n' not in t:
               t = t.replace('import androidx.compose.ui.test.onNodeWithText\n', 'import androidx.compose.ui.test.onNodeWithTag\nimport androidx.compose.ui.test.onNodeWithText\n', 1)
-          old_test = '''            compose.onNode(hasScrollAction())
-                .performScrollToNode(hasText("ΚΑΛΥΤΕΡΗ ΒΑΘΜΟΛΟΓΙΑ"))'''
-          new_test = '''            compose.onNodeWithTag("cinematic-vod-column")
-                .performScrollToNode(hasText("ΚΑΛΥΤΕΡΗ ΒΑΘΜΟΛΟΓΙΑ"))'''
-          if old_test not in t:
-              raise SystemExit('Ambiguous scroll selector not found')
-          t = t.replace(old_test, new_test, 1)
+          t = t.replace('compose.onNode(hasScrollAction())', 'compose.onNodeWithTag("cinematic-vod-column")', 1)
           test.write_text(t, encoding='utf-8')
           PY
 
