@@ -1,5 +1,6 @@
 package mom.agnes.tv.app
 
+import android.view.ViewTreeObserver
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,7 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +31,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -49,9 +51,25 @@ private val ShellGreen = Color(0xFF72F59B)
 fun AgnesTvApp() {
     var selectedSection by remember { mutableStateOf(TvSection.HOME) }
     val initialFocusRequester = remember { FocusRequester() }
+    val rootView = LocalView.current
 
-    LaunchedEffect(Unit) {
-        initialFocusRequester.requestFocus()
+    DisposableEffect(rootView, initialFocusRequester) {
+        val listener = ViewTreeObserver.OnWindowFocusChangeListener { hasWindowFocus ->
+            if (hasWindowFocus) {
+                rootView.post { initialFocusRequester.requestFocus() }
+            }
+        }
+
+        rootView.viewTreeObserver.addOnWindowFocusChangeListener(listener)
+        if (rootView.hasWindowFocus()) {
+            rootView.post { initialFocusRequester.requestFocus() }
+        }
+
+        onDispose {
+            if (rootView.viewTreeObserver.isAlive) {
+                rootView.viewTreeObserver.removeOnWindowFocusChangeListener(listener)
+            }
+        }
     }
 
     Row(
