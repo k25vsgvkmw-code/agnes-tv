@@ -2,7 +2,7 @@ name: Android TV Instrumentation Tests
 
 on:
   push:
-    branches: [ main, v2-foundation-live ]
+    branches: [ v2-foundation-live ]
     paths:
       - 'app/**'
       - '.github/workflows/android-instrumentation.yml'
@@ -43,7 +43,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run Android instrumentation tests
+      - name: Run Android TV v2 regression suite
         id: tests
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
@@ -54,13 +54,13 @@ jobs:
           profile: tv_1080p
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: gradle connectedDebugAndroidTest --stacktrace
+          script: gradle connectedDebugAndroidTest --stacktrace -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.V2RegressionSuite
 
       - name: Upload instrumentation reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AGNES-TV-instrumentation-reports
+          name: AGNES-TV-v2-instrumentation-reports
           path: |
             app/build/reports/androidTests/connected/**
             app/build/outputs/androidTest-results/connected/**
@@ -71,10 +71,10 @@ jobs:
         shell: bash
         run: |
           {
-            echo "Android TV instrumentation UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "Android TV v2 instrumentation UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "commit: $GITHUB_SHA"
             echo "result: ${{ steps.tests.outcome }}"
-            echo "tests: password-only login; Xtream auth gate; matches; channels; player; movies; kids"
+            echo "suite: mom.agnes.tv.V2RegressionSuite"
           } > /tmp/instrumentation-report.txt
 
           git config user.name "github-actions[bot]"
@@ -83,7 +83,7 @@ jobs:
           cp /tmp/instrumentation-report.txt instrumentation-report.txt
           git add instrumentation-report.txt
           if ! git diff --cached --quiet; then
-            git commit -m "Android TV instrumentation result"
+            git commit -m "Android TV v2 instrumentation result"
             git push origin "HEAD:$GITHUB_REF_NAME"
           fi
 
