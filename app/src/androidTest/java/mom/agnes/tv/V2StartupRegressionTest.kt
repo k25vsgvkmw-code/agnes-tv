@@ -1,7 +1,6 @@
 package mom.agnes.tv
 
 import android.content.Context
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
