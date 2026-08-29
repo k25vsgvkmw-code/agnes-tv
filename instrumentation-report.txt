@@ -1,4 +1,4 @@
-Android TV instrumentation UTC: 2026-08-29T10:06:34Z
-commit: b4826cf2bc643e5e45865852116c3124fe8c1a16
+Android TV instrumentation UTC: 2026-08-29T10:11:54Z
+commit: 60e5ccc3a5dd4d90edebde47a2104698a3b86314
 result: failure
 tests: password-only login; Xtream auth gate; matches; channels; player; movies; kids
