@@ -4,92 +4,94 @@
 
 **Goal:** Rebuild AGNES TV’s runtime foundation so the TV shell and cached Live IPTV appear immediately, D-pad focus is product-grade, and Live → Player → Back works without waiting for Movies/Kids or full-catalogue work.
 
-**Architecture:** Replace the monolithic v1.8.0 screen/state flow with a TV-first Compose shell, repository-backed cache-first Live data, Room persistence, Coil image loading, and focused screen state holders. This phase deliberately exposes only functional v2 sections (Home, Live, Settings) and preserves the validated Xtream auth/player behavior needed by later Sports/Movies/Kids plans.
+**Architecture:** Replace the monolithic v1.8.0 presentation path with a TV-first Compose shell, Room-backed cache-first Live repository, streaming Xtream client, Coil image pipeline, and isolated screen state. This milestone intentionally exposes only functional v2 sections (Home, Live, Settings); Sports and VOD are separate plans layered on the validated foundation.
 
-**Tech Stack:** Kotlin, Android SDK 35, Java 17, Jetpack Compose, androidx.tv Material3, AndroidX Lifecycle/ViewModel, Room, Coil Compose, Kotlin coroutines/Flow, Media3 ExoPlayer, MockWebServer, Compose UI tests, Android TV 1080p emulator.
+**Tech Stack:** Android Gradle Plugin 8.7.3, Kotlin 2.0.21, Java 17, Android SDK 35, Jetpack Compose, `androidx.tv:tv-material`, AndroidX Lifecycle/ViewModel, Room + KSP, Coil Compose, Kotlin coroutines/Flow, Media3 ExoPlayer, MockWebServer, Compose UI tests, Android TV `tv_1080p` emulator.
 
 **Spec:** `docs/superpowers/specs/2026-08-29-agnes-tv-premium-redesign-design.md`
 
 ## Global Constraints
 
-- Target package remains `mom.agnes.tv`.
+- Package remains `mom.agnes.tv`.
 - `minSdk = 26`, `targetSdk = 35`, Java 17.
-- Public repository must never contain private Xtream credentials.
-- Provider endpoint discovery/auth rules proven in v1.8.0 must remain compatible.
-- Never buffer the complete VOD catalogue into a `String` or `JSONArray`.
-- Live IPTV startup has priority over Movies/Kids refresh.
-- TV shell rendering must not depend on a network request completing.
-- D-pad focus must use shape/outline/scale/depth; never color alone.
-- TV instrumentation uses Android TV `tv_1080p`, 1920×1080.
-- No APK is called ready until the current full TV test suite is green.
-- This plan does not implement the final Sports, Movies, Kids, Search, Favorites, or Series experiences; those are separate plans built on this foundation.
+- Root project remains Android Gradle Plugin `8.7.3` and Kotlin/Compose plugin `2.0.21`.
+- Public repository contains no private Xtream credentials or private prefill asset.
+- Preserve the endpoint-discovery/auth behavior already proven by the v1.8.0 login flow.
+- Never block shell rendering on a provider request.
+- Never fetch Movies/Kids as part of Phase 1 startup.
+- Never buffer a huge provider catalogue into a `String`/`JSONArray` path.
+- D-pad focus uses outline + scale + depth; selected navigation also has a persistent geometric marker.
+- Focus changes perform no network request, image reload, or expensive blur computation.
+- TV CI uses Android TV `tv_1080p` / 1920×1080.
+- No Phase 1 build is called validated until unit tests, TV instrumentation, delayed-network startup, stale-cache behavior, Live → Player → Back, and memory stress are green.
+- Phase 1 is an engineering milestone, not the final private APK release.
 
 ---
 
-## File Structure Locked by This Plan
-
-Create focused files rather than adding new behavior to `MainActivity.kt`:
+## File Structure
 
 ```text
 app/src/main/java/mom/agnes/tv/
-  MainActivity.kt                         # Activity only; mounts AgnesTvApp
+  MainActivity.kt
+  LoginActivity.kt
+  PrefillConfig.kt
   app/
-    AgnesTvApp.kt                         # root composition + top-level route state
-    TvSection.kt                          # HOME / LIVE / SETTINGS enum + labels
+    AgnesTvApp.kt
+    TvSection.kt
   data/
     xtream/
-      XtreamConfig.kt                     # config model/load/save bridge
-      XtreamClient.kt                     # HTTP + streaming live/category/EPG parsing
+      XtreamConfig.kt
+      XtreamClient.kt
+      LiveChannelRemote.kt
     cache/
-      AgnesTvDatabase.kt                  # Room database
-      LiveChannelEntity.kt                # cached channel metadata/current programme
-      LiveChannelDao.kt                   # observable cached Live snapshot
+      AgnesTvDatabase.kt
+      LiveChannelEntity.kt
+      LiveChannelDao.kt
     repository/
-      LiveRepository.kt                   # cache-first Live contract and refresh
-  ui/
-    shell/
-      TvShell.kt                          # persistent premium left nav + content host
-      TvShellViewModel.kt                 # selected route + connection state only
-    home/
-      HomeScreen.kt                       # cached Live-first hero/rail
-      HomeViewModel.kt                    # lightweight home summary
-    live/
-      LiveScreen.kt                       # channel browsing UI
-      LiveViewModel.kt                    # cached channels + refresh state
-    player/
-      PlayerScreen.kt                     # fullscreen Media3 surface
-      PlayerController.kt                 # player creation/release contract
-    components/
-      TvNavItem.kt                        # selected/focus contract
-      TvChannelCard.kt                    # channel card with exact focus contract
-      TvLoadingStatus.kt                  # unobtrusive refresh/offline status
-    theme/
-      AgnesTvTheme.kt                     # v2 color/type/focus tokens
+      LiveRepository.kt
+      LiveSnapshot.kt
   image/
-    AgnesImageLoader.kt                   # Coil singleton/config
+    AgnesImageLoader.kt
+  ui/
+    theme/AgnesTvTheme.kt
+    shell/TvShell.kt
+    shell/TvShellViewModel.kt
+    components/TvNavItem.kt
+    components/TvChannelCard.kt
+    components/TvLoadingStatus.kt
+    home/HomeScreen.kt
+    home/HomeViewModel.kt
+    live/LiveScreen.kt
+    live/LiveViewModel.kt
+    player/PlayerRequest.kt
+    player/PlayerController.kt
+    player/PlayerScreen.kt
 ```
 
 Tests:
 
 ```text
 app/src/test/java/mom/agnes/tv/
-  data/repository/LiveRepositoryTest.kt
   data/xtream/XtreamClientTest.kt
+  data/repository/LiveRepositoryTest.kt
 
 app/src/androidTest/java/mom/agnes/tv/
+  data/cache/LiveChannelDaoTest.kt
   V2StartupRegressionTest.kt
   V2TvFocusRegressionTest.kt
-  V2LivePlayerFlowTest.kt
+  V2ImageLoadingRegressionTest.kt
   V2StaleCacheRegressionTest.kt
+  V2LivePlayerFlowTest.kt
+  V2HomeRegressionTest.kt
+  V2PerformanceRegressionTest.kt
 ```
-
-Existing `LoginActivity.kt` / `PrefillConfig.kt` remain the credential entry/auto-login boundary. Existing v1.8.0 `MainActivity.kt` is reduced rather than retained as a second UI architecture.
 
 ---
 
-### Task 1: Establish the v2 dependency and application shell boundary
+### Task 1: Establish v2 dependencies and a network-independent shell
 
 **Files:**
+- Modify: `build.gradle.kts`
 - Modify: `app/build.gradle.kts`
 - Modify: `app/src/main/java/mom/agnes/tv/MainActivity.kt`
 - Create: `app/src/main/java/mom/agnes/tv/app/AgnesTvApp.kt`
@@ -98,47 +100,57 @@ Existing `LoginActivity.kt` / `PrefillConfig.kt` remain the credential entry/aut
 - Test: `app/src/androidTest/java/mom/agnes/tv/V2StartupRegressionTest.kt`
 
 **Interfaces:**
-- Consumes: existing authenticated launch into `MainActivity`.
-- Produces: `@Composable fun AgnesTvApp()`, `enum class TvSection { HOME, LIVE, SETTINGS }`, `@Composable fun AgnesTvTheme(content: @Composable () -> Unit)`.
+- Produces `@Composable fun AgnesTvApp()`.
+- Produces `enum class TvSection { HOME, LIVE, SETTINGS }`.
+- Produces `@Composable fun AgnesTvTheme(content: @Composable () -> Unit)`.
 
-- [ ] **Step 1: Write the failing startup regression test**
+- [ ] **Step 1: Write the failing startup test**
 
-Create `V2StartupRegressionTest.kt` with a test that launches `MainActivity` using already-verified preferences and asserts the v2 shell appears without any MockWebServer response being required:
+`V2StartupRegressionTest.kt` launches an already-verified configuration against a server that delays every response for 30 seconds:
 
 ```kotlin
 @Test
 fun shellRendersBeforeNetworkCompletes() {
-    val server = MockWebServer()
     server.dispatcher = object : Dispatcher() {
         override fun dispatch(request: RecordedRequest): MockResponse =
             MockResponse().setBodyDelay(30, TimeUnit.SECONDS).setBody("[]")
     }
-    server.start()
     seedVerifiedConfig(server.url("/").toString().trimEnd('/'))
 
     ActivityScenario.launch(MainActivity::class.java).use {
         compose.waitUntil(2_000) {
-            compose.onAllNodes(hasText("AGNES TV")).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(hasTestTag("v2-shell")).fetchSemanticsNodes().isNotEmpty()
         }
-        assertTrue(compose.onAllNodes(hasText("ΖΩΝΤΑΝΑ")).fetchSemanticsNodes().isNotEmpty())
+        compose.onNodeWithText("AGNES TV").assertExists()
+        compose.onNodeWithText("ΖΩΝΤΑΝΑ").assertExists()
     }
 }
 ```
 
-- [ ] **Step 2: Run the test and verify RED**
-
-Run:
+- [ ] **Step 2: Run RED**
 
 ```bash
 gradle :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.V2StartupRegressionTest
 ```
 
-Expected: FAIL because the v2 shell contract does not exist yet.
+Expected: FAIL because the v2 shell/tag does not exist.
 
-- [ ] **Step 3: Add exact dependencies**
+- [ ] **Step 3: Add exact build plugins/dependencies**
 
-In `app/build.gradle.kts`, keep the existing Compose BOM and Media3 dependencies; add:
+Root `build.gradle.kts` adds KSP using the same Kotlin line:
+
+```kotlin
+id("com.google.devtools.ksp") version "2.0.21-1.0.28" apply false
+```
+
+`app/build.gradle.kts` adds:
+
+```kotlin
+id("com.google.devtools.ksp")
+```
+
+and dependencies:
 
 ```kotlin
 implementation("androidx.tv:tv-material:1.0.0")
@@ -150,13 +162,7 @@ ksp("androidx.room:room-compiler:2.6.1")
 implementation("io.coil-kt:coil-compose:2.7.0")
 ```
 
-Add the KSP plugin to `plugins`:
-
-```kotlin
-id("com.google.devtools.ksp") version "2.0.21-1.0.28"
-```
-
-Bump the development line to:
+Set development version:
 
 ```kotlin
 versionCode = 24
@@ -165,21 +171,22 @@ versionName = "2.0.0-dev1"
 
 - [ ] **Step 4: Reduce `MainActivity` to the composition entry point**
 
-`MainActivity.kt` should contain only Activity lifecycle setup and:
-
 ```kotlin
-setContent {
-    AgnesTvTheme {
-        AgnesTvApp()
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            AgnesTvTheme {
+                AgnesTvApp()
+            }
+        }
     }
 }
 ```
 
-Do not move v1.8.0 functions into the new file wholesale. Later tasks migrate only required behavior.
+Do not copy the old monolithic UI functions into `AgnesTvApp.kt`.
 
-- [ ] **Step 5: Create root section contract**
-
-`TvSection.kt`:
+- [ ] **Step 5: Add the exact section contract**
 
 ```kotlin
 enum class TvSection(val label: String) {
@@ -189,53 +196,51 @@ enum class TvSection(val label: String) {
 }
 ```
 
-`AgnesTvApp.kt` initially renders a simple v2 shell skeleton with `AGNES TV` and these three functional sections only.
+Initial shell renders these functional sections only and has `Modifier.testTag("v2-shell")`.
 
-- [ ] **Step 6: Run startup test and compile**
-
-Run:
+- [ ] **Step 6: Run GREEN**
 
 ```bash
 gradle :app:assembleDebug :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.V2StartupRegressionTest
 ```
 
-Expected: PASS; shell appears before delayed network response.
+Expected: PASS; shell appears while provider response is still delayed.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add app/build.gradle.kts app/src/main/java/mom/agnes/tv/MainActivity.kt \
-  app/src/main/java/mom/agnes/tv/app \
-  app/src/main/java/mom/agnes/tv/ui/theme \
+git add build.gradle.kts app/build.gradle.kts app/src/main/java/mom/agnes/tv/MainActivity.kt \
+  app/src/main/java/mom/agnes/tv/app app/src/main/java/mom/agnes/tv/ui/theme \
   app/src/androidTest/java/mom/agnes/tv/V2StartupRegressionTest.kt
 git commit -m "refactor: establish AGNES TV v2 shell"
 ```
 
 ---
 
-### Task 2: Introduce Room cache for instant Live content
+### Task 2: Add persistent Room Live cache
 
 **Files:**
 - Create: `app/src/main/java/mom/agnes/tv/data/cache/LiveChannelEntity.kt`
 - Create: `app/src/main/java/mom/agnes/tv/data/cache/LiveChannelDao.kt`
 - Create: `app/src/main/java/mom/agnes/tv/data/cache/AgnesTvDatabase.kt`
-- Test: `app/src/test/java/mom/agnes/tv/data/cache/LiveChannelDaoTest.kt`
+- Test: `app/src/androidTest/java/mom/agnes/tv/data/cache/LiveChannelDaoTest.kt`
 
 **Interfaces:**
-- Produces: `LiveChannelEntity`, `LiveChannelDao.observeAll(): Flow<List<LiveChannelEntity>>`, `replaceAll(items: List<LiveChannelEntity>, refreshedAt: Long)` implemented transactionally through repository/database helper.
+- Produces `LiveChannelDao.observeAll(): Flow<List<LiveChannelEntity>>`.
+- Produces `LiveChannelDao.replaceAll(items: List<LiveChannelEntity>)` as a transaction.
 
-- [ ] **Step 1: Write the failing cache contract test**
+- [ ] **Step 1: Write the failing Android Room test**
 
-Use an in-memory Room database and assert cached rows are observable in deterministic sort order:
+Use `ApplicationProvider.getApplicationContext()` and an in-memory Room DB:
 
 ```kotlin
 @Test
-fun cachedChannelsAreObservableWithoutNetwork() = runTest {
-    dao.upsertAll(
+fun cachedChannelsAreObservableInStableOrder() = runTest {
+    dao.replaceAll(
         listOf(
-            LiveChannelEntity(2, "ERT 2", "", "News", 200L),
-            LiveChannelEntity(1, "ERT 1", "", "Morning", 200L)
+            LiveChannelEntity(2, "Channel B", "", null, 200L, 2),
+            LiveChannelEntity(1, "Channel A", "", "Morning", 200L, 1)
         )
     )
 
@@ -243,17 +248,16 @@ fun cachedChannelsAreObservableWithoutNetwork() = runTest {
 }
 ```
 
-- [ ] **Step 2: Verify RED**
-
-Run:
+- [ ] **Step 2: Run RED**
 
 ```bash
-gradle :app:testDebugUnitTest --tests "*LiveChannelDaoTest*"
+gradle :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.data.cache.LiveChannelDaoTest
 ```
 
-Expected: compile/test FAIL because cache types do not exist.
+Expected: FAIL because database types do not exist.
 
-- [ ] **Step 3: Define the entity**
+- [ ] **Step 3: Implement entity**
 
 ```kotlin
 @Entity(tableName = "live_channels")
@@ -263,11 +267,11 @@ data class LiveChannelEntity(
     val logoUrl: String,
     val currentProgramme: String?,
     val refreshedAt: Long,
-    val sortKey: Int = streamId
+    val sortKey: Int
 )
 ```
 
-- [ ] **Step 4: Define DAO**
+- [ ] **Step 4: Implement DAO with exact transactional replacement**
 
 ```kotlin
 @Dao
@@ -283,10 +287,16 @@ interface LiveChannelDao {
 
     @Query("DELETE FROM live_channels")
     suspend fun clear()
+
+    @Transaction
+    suspend fun replaceAll(items: List<LiveChannelEntity>) {
+        clear()
+        upsertAll(items)
+    }
 }
 ```
 
-- [ ] **Step 5: Define database**
+- [ ] **Step 5: Implement database singleton**
 
 ```kotlin
 @Database(entities = [LiveChannelEntity::class], version = 1, exportSchema = true)
@@ -295,88 +305,77 @@ abstract class AgnesTvDatabase : RoomDatabase() {
 }
 ```
 
-Expose a singleton builder from `companion object fun get(context: Context): AgnesTvDatabase` using `applicationContext`.
+`AgnesTvDatabase.get(context)` uses `context.applicationContext` and database name `agnes-tv.db`.
 
-- [ ] **Step 6: Run cache tests**
-
-Run:
+- [ ] **Step 6: Run GREEN and commit**
 
 ```bash
-gradle :app:testDebugUnitTest --tests "*LiveChannelDaoTest*"
-```
-
-Expected: PASS.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add app/src/main/java/mom/agnes/tv/data/cache app/src/test/java/mom/agnes/tv/data/cache
+gradle :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.data.cache.LiveChannelDaoTest
+git add app/src/main/java/mom/agnes/tv/data/cache app/src/androidTest/java/mom/agnes/tv/data/cache
 git commit -m "feat: add persistent live channel cache"
 ```
 
 ---
 
-### Task 3: Extract Xtream config and streaming Live client from the monolith
+### Task 3: Extract config and a streaming Xtream Live client
 
 **Files:**
 - Create: `app/src/main/java/mom/agnes/tv/data/xtream/XtreamConfig.kt`
+- Create: `app/src/main/java/mom/agnes/tv/data/xtream/LiveChannelRemote.kt`
 - Create: `app/src/main/java/mom/agnes/tv/data/xtream/XtreamClient.kt`
 - Modify: `app/src/main/java/mom/agnes/tv/LoginActivity.kt`
-- Modify: `app/src/main/java/mom/agnes/tv/PrefillConfig.kt` only if imports/types require it; do not change privacy behavior.
+- Modify: `app/src/main/java/mom/agnes/tv/PrefillConfig.kt` only for moved type imports if necessary.
 - Test: `app/src/test/java/mom/agnes/tv/data/xtream/XtreamClientTest.kt`
 
 **Interfaces:**
-- Produces: `data class XtreamConfig(server: String, username: String, password: String)` and `suspend fun XtreamClient.fetchLiveChannels(config: XtreamConfig): List<LiveChannelRemote>`.
-- Preserves verified-pref keys used by current login flow.
 
-- [ ] **Step 1: Write failing streaming parse/request tests**
+```kotlin
+data class XtreamConfig(val server: String, val username: String, val password: String)
+data class LiveChannelRemote(val streamId: Int, val name: String, val logoUrl: String)
 
-Use MockWebServer to assert the client requests `action=get_live_streams` and parses a generated array without `JSONArray`:
+class XtreamClient {
+    suspend fun fetchLiveChannels(config: XtreamConfig): List<LiveChannelRemote>
+}
+```
+
+- [ ] **Step 1: Write failing endpoint/parser test**
 
 ```kotlin
 @Test
-fun fetchLiveChannelsUsesLiveEndpointAndParsesStreamingJson() = runTest {
+fun fetchLiveChannelsUsesGetLiveStreamsAndStreamingParser() = runTest {
     server.enqueue(json("""[
       {"stream_id":11,"name":"Channel A","stream_icon":"a.png"},
       {"stream_id":12,"name":"Channel B","stream_icon":"b.png"}
     ]"""))
 
-    val items = client.fetchLiveChannels(config(server))
+    val result = client.fetchLiveChannels(config(server))
 
-    assertEquals(listOf(11, 12), items.map { it.streamId })
-    assertEquals("get_live_streams", server.takeRequest().requestUrl!!.queryParameter("action"))
+    assertEquals(listOf(11, 12), result.map { it.streamId })
+    assertEquals(
+        "get_live_streams",
+        server.takeRequest().requestUrl!!.queryParameter("action")
+    )
 }
 ```
 
-Add a large generated-response test (for example 10,000 small objects) and assert the parser returns capped/sane results without constructing a `JSONArray` path.
+Add a generated 10,000-object response test. The test verifies correct parsing/capping and the implementation code review verifies `JsonReader` is used rather than `readText()` + `JSONArray`.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
 
 ```bash
 gradle :app:testDebugUnitTest --tests "*XtreamClientTest*"
 ```
 
-Expected: FAIL because extracted client does not exist.
+- [ ] **Step 3: Implement client**
 
-- [ ] **Step 3: Implement streaming client**
+Use `HttpURLConnection`, `InputStreamReader`, and `android.util.JsonReader` inside `withContext(Dispatchers.IO)`. Parse only `stream_id`, `name`, `stream_icon`; skip unknown fields. Cap returned Live rows at 3,000 to bound UI/cache work. Use 7-second connect/read timeouts, require HTTP 2xx, close reader/connection in `use`/`finally`.
 
-Use `HttpURLConnection`, `InputStreamReader`, and `JsonReader` inside `withContext(Dispatchers.IO)`. Parse only fields needed by Live UI:
+- [ ] **Step 4: Move config load/save helpers without changing pref keys**
 
-```kotlin
-data class LiveChannelRemote(
-    val streamId: Int,
-    val name: String,
-    val logoUrl: String
-)
-```
+`XtreamConfig.kt` owns current `agnes_xtream` preference bridge. `LoginActivity` and private prefill behavior continue to save/read the same server/username/password/verified keys. No secret literal is added.
 
-The public client method must close readers/connections with `use`/`finally`, enforce connect/read timeouts, reject non-2xx responses, and never return a partially constructed `JSONArray`.
-
-- [ ] **Step 4: Preserve config bridge**
-
-Move config load/save helpers out of `MainActivity.kt` into `XtreamConfig.kt`, preserving the exact preference file/key behavior already used by `LoginActivity` so verified auto-login remains compatible.
-
-- [ ] **Step 5: Run tests and existing login regression**
+- [ ] **Step 5: Run parser + login regressions**
 
 ```bash
 gradle :app:testDebugUnitTest --tests "*XtreamClientTest*"
@@ -384,29 +383,25 @@ gradle :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.AgnesTvFlowTest
 ```
 
-Expected: Xtream unit tests PASS; existing auth/login tests remain green or are migrated with equivalent assertions if class names changed.
-
 - [ ] **Step 6: Commit**
 
 ```bash
 git add app/src/main/java/mom/agnes/tv/data/xtream \
-  app/src/main/java/mom/agnes/tv/LoginActivity.kt \
-  app/src/main/java/mom/agnes/tv/PrefillConfig.kt \
+  app/src/main/java/mom/agnes/tv/LoginActivity.kt app/src/main/java/mom/agnes/tv/PrefillConfig.kt \
   app/src/test/java/mom/agnes/tv/data/xtream
 git commit -m "refactor: extract streaming Xtream live client"
 ```
 
 ---
 
-### Task 4: Build cache-first `LiveRepository`
+### Task 4: Implement cache-first `LiveRepository`
 
 **Files:**
+- Create: `app/src/main/java/mom/agnes/tv/data/repository/LiveSnapshot.kt`
 - Create: `app/src/main/java/mom/agnes/tv/data/repository/LiveRepository.kt`
 - Test: `app/src/test/java/mom/agnes/tv/data/repository/LiveRepositoryTest.kt`
 
 **Interfaces:**
-- Consumes: `LiveChannelDao`, `XtreamClient`, `XtreamConfig`.
-- Produces:
 
 ```kotlin
 data class LiveSnapshot(
@@ -416,19 +411,27 @@ data class LiveSnapshot(
     val lastError: String?
 )
 
-interface LiveRepository {
+class LiveRepository(
+    private val dao: LiveChannelDao,
+    private val client: XtreamClient,
+    private val clock: () -> Long = System::currentTimeMillis
+) {
     val snapshot: Flow<LiveSnapshot>
     suspend fun refresh(config: XtreamConfig)
 }
 ```
 
-- [ ] **Step 1: Write failing stale-cache test**
+- [ ] **Step 1: Write failing fake-DAO repository tests**
+
+Use a JVM fake implementation of `LiveChannelDao` backed by `MutableStateFlow`, avoiding Room in local unit tests.
+
+Failure test:
 
 ```kotlin
 @Test
-fun cachedChannelsRemainVisibleWhenRefreshFails() = runTest {
-    dao.upsertAll(listOf(cachedChannel(1, "Cached One")))
-    client.nextFailure = IOException("provider slow")
+fun refreshFailureKeepsCachedChannelsVisible() = runTest {
+    fakeDao.replaceAll(listOf(entity(1, "Cached One")))
+    fakeClient.failure = IOException("provider slow")
 
     repository.refresh(config)
     val state = repository.snapshot.first { !it.refreshing }
@@ -439,47 +442,37 @@ fun cachedChannelsRemainVisibleWhenRefreshFails() = runTest {
 }
 ```
 
-Also add a success test proving network rows replace/update cache without blanking it first.
+Success test proves old cache stays visible while refresh is in progress and is atomically replaced only after a successful fetch.
 
-- [ ] **Step 2: Verify RED**
-
-```bash
-gradle :app:testDebugUnitTest --tests "*LiveRepositoryTest*"
-```
-
-Expected: FAIL because repository does not exist.
-
-- [ ] **Step 3: Implement cache-first state**
-
-Construct snapshot using `combine` of DAO Flow plus internal refresh/error state. `refresh()` must:
-
-1. set `refreshing=true`;
-2. fetch remote channels on IO;
-3. map remote items to entities with a single `refreshedAt` timestamp;
-4. update cache in one database transaction;
-5. on failure, retain cached rows and set `stale=true`/`lastError`;
-6. always finish with `refreshing=false`.
-
-Do not clear the table before successful data is available.
-
-- [ ] **Step 4: Run repository tests**
+- [ ] **Step 2: Run RED**
 
 ```bash
 gradle :app:testDebugUnitTest --tests "*LiveRepositoryTest*"
 ```
 
-Expected: PASS.
+- [ ] **Step 3: Implement repository state**
 
-- [ ] **Step 5: Commit**
+`refresh()` sequence is exact:
+
+1. set `refreshing=true` without touching cached rows;
+2. fetch remote rows;
+3. map to entities using one `refreshedAt` timestamp and deterministic `sortKey=index`;
+4. call `dao.replaceAll(mapped)` only after fetch succeeds;
+5. success sets `stale=false,lastError=null`;
+6. failure preserves DAO rows and sets `stale=true,lastError=<sanitized message>`;
+7. finally sets `refreshing=false`.
+
+- [ ] **Step 4: Run GREEN and commit**
 
 ```bash
+gradle :app:testDebugUnitTest --tests "*LiveRepositoryTest*"
 git add app/src/main/java/mom/agnes/tv/data/repository app/src/test/java/mom/agnes/tv/data/repository
 git commit -m "feat: add cache-first live repository"
 ```
 
 ---
 
-### Task 5: Implement premium TV navigation and deterministic focus contract
+### Task 5: Build the TV shell and exact focus contract
 
 **Files:**
 - Create: `app/src/main/java/mom/agnes/tv/ui/components/TvNavItem.kt`
@@ -491,57 +484,56 @@ git commit -m "feat: add cache-first live repository"
 - Test: `app/src/androidTest/java/mom/agnes/tv/V2TvFocusRegressionTest.kt`
 
 **Interfaces:**
-- Produces `TvShell(selected: TvSection, onSectionSelected: (TvSection) -> Unit, content: @Composable () -> Unit)` and reusable focus visuals.
 
-- [ ] **Step 1: Write the failing focus semantics test**
+```kotlin
+@Composable
+fun TvShell(
+    selected: TvSection,
+    onSectionSelected: (TvSection) -> Unit,
+    content: @Composable BoxScope.() -> Unit
+)
+```
 
-Give each focusable nav item semantics describing selected/focused state. Test D-pad movement from HOME to LIVE and assert both semantic state and visible contract marker change:
+- [ ] **Step 1: Write failing TV focus test**
+
+The shell initially requests focus on HOME. Use standard Compose selected semantics, not a custom undefined key:
 
 ```kotlin
 @Test
-fun dpadFocusAndSelectedSectionAreDistinctAndDeterministic() {
+fun dpadFocusAndSelectedSectionAreUnmistakable() {
     launchVerifiedV2()
-    compose.onNodeWithTag("nav-HOME").requestFocus()
+    compose.onNodeWithTag("nav-HOME").assertIsFocused().assertIsSelected()
+
     device.pressDPadDown()
     compose.waitForIdle()
-
-    compose.onNodeWithTag("nav-LIVE").assertIsFocused()
-    compose.onNodeWithTag("nav-HOME").assert(SemanticsMatcher.expectValue(SelectedKey, true))
+    compose.onNodeWithTag("nav-LIVE").assertIsFocused().assertIsNotSelected()
 
     device.pressEnter()
     compose.waitForIdle()
-    compose.onNodeWithTag("nav-LIVE").assert(SemanticsMatcher.expectValue(SelectedKey, true))
+    compose.onNodeWithTag("nav-LIVE").assertIsSelected()
 }
 ```
 
-Use a stable `testTag` for tests, but actual UI feedback must remain visual and not depend on test semantics.
+- [ ] **Step 2: Run RED**
 
-- [ ] **Step 2: Verify RED**
+Run `V2TvFocusRegressionTest`; expected FAIL.
 
-Run the single instrumentation test; expect FAIL because v2 focus contract does not exist.
+- [ ] **Step 3: Implement exact visual focus tokens**
 
-- [ ] **Step 3: Implement focus tokens**
-
-Use TV Material focusable components. Focused elements must apply:
+Focused nav/card applies:
 
 ```kotlin
 Modifier
     .scale(if (focused) 1.06f else 1f)
-    .border(
-        width = if (focused) 3.dp else 0.dp,
-        color = if (focused) Color.White else Color.Transparent,
-        shape = shape
-    )
+    .border(if (focused) 3.dp else 0.dp, if (focused) Color.White else Color.Transparent, shape)
     .shadow(if (focused) 14.dp else 0.dp, shape)
 ```
 
-Selected nav section also gets a persistent geometric marker (for example a 4.dp vertical bar) whether or not it currently has focus.
+Selected nav adds a persistent 4.dp vertical marker even when focus has moved away. Animate only scale/elevation over 100–140 ms. Do not animate blur/background bitmaps.
 
-No blur, image reload, or network call may run from `onFocusChanged`.
+- [ ] **Step 4: Implement Phase 1 navigation only**
 
-- [ ] **Step 4: Implement shell**
-
-Left rail order in Phase 1:
+Order:
 
 ```text
 AGNES TV
@@ -550,17 +542,14 @@ AGNES TV
 ΡΥΘΜΙΣΕΙΣ
 ```
 
-Do not display Sports/Movies/Kids placeholders during this intermediate foundation milestone.
+No dead Sports/Movies/Kids placeholders in this milestone.
 
-- [ ] **Step 5: Run focus test**
-
-Expected: PASS on TV emulator.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Run GREEN and commit**
 
 ```bash
-git add app/src/main/java/mom/agnes/tv/ui/components \
-  app/src/main/java/mom/agnes/tv/ui/shell \
+gradle :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.V2TvFocusRegressionTest
+git add app/src/main/java/mom/agnes/tv/ui/components app/src/main/java/mom/agnes/tv/ui/shell \
   app/src/main/java/mom/agnes/tv/app/AgnesTvApp.kt \
   app/src/androidTest/java/mom/agnes/tv/V2TvFocusRegressionTest.kt
 git commit -m "feat: add premium TV shell and focus contract"
@@ -568,33 +557,33 @@ git commit -m "feat: add premium TV shell and focus contract"
 
 ---
 
-### Task 6: Configure production image loading with Coil
+### Task 6: Replace manual bitmaps with one bounded Coil pipeline
 
 **Files:**
 - Create: `app/src/main/java/mom/agnes/tv/image/AgnesImageLoader.kt`
 - Modify: `app/src/main/java/mom/agnes/tv/ui/components/TvChannelCard.kt`
-- Remove migrated manual poster bitmap path from `MainActivity.kt` as the monolith is retired.
 - Test: `app/src/androidTest/java/mom/agnes/tv/V2ImageLoadingRegressionTest.kt`
 
 **Interfaces:**
-- Produces: `fun createAgnesImageLoader(context: Context): ImageLoader` and channel-card `AsyncImage` requests with bounded dimensions.
+- Produces `fun createAgnesImageLoader(context: Context): ImageLoader`.
+- Channel-logo requests are explicitly sized to `240×135` pixels for the initial 1080p card design.
 
-- [ ] **Step 1: Write failing image request regression**
+- [ ] **Step 1: Write failing image-cache test**
 
-Expose a debug/test-only semantic content description or injectable image loader to assert a channel logo request uses a bounded target size. The card test should render 100 channel cards and verify focus movement does not increase MockWebServer image requests for already-cached visible URLs.
+Render a rail/list with repeated focus movement across already-visible cards whose logos come from MockWebServer. Record `server.requestCount`, move focus left/right over the same cards repeatedly, wait for idle, and assert request count does not increase after initial successful loads.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
 
-Run only `V2ImageLoadingRegressionTest`; expected FAIL against old/manual image path.
+Expected: FAIL or expose repeated/manual fetch behavior in the old path.
 
-- [ ] **Step 3: Implement one app-scoped Coil loader**
-
-Configure:
+- [ ] **Step 3: Implement singleton Coil configuration**
 
 ```kotlin
-ImageLoader.Builder(context)
+ImageLoader.Builder(context.applicationContext)
     .memoryCache {
-        MemoryCache.Builder(context).maxSizePercent(0.12).build()
+        MemoryCache.Builder(context.applicationContext)
+            .maxSizePercent(0.12)
+            .build()
     }
     .diskCache {
         DiskCache.Builder()
@@ -606,25 +595,21 @@ ImageLoader.Builder(context)
     .build()
 ```
 
-`TvChannelCard` requests a logo/card size close to rendered dimensions rather than source dimensions. Future hero/backdrop screens will define separate bounded requests.
+`TvChannelCard` uses `AsyncImage`/`ImageRequest.Builder(...).data(url).size(240, 135)` with a local stable placeholder. Focus changes do not alter the request URL or size.
 
-- [ ] **Step 4: Run test and inspect request count**
-
-Expected: PASS; focus-only movement over cached/visible cards does not trigger repeated full network fetches.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Run GREEN and commit**
 
 ```bash
-git add app/src/main/java/mom/agnes/tv/image \
-  app/src/main/java/mom/agnes/tv/ui/components/TvChannelCard.kt \
-  app/src/androidTest/java/mom/agnes/tv/V2ImageLoadingRegressionTest.kt \
-  app/src/main/java/mom/agnes/tv/MainActivity.kt
-git commit -m "perf: replace manual bitmap loading with Coil cache"
+gradle :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.V2ImageLoadingRegressionTest
+git add app/src/main/java/mom/agnes/tv/image app/src/main/java/mom/agnes/tv/ui/components/TvChannelCard.kt \
+  app/src/androidTest/java/mom/agnes/tv/V2ImageLoadingRegressionTest.kt
+git commit -m "perf: add bounded cached TV image pipeline"
 ```
 
 ---
 
-### Task 7: Build `LiveViewModel` and instant Live screen
+### Task 7: Build instant Live screen and stale-cache behavior
 
 **Files:**
 - Create: `app/src/main/java/mom/agnes/tv/ui/live/LiveViewModel.kt`
@@ -633,123 +618,114 @@ git commit -m "perf: replace manual bitmap loading with Coil cache"
 - Test: `app/src/androidTest/java/mom/agnes/tv/V2StaleCacheRegressionTest.kt`
 
 **Interfaces:**
-- Consumes: `LiveRepository.snapshot`, verified `XtreamConfig`.
-- Produces:
 
 ```kotlin
 data class LiveUiState(
-    val channels: List<LiveChannelUi>,
-    val refreshing: Boolean,
-    val stale: Boolean,
-    val message: String?
+    val channels: List<LiveChannelEntity> = emptyList(),
+    val refreshing: Boolean = false,
+    val stale: Boolean = false,
+    val message: String? = null
 )
 ```
 
-and `fun refresh()`.
-
 - [ ] **Step 1: Write failing stale-cache UI test**
 
-Seed Room with two channels, configure MockWebServer to delay/fail, launch Live screen, and assert cached channel names are visible before refresh completes plus an unobtrusive `ΕΝΗΜΕΡΩΣΗ…`/offline indicator.
+Seed Room with two channels. Delay provider response 30 seconds. Launch Live and require both cached names to appear within 2 seconds while `ΕΝΗΜΕΡΩΣΗ…` is visible.
 
-- [ ] **Step 2: Verify RED**
+- [ ] **Step 2: Run RED**
 
-Expected: FAIL because Live screen/ViewModel do not exist.
+Expected: FAIL because v2 Live screen does not exist.
 
 - [ ] **Step 3: Implement ViewModel**
 
-Collect repository snapshot with `stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialState)` and launch `repository.refresh(config)` once per visible/explicit refresh cycle, not every recomposition.
+Collect repository `snapshot` using `stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LiveUiState())`. Trigger one refresh from ViewModel initialization/explicit refresh intent; never from composable recomposition.
 
-- [ ] **Step 4: Implement Live screen**
+- [ ] **Step 4: Implement locked Live layout**
 
-Use `LazyColumn` or TV-appropriate lazy grid based on measured readability, but retain one row/card composition per channel. Each item shows:
+Use a dense `LazyColumn`, not a grid. Each 88.dp row contains:
 
-- logo;
+- 112×63-ish logo region;
 - channel name;
-- current programme if present;
-- stable placeholder when EPG/logo absent.
+- current programme text if present;
+- `Δεν υπάρχει EPG` only when programme metadata is absent;
+- full-row focus surface using the Task 5 contract.
 
-No fullscreen loading screen. Cached list remains present during refresh.
+Keep cached rows on screen while refreshing. Use `TvLoadingStatus` as a small status overlay/header, never a fullscreen spinner.
 
-- [ ] **Step 5: Run stale-cache test**
-
-Expected: PASS with delayed/failed provider mock.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Run GREEN and commit**
 
 ```bash
-git add app/src/main/java/mom/agnes/tv/ui/live \
-  app/src/main/java/mom/agnes/tv/app/AgnesTvApp.kt \
+gradle :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.V2StaleCacheRegressionTest
+git add app/src/main/java/mom/agnes/tv/ui/live app/src/main/java/mom/agnes/tv/app/AgnesTvApp.kt \
   app/src/androidTest/java/mom/agnes/tv/V2StaleCacheRegressionTest.kt
-git commit -m "feat: add instant cache-first Live IPTV screen"
+git commit -m "feat: add instant cache-first Live IPTV"
 ```
 
 ---
 
-### Task 8: Migrate player into an isolated TV route with exact focus restoration
+### Task 8: Isolate Media3 player and restore exact Live focus on Back
 
 **Files:**
+- Create: `app/src/main/java/mom/agnes/tv/ui/player/PlayerRequest.kt`
 - Create: `app/src/main/java/mom/agnes/tv/ui/player/PlayerController.kt`
 - Create: `app/src/main/java/mom/agnes/tv/ui/player/PlayerScreen.kt`
-- Modify: `app/src/main/java/mom/agnes/tv/app/AgnesTvApp.kt`
 - Modify: `app/src/main/java/mom/agnes/tv/ui/live/LiveScreen.kt`
+- Modify: `app/src/main/java/mom/agnes/tv/app/AgnesTvApp.kt`
 - Test: `app/src/androidTest/java/mom/agnes/tv/V2LivePlayerFlowTest.kt`
 
 **Interfaces:**
-- Produces:
 
 ```kotlin
 data class PlayerRequest(val title: String, val url: String, val stableKey: String)
+
+@Composable
+fun PlayerScreen(request: PlayerRequest, onBack: () -> Unit)
 ```
 
-and `PlayerScreen(request: PlayerRequest, onBack: () -> Unit)`.
+- [ ] **Step 1: Write failing route/focus test**
 
-- [ ] **Step 1: Write failing Live → Player → Back test**
+Use a debug player seam/local fake media source so external streaming is not needed:
 
 ```kotlin
 @Test
-fun enterOpensPlayerAndBackRestoresSameChannelFocus() {
-    launchLiveWithMockChannels(20)
+fun liveEnterPlayerBackRestoresSameRowFocus() {
+    launchLiveWithCachedChannels(20)
     compose.onNodeWithTag("channel-7").performClick()
     compose.onNodeWithTag("player-surface").assertExists()
 
     device.pressBack()
     compose.waitForIdle()
-
     compose.onNodeWithTag("channel-7").assertIsFocused()
 }
 ```
 
-Use a mock playable local/test URI or debug player hook so the test validates navigation contract without external stream dependency.
+- [ ] **Step 2: Run RED**
 
-- [ ] **Step 2: Verify RED**
+Expected: FAIL.
 
-Expected: FAIL because v2 player route/focus restoration do not exist.
+- [ ] **Step 3: Implement player lifecycle**
 
-- [ ] **Step 3: Implement player controller**
+`PlayerController` creates one `ExoPlayer`, sets a `MediaItem`, calls `prepare()`, and releases on screen disposal. Player errors show two TV-focusable actions: `ΞΑΝΑ` and `ΠΙΣΩ`.
 
-Create/release one ExoPlayer per active `PlayerScreen`, attach the MediaItem, call `prepare()`, and release in `DisposableEffect` cleanup. Player errors expose two focusable actions: `ΞΑΝΑ` and `ΠΙΣΩ`.
+- [ ] **Step 4: Implement exact focus restoration**
 
-- [ ] **Step 4: Preserve Live focus key**
+Before player navigation, save `stableKey = "channel-$streamId"` and list index. On Back, restore list scroll position first, then request focus for the matching row via its registered `FocusRequester` after composition.
 
-Before navigating to player, store the selected channel `stableKey`. After Back, use a `FocusRequester` registered for that visible channel and request focus after the list has restored the item/scroll position.
-
-- [ ] **Step 5: Run flow test**
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Run GREEN and commit**
 
 ```bash
-git add app/src/main/java/mom/agnes/tv/ui/player \
-  app/src/main/java/mom/agnes/tv/ui/live \
+gradle :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.V2LivePlayerFlowTest
+git add app/src/main/java/mom/agnes/tv/ui/player app/src/main/java/mom/agnes/tv/ui/live \
   app/src/main/java/mom/agnes/tv/app/AgnesTvApp.kt \
   app/src/androidTest/java/mom/agnes/tv/V2LivePlayerFlowTest.kt
-git commit -m "feat: isolate player and restore TV focus on back"
+git commit -m "feat: isolate TV player and restore Live focus"
 ```
 
 ---
 
-### Task 9: Build the Live-first Home snapshot
+### Task 9: Build a Live-first Home that never waits for VOD
 
 **Files:**
 - Create: `app/src/main/java/mom/agnes/tv/ui/home/HomeViewModel.kt`
@@ -758,12 +734,11 @@ git commit -m "feat: isolate player and restore TV focus on back"
 - Test: `app/src/androidTest/java/mom/agnes/tv/V2HomeRegressionTest.kt`
 
 **Interfaces:**
-- Consumes cached `LiveRepository.snapshot` only in this phase.
-- Produces Home hero/Live rail without Movies/Kids dependency.
+- Home consumes only cached/live repository state in Phase 1.
 
-- [ ] **Step 1: Write failing Home test**
+- [ ] **Step 1: Write failing delayed-network Home test**
 
-Seed cached Live channels and delay network. Assert:
+Seed cached Live channels, delay network 30 seconds, launch Home, and assert within 2 seconds:
 
 ```text
 AGNES TV
@@ -772,48 +747,42 @@ LIVE ΚΑΝΑΛΙΑ
 <cached channel name>
 ```
 
-all appear without waiting on provider response.
+- [ ] **Step 2: Run RED**
 
-- [ ] **Step 2: Verify RED**
+Expected: FAIL.
 
-Expected: FAIL before Home is implemented.
+- [ ] **Step 3: Implement deterministic featured selection**
 
-- [ ] **Step 3: Implement lightweight Home state**
+Choose the first cached channel in repository sort order with nonblank `currentProgramme`; if none has programme metadata, choose the first cached channel. If cache is empty, hero says `ΖΩΝΤΑΝΑ` with refresh status but shell remains fully usable.
 
-Select featured cached channel/programme deterministically. Do not fabricate sports fixture data. If no EPG/current-programme evidence exists, hero is the first useful Live channel and copy stays generic.
+- [ ] **Step 4: Implement premium Phase 1 Home**
 
-- [ ] **Step 4: Implement premium Home layout**
+One dominant Live hero plus one `LIVE ΚΑΝΑΛΙΑ` horizontal rail. No Movie/Kids/Sports placeholder sections yet.
 
-Use one dominant hero, a compact `ΖΩΝΤΑΝΑ ΤΩΡΑ` area, then `LIVE ΚΑΝΑΛΙΑ` rail. No Movies/Kids rails in Phase 1 because they are not yet migrated. No dead placeholders.
-
-- [ ] **Step 5: Run test**
-
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Run GREEN and commit**
 
 ```bash
-git add app/src/main/java/mom/agnes/tv/ui/home \
-  app/src/main/java/mom/agnes/tv/app/AgnesTvApp.kt \
+gradle :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=mom.agnes.tv.V2HomeRegressionTest
+git add app/src/main/java/mom/agnes/tv/ui/home app/src/main/java/mom/agnes/tv/app/AgnesTvApp.kt \
   app/src/androidTest/java/mom/agnes/tv/V2HomeRegressionTest.kt
 git commit -m "feat: add Live-first premium Home"
 ```
 
 ---
 
-### Task 10: Add TV startup, heap, and network-delay validation gates
+### Task 10: Add startup and in-process memory stress gates
 
 **Files:**
 - Modify: `.github/workflows/android-instrumentation.yml`
 - Create: `app/src/androidTest/java/mom/agnes/tv/V2PerformanceRegressionTest.kt`
-- Modify/Create: validation report script in workflow only; do not commit test credentials.
 
 **Interfaces:**
-- Produces CI evidence for TV profile, shell independence from network, navigation suite, and memory snapshot.
+- Produces measured startup and memory assertions inside the target app process plus TV-profile CI evidence.
 
-- [ ] **Step 1: Extend workflow assertions**
+- [ ] **Step 1: Lock CI to TV profile**
 
-Ensure emulator runner uses:
+Workflow emulator runner must contain:
 
 ```yaml
 api-level: 35
@@ -822,151 +791,156 @@ arch: x86_64
 profile: tv_1080p
 ```
 
-Before tests, capture display size and fail if it is not 1920×1080-equivalent TV profile.
+Before instrumentation, run `adb shell wm size` and save it to the report. Fail if the physical size is not 1920×1080.
 
-- [ ] **Step 2: Add delayed-network startup test**
+- [ ] **Step 2: Add delayed-network startup measurement**
 
-`V2PerformanceRegressionTest` launches with MockWebServer delayed by 30 seconds and records elapsed time until the root shell semantic tag is present. Assert under 2 seconds in CI to provide margin around the product target of cached Home under 1 second on target-class hardware.
+Measure elapsed time from Activity launch until `v2-shell` exists while all provider responses are delayed 30 seconds. CI regression ceiling is 2,000 ms; report measured value. Product goal remains cached Home under 1 second on target hardware.
 
-- [ ] **Step 3: Add navigation stress loop**
+- [ ] **Step 3: Add 1,000-channel navigation stress test**
 
-Seed at least 1,000 synthetic cached channels and perform repeated D-pad navigation/scroll cycles. Do not build a 1,000-item JSON string inside production code; seed Room directly for this UI/memory test.
+Seed Room directly with 1,000 channels. Navigate/scroll through repeated D-pad sequences and return to top. No synthetic 1,000-item provider JSON is needed for this UI-memory test; streaming-parser scale is already covered in Task 3.
 
-- [ ] **Step 4: Capture meminfo after stress**
+- [ ] **Step 4: Measure memory inside instrumentation process**
 
-In workflow after instrumentation:
+At end of the stress sequence:
 
-```bash
-adb shell dumpsys meminfo mom.agnes.tv > app/build/v2-meminfo.txt
+```kotlin
+val info = Debug.MemoryInfo()
+Debug.getMemoryInfo(info)
+val totalPssKb = info.totalPss
+assertTrue("PSS=$totalPssKb KB", totalPssKb < 220 * 1024)
 ```
 
-Parse `TOTAL PSS` / relevant process total and fail only on a deliberately conservative regression ceiling (for example 220 MB in emulator), while reporting the spec’s practical target (<~160 MB) separately. This avoids false confidence while still catching runaway heap growth.
+Log the exact PSS. `220 MB` is a regression ceiling for the emulator, not the product target; spec target remains comfortably below the 256 MB device growth limit and practically below ~160 MB where runtime/device permit.
 
-- [ ] **Step 5: Run the complete Phase 1 suite**
-
-Run:
+- [ ] **Step 5: Run full Phase 1 suite**
 
 ```bash
 gradle testDebugUnitTest connectedDebugAndroidTest --stacktrace
 ```
 
-Expected: all unit + TV instrumentation tests pass; no skipped failure gate.
+Expected: all tests green, no skipped failure gate.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add .github/workflows/android-instrumentation.yml \
   app/src/androidTest/java/mom/agnes/tv/V2PerformanceRegressionTest.kt
-git commit -m "test: gate AGNES TV v2 startup and memory performance"
+git commit -m "test: gate v2 TV startup and memory performance"
 ```
 
 ---
 
-### Task 11: Remove the retired v1.8.0 UI path and verify auth/privacy compatibility
+### Task 11: Retire the v1.8.0 presentation path and verify privacy/auth
 
 **Files:**
 - Modify: `app/src/main/java/mom/agnes/tv/MainActivity.kt`
-- Modify: old v1.8.0 UI helpers only where they remain after extraction; delete dead functions/files once references are zero.
-- Test: existing auth tests plus all v2 tests.
+- Delete old v1.8.0 presentation helpers only after references are zero.
+- Preserve: `LoginActivity.kt`, `PrefillConfig.kt`, validated endpoint/auth behavior.
 
 **Interfaces:**
-- Produces one UI architecture only: v2 shell. Login/prefill remain separate and private packaging remains external to public repo.
+- Produces one presentation architecture only: v2.
 
-- [ ] **Step 1: Prove dead-code references before deletion**
+- [ ] **Step 1: Search references before deletion**
 
-Run code search/compile and list old monolithic functions (`TvShell`, old `VodScreen`, old `RemotePoster`, old `PlayerScreen`) still referenced. Only delete symbols with zero v2 consumers; do not delete reusable endpoint-discovery/auth behavior that belongs in Login/Xtream code.
+```bash
+git grep -n -E 'fun (TvShell|VodScreen|RemotePoster|PlayerScreen)' -- app/src/main/java
+```
 
-- [ ] **Step 2: Delete retired presentation code**
+Classify each match as old or v2. Delete only old symbols with no consumers.
 
-Remove old Material3 prototype screen code and manual bitmap loader from `MainActivity.kt`. `MainActivity.kt` remains a small Activity entry point.
+- [ ] **Step 2: Remove old prototype UI/manual image path**
 
-- [ ] **Step 3: Run auth regression + full suite**
+After extraction, `MainActivity.kt` must remain a small Activity entry point. Delete old Material3 prototype navigation/VOD/manual bitmap code rather than leaving two implementations.
+
+- [ ] **Step 3: Verify no private prefill asset is tracked**
+
+```bash
+if git ls-files | grep -q 'agnes_prefill.properties'; then
+  echo 'ERROR: private prefill asset is tracked'
+  exit 1
+fi
+```
+
+Do not print credential values in logs.
+
+- [ ] **Step 4: Run auth + full v2 suite**
 
 ```bash
 gradle testDebugUnitTest connectedDebugAndroidTest --stacktrace
 ```
 
-Explicitly confirm:
+Required: stale verified-pref/auth regression remains green; private prefill code path remains supported but no real private asset exists in Git.
 
-- stale verified prefs cannot bypass required auth rules;
-- private prefill behavior still works only when private packaging supplies it;
-- no credential literal is present in tracked source;
-- all v2 foundation/Live tests pass.
-
-- [ ] **Step 4: Search tracked repo for private credential patterns**
-
-Use a safe local scan against known config-property keys and the private asset filename. Do not print secret values to logs. Fail if `agnes_prefill.properties` or non-placeholder credential asset is tracked.
-
-- [ ] **Step 5: Commit cleanup**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add -A
-git commit -m "refactor: retire AGNES TV v1 presentation path"
+git commit -m "refactor: retire v1 presentation architecture"
 ```
 
 ---
 
-### Task 12: Phase 1 final verification checkpoint
+### Task 12: Phase 1 verification checkpoint
 
 **Files:**
-- No feature code unless verification exposes a defect.
-- Update: `validation/v2.0.0-foundation-live.txt` only after evidence exists.
+- Create: `validation/v2.0.0-foundation-live.txt`
 
 **Interfaces:**
-- Produces a green foundation milestone that later Sports/Movies/Kids plans can build on.
+- Produces the exact tested SHA/evidence that Sports/VOD plans may build on.
 
-- [ ] **Step 1: Run fresh build from clean checkout/worktree**
+- [ ] **Step 1: Run fresh complete verification**
+
+From the isolated implementation worktree:
 
 ```bash
 git status --short
 gradle clean assembleDebug testDebugUnitTest connectedDebugAndroidTest --stacktrace
 ```
 
-Expected: clean working tree before run; build and all tests PASS.
+Expected: clean tree before run; build/tests success.
 
-- [ ] **Step 2: Verify TV profile evidence**
+- [ ] **Step 2: Verify required evidence**
 
-Confirm logs explicitly show `tv_1080p` / 1920×1080 test environment.
-
-- [ ] **Step 3: Verify key user flows from logs/reports**
-
-Required green flows:
+Reports/logs must explicitly prove:
 
 ```text
-launch -> shell without network
-Home cached Live -> Live section
-Live cached list while refresh delayed
-D-pad focus navigation
-Live channel -> Player -> Back -> same focus
-provider failure -> stale cached content remains
-login/auth regressions
+TV profile: tv_1080p / 1920x1080
+shell visible with provider delayed
+cached Live remains visible while refresh fails/delays
+focus contract passes
+image cache/focus regression passes
+Live -> Player -> Back restores same row focus
+Home renders cached Live without VOD
+1,000-channel stress passes
+in-process memory PSS below regression ceiling
+login/auth regressions pass
 ```
 
-- [ ] **Step 4: Verify memory evidence**
+- [ ] **Step 3: Write validation report with actual values**
 
-Inspect committed/artifact `v2-meminfo.txt`. If the emulator process exceeds the regression ceiling, investigate before continuing. Do not raise the limit to make the test green without root-cause review.
-
-- [ ] **Step 5: Write validation report**
-
-`validation/v2.0.0-foundation-live.txt` must include:
+Format:
 
 ```text
 commit: <exact tested SHA>
 build: success
-unit tests: <count>, 0 failed
-TV instrumentation: <count>, 0 failed
+unit tests: <actual count>, 0 failed
+TV instrumentation: <actual count>, 0 failed
 profile: tv_1080p / 1920x1080
-startup delayed-network shell: pass
+delayed-network shell elapsed_ms: <actual>
 live cache-first: pass
 player/back focus restore: pass
-memory stress: <measured value> / pass
+stress channels: 1000
+memory total_pss_kb: <actual>
+private credential file tracked: no
 ```
 
-- [ ] **Step 6: Commit validation evidence**
+- [ ] **Step 4: Commit evidence**
 
 ```bash
 git add validation/v2.0.0-foundation-live.txt
 git commit -m "docs: record AGNES TV v2 foundation validation"
 ```
 
-This checkpoint is **not** the final user APK release. The next implementation plans add Sports, then Movies/Kids/subtitles, then final full-product performance/private packaging. The foundation milestone may be installed only if the user explicitly wants an intermediate engineering build.
+Phase 1 ends here. Do **not** create or hand off a final private user APK from this checkpoint. Next plans, in order, are: (1) Sports/EPG, (2) Movies + Kids + Greek subtitle verification, (3) full-product performance/release/private all-in-one packaging.
