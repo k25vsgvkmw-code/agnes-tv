@@ -36,7 +36,7 @@ class V2StartupRegressionTest {
     @After
     fun tearDown() {
         target.getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE).edit().clear().commit()
-        server.shutdown()
+        runCatching { server.shutdown() }
     }
 
     @Test
