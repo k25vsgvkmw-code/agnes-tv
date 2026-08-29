@@ -53,6 +53,9 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import mom.agnes.tv.data.xtream.XtreamConfig
+import mom.agnes.tv.data.xtream.loadVerifiedXtreamConfig
+import mom.agnes.tv.data.xtream.saveVerifiedXtreamConfig
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -108,12 +111,10 @@ class LoginActivity : ComponentActivity() {
                     initialPassword = prefill.password,
                     autoConnect = prefill.username.isNotBlank() && prefill.password.isNotBlank(),
                     onVerified = { server, password ->
-                        getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE).edit()
-                            .putString("server", server.trim().trimEnd('/'))
-                            .putString("username", username)
-                            .putString("password", password)
-                            .putBoolean("verified", true)
-                            .apply()
+                        saveVerifiedXtreamConfig(
+                            this@LoginActivity,
+                            XtreamConfig(server, username, password)
+                        )
                         openAgnesTv()
                     }
                 )
@@ -133,13 +134,7 @@ class LoginActivity : ComponentActivity() {
         return super.dispatchKeyEvent(event)
     }
 
-    private fun hasSavedXtream(): Boolean {
-        val p = getSharedPreferences("agnes_xtream", Context.MODE_PRIVATE)
-        return p.getBoolean("verified", false) &&
-            !p.getString("server", null).isNullOrBlank() &&
-            !p.getString("username", null).isNullOrBlank() &&
-            !p.getString("password", null).isNullOrBlank()
-    }
+    private fun hasSavedXtream(): Boolean = loadVerifiedXtreamConfig(this) != null
 
     private fun openAgnesTv() {
         startActivity(Intent(this, MainActivity::class.java))
