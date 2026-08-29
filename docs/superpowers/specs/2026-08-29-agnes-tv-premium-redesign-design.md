@@ -3,6 +3,7 @@
 Date: 2026-08-29
 Status: Proposed for user review
 Target: Hisense Android TV, primary validation at 1920×1080
+Proposed release line: v2.0.0
 
 ## 1. Why this redesign exists
 
@@ -35,11 +36,11 @@ The first screen must appear immediately and make live television the fastest pa
 
 Use Jetpack Compose, but replace the current prototype-style shell with TV-specific primitives and clear state/data boundaries:
 
-- Compose for TV / TV Material components for focusable navigation and controls.
-- Dedicated screen/state classes instead of one large composable file.
+- AndroidX Compose for TV / `androidx.tv:tv-material` for TV navigation, focus and controls.
+- Dedicated screen files and AndroidX ViewModels instead of one large composable file.
 - Repository layer for Xtream data.
-- Persistent cache-first content index.
-- A proper image loading pipeline with bounded decode, memory cache, and disk cache.
+- Room persistent cache-first content index.
+- Coil Compose image loading with bounded requested sizes, memory cache and disk cache.
 - Media3 ExoPlayer retained for playback.
 
 ### Alternatives considered
@@ -62,7 +63,7 @@ The first release of the redesign exposes only fully implemented sections:
 - ΠΡΟΣΦΑΤΑ
 - ΡΥΘΜΙΣΕΙΣ
 
-Series, Search and Favorites are not shown until their data and interaction flows are implemented and tested. No placeholder menu entries.
+Series, Search and Favorites are not shown in v2.0.0. They are future additions only after their data and interaction flows are implemented and tested. No placeholder menu entries.
 
 ### Home hierarchy
 
@@ -152,7 +153,7 @@ The exact number of files may change during implementation, but the boundaries m
 
 ### State model
 
-Each top-level screen owns a small immutable UI state exposed by a ViewModel/state holder. Network requests run outside composables. Composables render state and emit user intents only.
+Each top-level screen owns an AndroidX ViewModel exposing an immutable UI state. Network requests run outside composables. Composables render state and emit user intents only.
 
 The root shell owns only:
 
@@ -169,7 +170,7 @@ It does not own full Movies/Kids/EPG lists.
 
 1. App process starts.
 2. Render theme/navigation immediately.
-3. Read cached Home snapshot from local storage.
+3. Read cached Home snapshot from Room.
 4. Show cached live channels/current programmes immediately if present.
 5. Start background refresh of live/EPG data.
 6. Refresh sports matching.
@@ -179,9 +180,9 @@ A slow provider must never leave the entire screen blocked by a single spinner.
 
 ### Persistent cache
 
-Use a small structured local database for channel metadata, category metadata, EPG snapshots, VOD summaries and subtitle verification status.
+Use Room for channel metadata, category metadata, EPG snapshots, VOD summaries and subtitle verification status.
 
-Recommended storage: Room for structured content cache. Credentials remain separate from content cache and must never be committed to the public repository.
+Credentials remain separate from the content database and must never be committed to the public repository.
 
 Cache entries have timestamps and may be shown stale with a subtle status indicator while refresh occurs.
 
@@ -198,16 +199,16 @@ Cache entries have timestamps and may be shown stale with a subtle status indica
 
 ## 9. Image pipeline
 
-Replace manual per-poster `HttpURLConnection + BitmapFactory.decodeStream` rendering with a production image loader appropriate for Compose/TV.
+Use Coil Compose as the single poster/backdrop image pipeline. The existing manual per-poster `HttpURLConnection + BitmapFactory.decodeStream` path is removed from UI rendering.
 
 Required behavior:
 
-- memory LRU cache;
+- memory cache;
 - disk cache;
-- requested-size decode for poster cards;
-- separate bounded size for hero backdrops;
+- explicit requested size for poster cards;
+- separate bounded requested size for hero backdrops;
 - cancellation when an item leaves composition;
-- placeholder from local resources or cached dominant image;
+- stable local placeholder;
 - prefetch only the next small visible window, never hundreds of posters.
 
 No network fetch is initiated merely because remote focus moved over an already rendered card.
@@ -262,7 +263,7 @@ Movies/Kids use cinematic horizontal rails but do not block startup.
 - featured hero after VOD data becomes available;
 - `ΓΙΑ ΑΠΟΨΕ`;
 - `ΚΑΛΥΤΕΡΗ ΒΑΘΜΟΛΟΓΙΑ`;
-- `ΝΕΕΣ ΠΡΟΣΘΗΚΕΣ` when ordering evidence is available, otherwise omit rather than fabricate recency.
+- `ΝΕΕΣ ΠΡΟΣΘΗΚΕΣ` only when ordering evidence is available; otherwise that rail is omitted rather than fabricated.
 
 ### Kids
 
@@ -279,9 +280,15 @@ Subtitle status has three states:
 - **🇬🇷 Πιθανόν Ελληνικά** — category/title naming suggests Greek subtitles but no track has been verified yet.
 - **No badge** — unknown or no evidence.
 
-A `Μόνο Ελληνικά` filter includes verified Greek subtitle items by default. A separate option may include “likely” items, but the UI must never present guessed metadata as verified.
+Movie filters are explicit:
 
-Subtitle inspection occurs lazily for focused/played content and its result is persisted. It is not a bulk scan of the catalogue.
+- `ΟΛΑ`
+- `ΕΛΛΗΝΙΚΟΙ ΥΠΟΤΙΤΛΟΙ` — verified Greek tracks only
+- `ΠΙΘΑΝΟΝ ΕΛΛΗΝΙΚΑ` — naming/category inference only
+
+The UI never merges “likely” and “verified” into the same result state.
+
+Subtitle inspection occurs lazily for focused/played content and its result is persisted in Room. It is not a bulk scan of the catalogue.
 
 ## 14. Performance budgets
 
@@ -290,9 +297,11 @@ These are product targets, not excuses to block the UI on network variance:
 - shell/navigation visible without network dependency;
 - cached Home content target: under 1 second after activity launch on target-class TV;
 - D-pad focus visual response: no blocking work on UI thread and perceptually immediate;
-- steady-state app memory target during ordinary browsing: comfortably below a 256 MB device growth limit, with a practical target below ~160 MB where device/runtime permits;
-- stress test with thousands of synthetic VOD items must not require building a full in-memory JSON catalogue;
+- ordinary browsing target: below ~160 MB app memory where the runtime/device allows it;
+- synthetic stress gate: no OOM and no unbounded growth while browsing thousands of generated VOD records;
 - scrolling/focus must not start a new full-size bitmap decode for every movement.
+
+The stress suite records `dumpsys meminfo`; a redesign build is rejected if memory trends upward continuously across repeated browse cycles or approaches the known 256 MB growth limit.
 
 Network-delivered fresh content timing is measured separately because provider latency is external.
 
@@ -331,7 +340,7 @@ Run on Android TV 1080p profile and verify:
 
 - synthetic very-large VOD API response through a streaming source;
 - repeated navigation across rails without unbounded heap growth;
-- image loading cancellation/cache behavior;
+- Coil cancellation/cache behavior;
 - `dumpsys meminfo` snapshot during stress run;
 - app startup measurement with network intentionally delayed to prove the shell does not depend on provider response.
 
@@ -373,7 +382,7 @@ A redesign release is eligible for a TV APK only when all of the following are t
 3. no known full-catalogue memory path remains;
 4. TV D-pad focus is obvious everywhere;
 5. 1080p TV instrumentation is fully green;
-6. stress/memory checks pass without OOM;
+6. stress/memory checks pass without OOM or continuous heap growth;
 7. build succeeds from the exact tested commit;
 8. private auto-login packaging is performed only after validation.
 
