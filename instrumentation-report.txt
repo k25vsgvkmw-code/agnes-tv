@@ -1,4 +1,4 @@
-Android TV instrumentation UTC: 2026-08-29T10:30:01Z
-commit: 0c034c01012b3c9fbc84ab60a4ae8b747c7b7d36
-result: cancelled
-tests: password-only login; Xtream auth gate; matches; channels; player; movies; kids
+Android TV v2 instrumentation UTC: 2026-08-29T10:35:35Z
+commit: 180737b6a86b38d6e9b64723b85a2c019607df3f
+result: success
+suite: mom.agnes.tv.V2RegressionSuite
