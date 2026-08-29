@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +25,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -44,6 +48,11 @@ private val ShellGreen = Color(0xFF72F59B)
 @Composable
 fun AgnesTvApp() {
     var selectedSection by remember { mutableStateOf(TvSection.HOME) }
+    val initialFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        initialFocusRequester.requestFocus()
+    }
 
     Row(
         modifier = Modifier
@@ -77,7 +86,12 @@ fun AgnesTvApp() {
                 V2NavItem(
                     section = section,
                     selected = selectedSection == section,
-                    onClick = { selectedSection = section }
+                    onClick = { selectedSection = section },
+                    modifier = if (section == TvSection.HOME) {
+                        Modifier.focusRequester(initialFocusRequester)
+                    } else {
+                        Modifier
+                    }
                 )
             }
         }
@@ -113,16 +127,19 @@ fun AgnesTvApp() {
 private fun V2NavItem(
     section: TvSection,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(16.dp)
 
     Row(
-        modifier = Modifier
+        modifier = modifier
+            .testTag("nav-${section.name}")
             .fillMaxWidth()
             .height(64.dp)
-            .scale(if (focused) 1.045f else 1f)
+            .scale(if (focused) 1.06f else 1f)
+            .shadow(if (focused) 14.dp else 0.dp, shape)
             .background(
                 color = when {
                     focused -> ShellPanelRaised
