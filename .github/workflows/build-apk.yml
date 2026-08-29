@@ -2,7 +2,7 @@ name: Build AGNES TV APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, v2-foundation-live ]
     paths-ignore:
       - 'releases/**'
       - 'build-report.txt'
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: agnes-tv-apk-main
+  group: agnes-tv-apk-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -94,7 +94,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main
+          git pull --rebase origin "$GITHUB_REF_NAME"
 
           cp /tmp/build-report.txt build-report.txt
           git add build-report.txt
@@ -107,7 +107,7 @@ jobs:
 
           if ! git diff --cached --quiet; then
             git commit -m "AGNES TV build result v${VERSION_NAME}"
-            git push origin HEAD:main
+            git push origin "HEAD:$GITHUB_REF_NAME"
           fi
 
           if [ "${{ steps.build.outcome }}" != "success" ]; then
