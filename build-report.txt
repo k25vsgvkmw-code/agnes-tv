@@ -14,9 +14,9 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :app:parseDebugLocalResources
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
-> Task :app:processDebugManifestForPackage
-> Task :app:javaPreCompileDebug
 > Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:processDebugManifestForPackage
 > Task :app:javaPreCompileDebugUnitTest
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
 > Task :app:mergeDebugShaders
@@ -44,11 +44,11 @@ Unable to strip the following libraries, packaging them as they are: libandroidx
 
 > Task :app:compileDebugKotlin
 > Task :app:compileDebugJavaWithJavac
-> Task :app:bundleDebugClassesToCompileJar
 > Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
 > Task :app:processDebugJavaRes
-> Task :app:kspDebugUnitTestKotlin
 > Task :app:dexBuilderDebug
+> Task :app:kspDebugUnitTestKotlin
 > Task :app:mergeDebugGlobalSynthetics
 > Task :app:mergeProjectDexDebug
 > Task :app:compileDebugUnitTestKotlin
@@ -59,7 +59,7 @@ Unable to strip the following libraries, packaging them as they are: libandroidx
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1788001186711.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1788001669673.json
 
 BUILD SUCCESSFUL in 2m 2s
 45 actionable tasks: 45 executed
