@@ -8,6 +8,7 @@ import org.junit.runners.Suite
 @RunWith(Suite::class)
 @Suite.SuiteClasses(
     V2StartupRegressionTest::class,
+    V2TvFocusRegressionTest::class,
     LiveChannelDaoTest::class,
     XtreamConfigPreferencesTest::class
 )
