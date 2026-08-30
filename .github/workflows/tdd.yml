@@ -37,4 +37,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm run format:check
+      - run: |
+          npx prettier --write tests/unit/device-signature.test.ts
+          git diff -- tests/unit/device-signature.test.ts
+          exit 1
