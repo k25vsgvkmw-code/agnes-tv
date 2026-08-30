@@ -1,12 +1,19 @@
+import { readFile } from 'node:fs/promises';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { buildApp } from '../../src/app/build-app.js';
 import { hashHealthBridgeToken } from '../../src/health/health-authenticator.js';
 import { defaultHealthConfig } from '../../src/health/health-config.js';
 import { FixedClock } from '../../src/kernel/clock.js';
-import { buildApp } from '../../src/app/build-app.js';
 import { createPostgresPool } from '../../src/persistence/postgres.js';
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error('DATABASE_URL is required for Health Bridge E2E tests');
+const sourceDatabaseUrl = process.env.DATABASE_URL;
+if (!sourceDatabaseUrl) throw new Error('DATABASE_URL is required for Health Bridge E2E tests');
+
+const databaseName = `agnes_e2e_${process.pid}_${Date.now()}`;
+const adminDatabaseUrl = new URL(sourceDatabaseUrl);
+adminDatabaseUrl.pathname = '/postgres';
+const isolatedDatabaseUrl = new URL(sourceDatabaseUrl);
+isolatedDatabaseUrl.pathname = `/${databaseName}`;
 
 const householdId = '81000000-0000-4000-8000-000000000001';
 const personId = '81000000-0000-4000-8000-000000000002';
@@ -14,40 +21,46 @@ const bridgeId = '81000000-0000-4000-8000-000000000003';
 const token = 'e2e-device-token-123';
 const rawValue = 6543;
 const clock = new FixedClock(new Date('2026-08-30T12:00:00Z'));
-const pool = createPostgresPool(databaseUrl);
+const adminPool = createPostgresPool(adminDatabaseUrl.toString());
 
-let app: Awaited<ReturnType<typeof buildApp>>;
+let pool: ReturnType<typeof createPostgresPool> | undefined;
+let app: Awaited<ReturnType<typeof buildApp>> | undefined;
 
 beforeAll(async () => {
+  await adminPool.query(`CREATE DATABASE "${databaseName}"`);
+  pool = createPostgresPool(isolatedDatabaseUrl.toString());
+
+  const coreMigration = await readFile(
+    new URL('../../src/persistence/migrations/001_core.sql', import.meta.url),
+    'utf8',
+  );
+  const healthMigration = await readFile(
+    new URL('../../src/persistence/migrations/002_health_bridge.sql', import.meta.url),
+    'utf8',
+  );
+  await pool.query(coreMigration);
+  await pool.query(healthMigration);
+
   await pool.query(
     `INSERT INTO households (id, name, timezone, locale, status)
-     VALUES ($1, 'AGNES E2E Home', 'Asia/Nicosia', 'el-CY', 'active')
-     ON CONFLICT (id) DO NOTHING`,
+     VALUES ($1, 'AGNES E2E Home', 'Asia/Nicosia', 'el-CY', 'active')`,
     [householdId],
   );
   await pool.query(
     `INSERT INTO people (id, household_id, display_name, role, locale, timezone, status)
-     VALUES ($1, $2, 'E2E Person', 'parent', 'el-CY', 'Asia/Nicosia', 'active')
-     ON CONFLICT (id) DO NOTHING`,
+     VALUES ($1, $2, 'E2E Person', 'parent', 'el-CY', 'Asia/Nicosia', 'active')`,
     [personId, householdId],
   );
   await pool.query(
     `INSERT INTO health_bridges (
        id, household_id, person_id, provider, source_device_id, token_hash,
        allowed_kinds, auth_state, created_at, updated_at
-     ) VALUES ($1, $2, $3, 'health_connect', 'e2e-device', $4, '["steps"]'::jsonb, 'active', $5, $5)
-     ON CONFLICT (id) DO UPDATE SET
-       token_hash = EXCLUDED.token_hash,
-       allowed_kinds = EXCLUDED.allowed_kinds,
-       auth_state = 'active',
-       last_heartbeat_at = NULL,
-       last_measurement_at = NULL,
-       updated_at = EXCLUDED.updated_at`,
+     ) VALUES ($1, $2, $3, 'health_connect', 'e2e-device', $4, '["steps"]'::jsonb, 'active', $5, $5)`,
     [bridgeId, householdId, personId, hashHealthBridgeToken(token), clock.now()],
   );
 
   app = await buildApp({
-    databaseUrl,
+    databaseUrl: isolatedDatabaseUrl.toString(),
     healthBridgeId: bridgeId,
     healthConfig: defaultHealthConfig,
     clock,
@@ -57,18 +70,16 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await app.close();
-  await pool.query('DELETE FROM health_measurements WHERE bridge_id = $1', [bridgeId]);
-  await pool.query('DELETE FROM audit_records WHERE household_id = $1', [householdId]);
-  await pool.query('DELETE FROM outbox_events WHERE event_payload ->> \'householdId\' = $1', [householdId]);
-  await pool.query('DELETE FROM health_bridges WHERE id = $1', [bridgeId]);
-  await pool.query('DELETE FROM people WHERE id = $1', [personId]);
-  await pool.query('DELETE FROM households WHERE id = $1', [householdId]);
-  await pool.end();
+  if (app !== undefined) await app.close();
+  if (pool !== undefined) await pool.end();
+  await adminPool.query(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`);
+  await adminPool.end();
 });
 
 describe('Health Bridge end-to-end live proof', () => {
   it('moves health from connected_no_data to live only after a real accepted measurement', async () => {
+    if (app === undefined || pool === undefined) throw new Error('E2E application was not initialized');
+
     const authorization = { authorization: `Bearer ${token}` };
 
     const heartbeat = await app.inject({
