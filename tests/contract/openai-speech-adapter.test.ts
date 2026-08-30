@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { OpenAiSpeechAdapter, type OpenAiSpeechClient } from '../../src/voice/openai-speech-adapter.js';
+import {
+  OpenAiSpeechAdapter,
+  type OpenAiSpeechClient,
+} from '../../src/voice/openai-speech-adapter.js';
 
 function arrayBufferOf(bytes: readonly number[]): ArrayBuffer {
   return Uint8Array.from(bytes).buffer;
