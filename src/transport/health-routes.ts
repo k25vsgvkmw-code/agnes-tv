@@ -17,6 +17,15 @@ export interface HealthRoutesDependencies {
   ) => Promise<HealthMeasurementImportResult>;
 }
 
+const measurementFields = new Set([
+  'kind',
+  'value',
+  'unit',
+  'measuredAt',
+  'externalId',
+  'metadata',
+]);
+
 const measurementBodySchema = {
   type: 'object',
   additionalProperties: false,
@@ -88,6 +97,20 @@ function sendError(reply: FastifyReply, error: unknown) {
   });
 }
 
+function rejectUnsupportedMeasurementFields(request: FastifyRequest, reply: FastifyReply) {
+  if (request.body === null || typeof request.body !== 'object' || Array.isArray(request.body)) return;
+
+  const unsupported = Object.keys(request.body).filter((field) => !measurementFields.has(field));
+  if (unsupported.length === 0) return;
+
+  return reply.code(400).send({
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: 'measurement request contains unsupported fields',
+    },
+  });
+}
+
 export async function registerHealthRoutes(
   app: FastifyInstance,
   dependencies?: HealthRoutesDependencies,
@@ -108,7 +131,10 @@ export async function registerHealthRoutes(
 
   app.post<{ Body: RawHealthMeasurement }>(
     '/integrations/health/measurements',
-    { schema: { body: measurementBodySchema } },
+    {
+      schema: { body: measurementBodySchema },
+      preValidation: rejectUnsupportedMeasurementFields,
+    },
     async (request, reply) => {
       try {
         const bridge = await authenticate(request, dependencies);
