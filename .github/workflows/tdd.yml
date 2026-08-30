@@ -36,4 +36,5 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+      - run: npx prettier tests/e2e/calendar-to-notification.test.ts
       - run: npm run format:check
