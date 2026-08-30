@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type {
   HealthKind,
   HealthMeasurement,
@@ -11,6 +11,8 @@ import type {
 } from '../health/health-repositories.js';
 import { ValidationError } from '../kernel/errors.js';
 import type { HouseholdId, PersonId } from '../kernel/ids.js';
+
+type Queryable = Pool | PoolClient;
 
 interface HealthMeasurementRow {
   id: string;
@@ -56,8 +58,10 @@ export class PostgresHealthMeasurementRepository implements HealthMeasurementRep
 
   async insertIfAbsent(
     measurement: HealthMeasurement,
+    client?: PoolClient,
   ): Promise<{ measurement: HealthMeasurement; change: HealthMeasurementInsertChange }> {
-    const bridgeResult = await this.pool.query<{ id: string }>(
+    const executor: Queryable = client ?? this.pool;
+    const bridgeResult = await executor.query<{ id: string }>(
       `SELECT id
        FROM health_bridges
        WHERE household_id = $1
@@ -76,7 +80,7 @@ export class PostgresHealthMeasurementRepository implements HealthMeasurementRep
       throw new ValidationError('registered health bridge not found for measurement source');
     }
 
-    const inserted = await this.pool.query<HealthMeasurementRow>(
+    const inserted = await executor.query<HealthMeasurementRow>(
       `INSERT INTO health_measurements (
          id, bridge_id, household_id, person_id, kind, value, unit, measured_at,
          source_provider, source_device_id, external_id, dedupe_key, received_at, metadata
@@ -107,7 +111,7 @@ export class PostgresHealthMeasurementRepository implements HealthMeasurementRep
       return { measurement: rowToMeasurement(insertedRow), change: 'created' };
     }
 
-    const existing = await this.pool.query<HealthMeasurementRow>(
+    const existing = await executor.query<HealthMeasurementRow>(
       `${measurementSelect} WHERE dedupe_key = $1`,
       [measurement.dedupeKey],
     );
