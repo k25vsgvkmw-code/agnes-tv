@@ -51,10 +51,7 @@ export interface HouseholdContext {
   readonly detectedSituations: readonly DetectedSituationContext[];
 }
 
-export function emptyHouseholdContext(
-  householdId: HouseholdId,
-  timestamp: Date,
-): HouseholdContext {
+export function emptyHouseholdContext(householdId: HouseholdId, timestamp: Date): HouseholdContext {
   return {
     householdId,
     timestamp: new Date(timestamp),
