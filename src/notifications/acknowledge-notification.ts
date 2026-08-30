@@ -36,6 +36,9 @@ export async function acknowledgeNotification(
     householdId: notification.householdId,
     occurredAt: dependencies.clock.now(),
     metadata: {},
+    ...(notification.correlationId === undefined
+      ? {}
+      : { correlationId: notification.correlationId }),
   });
 
   return acknowledged;
