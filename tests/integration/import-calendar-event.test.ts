@@ -6,7 +6,6 @@ import { importCalendarRecord } from '../../src/calendar/import-calendar-event.j
 import type { OutboxRecord, OutboxRepository } from '../../src/events/outbox.js';
 import { createHousehold } from '../../src/household/household.js';
 import { FixedClock } from '../../src/kernel/clock.js';
-import type { EventId } from '../../src/kernel/ids.js';
 import { pool, withTransaction } from '../../src/persistence/postgres.js';
 import { PostgresCalendarRepository } from '../../src/persistence/postgres-calendar-repository.js';
 import { PostgresHouseholdRepository } from '../../src/persistence/postgres-household-repository.js';
@@ -64,7 +63,7 @@ class FailingOutboxRepository implements OutboxRepository<PoolClient> {
     return [];
   }
 
-  async markPublished(_eventId: EventId): Promise<void> {}
+  async markPublished(): Promise<void> {}
 }
 
 describe('calendar import', () => {
