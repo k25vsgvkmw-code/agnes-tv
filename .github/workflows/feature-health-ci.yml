@@ -43,12 +43,5 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
-      - name: Show Status Prettier diffs
-        run: |
-          for file in src/health/health-bridge.ts src/health/health-status-service.ts tests/unit/health-status-service.test.ts; do
-            out="/tmp/$(basename "$file")"
-            npx prettier "$file" > "$out"
-            diff -u "$file" "$out" || true
-          done
       - name: Format check
         run: npm run format:check
