@@ -105,77 +105,84 @@ async function buildTestApp(delivery: NotificationDelivery) {
 }
 
 describe('calendar to notification vertical slice', () => {
-  it('imports an event, detects departure risk, sends one suggestion, and records acknowledgement', async () => {
-    const delivery = new SuccessfulDelivery();
-    const { app, household, notificationRepository, auditRepository } = await buildTestApp(delivery);
+  it(
+    'imports an event, detects departure risk, sends one suggestion, and records acknowledgement',
+    async () => {
+      const delivery = new SuccessfulDelivery();
+      const { app, household, notificationRepository, auditRepository } =
+        await buildTestApp(delivery);
 
-    try {
-      const imported = await app.syncCalendar(household.id);
-      expect(imported[0]?.change).toBe('created');
-      const correlationId = imported[0]?.domainEvent?.correlationId;
-      expect(correlationId).toBeTruthy();
+      try {
+        const imported = await app.syncCalendar(household.id);
+        expect(imported[0]?.change).toBe('created');
+        const correlationId = imported[0]?.domainEvent?.correlationId;
+        expect(correlationId).toBeTruthy();
 
-      await app.outboxWorker.runOnce(10);
+        await app.outboxWorker.runOnce(10);
 
-      const context = await app.contextStore.get(household.id);
-      expect(context?.upcomingEvents).toHaveLength(1);
-      const event = context?.upcomingEvents[0];
-      expect(event).toBeDefined();
+        const context = await app.contextStore.get(household.id);
+        expect(context?.upcomingEvents).toHaveLength(1);
+        const event = context?.upcomingEvents[0];
+        expect(event).toBeDefined();
 
-      const result = await app.suggestDepartureIfRisk({
-        householdId: household.id,
-        eventStartsAt: event!.startsAt,
-        travelMinutes: 25,
-        bufferMinutes: 10,
-        correlationId: correlationId!,
-      });
+        const result = await app.suggestDepartureIfRisk({
+          householdId: household.id,
+          eventStartsAt: event!.startsAt,
+          travelMinutes: 25,
+          bufferMinutes: 10,
+          correlationId: correlationId!,
+        });
 
-      expect(result.situation?.type).toBe('LATE_DEPARTURE_RISK');
-      expect(result.outcome).toBe('suggest');
-      expect(delivery.sent).toHaveLength(1);
+        expect(result.situation?.type).toBe('LATE_DEPARTURE_RISK');
+        expect(result.outcome).toBe('suggest');
+        expect(delivery.sent).toHaveLength(1);
 
-      const delivered = [...notificationRepository.items.values()];
-      expect(delivered).toHaveLength(1);
-      expect(delivered[0]?.state).toBe('delivered');
-      expect(delivered[0]?.correlationId).toBe(correlationId);
+        const delivered = [...notificationRepository.items.values()];
+        expect(delivered).toHaveLength(1);
+        expect(delivered[0]?.state).toBe('delivered');
+        expect(delivered[0]?.correlationId).toBe(correlationId);
 
-      const acknowledged = await app.acknowledgeNotification(delivered[0]!.id);
-      expect(acknowledged.state).toBe('acknowledged');
-      expect(auditRepository.records).toHaveLength(1);
-      expect(auditRepository.records[0]?.correlationId).toBe(correlationId);
-    } finally {
-      await app.close();
-    }
-  });
+        const acknowledged = await app.acknowledgeNotification(delivered[0]!.id);
+        expect(acknowledged.state).toBe('acknowledged');
+        expect(auditRepository.records).toHaveLength(1);
+        expect(auditRepository.records[0]?.correlationId).toBe(correlationId);
+      } finally {
+        await app.close();
+      }
+    },
+  );
 
-  it('does not create a second logical event or suggestion for an unchanged provider retry', async () => {
-    const delivery = new SuccessfulDelivery();
-    const { app, household, notificationRepository } = await buildTestApp(delivery);
+  it(
+    'does not create a second logical event or suggestion for an unchanged provider retry',
+    async () => {
+      const delivery = new SuccessfulDelivery();
+      const { app, household, notificationRepository } = await buildTestApp(delivery);
 
-    try {
-      const first = await app.syncCalendar(household.id);
-      await app.outboxWorker.runOnce(10);
-      const firstEvent = (await app.contextStore.get(household.id))?.upcomingEvents[0];
-      await app.suggestDepartureIfRisk({
-        householdId: household.id,
-        eventStartsAt: firstEvent!.startsAt,
-        travelMinutes: 25,
-        bufferMinutes: 10,
-        correlationId: first[0]!.domainEvent!.correlationId!,
-      });
+      try {
+        const first = await app.syncCalendar(household.id);
+        await app.outboxWorker.runOnce(10);
+        const firstEvent = (await app.contextStore.get(household.id))?.upcomingEvents[0];
+        await app.suggestDepartureIfRisk({
+          householdId: household.id,
+          eventStartsAt: firstEvent!.startsAt,
+          travelMinutes: 25,
+          bufferMinutes: 10,
+          correlationId: first[0]!.domainEvent!.correlationId!,
+        });
 
-      const retry = await app.syncCalendar(household.id);
-      expect(retry[0]?.change).toBe('unchanged');
-      expect(retry[0]?.domainEvent).toBeUndefined();
-      await app.outboxWorker.runOnce(10);
+        const retry = await app.syncCalendar(household.id);
+        expect(retry[0]?.change).toBe('unchanged');
+        expect(retry[0]?.domainEvent).toBeUndefined();
+        await app.outboxWorker.runOnce(10);
 
-      expect(delivery.sent).toHaveLength(1);
-      expect(notificationRepository.items.size).toBe(1);
-      expect((await app.contextStore.get(household.id))?.upcomingEvents).toHaveLength(1);
-    } finally {
-      await app.close();
-    }
-  });
+        expect(delivery.sent).toHaveLength(1);
+        expect(notificationRepository.items.size).toBe(1);
+        expect((await app.contextStore.get(household.id))?.upcomingEvents).toHaveLength(1);
+      } finally {
+        await app.close();
+      }
+    },
+  );
 
   it('keeps the notification failed when the delivery provider fails', async () => {
     const delivery = new FailingDelivery();
