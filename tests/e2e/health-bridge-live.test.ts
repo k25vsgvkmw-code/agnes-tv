@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app/build-app.js';
 import { hashHealthBridgeToken } from '../../src/health/health-authenticator.js';
@@ -25,6 +26,19 @@ const adminPool = createPostgresPool(adminDatabaseUrl.toString());
 
 let pool: ReturnType<typeof createPostgresPool> | undefined;
 let app: Awaited<ReturnType<typeof buildApp>> | undefined;
+
+async function waitForDatabaseSessionsToClose(): Promise<void> {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const result = await adminPool.query<{ count: string }>(
+      'SELECT count(*) FROM pg_stat_activity WHERE datname = $1',
+      [databaseName],
+    );
+    if (Number(result.rows[0]?.count ?? 0) === 0) return;
+    await delay(10);
+  }
+
+  throw new Error(`database sessions did not close for ${databaseName}`);
+}
 
 beforeAll(async () => {
   await adminPool.query(`CREATE DATABASE "${databaseName}"`);
@@ -72,7 +86,8 @@ beforeAll(async () => {
 afterAll(async () => {
   if (app !== undefined) await app.close();
   if (pool !== undefined) await pool.end();
-  await adminPool.query(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`);
+  await waitForDatabaseSessionsToClose();
+  await adminPool.query(`DROP DATABASE IF EXISTS "${databaseName}"`);
   await adminPool.end();
 });
 
