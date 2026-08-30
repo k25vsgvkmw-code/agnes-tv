@@ -100,21 +100,24 @@ describe('device signature verifier', () => {
   it.each([
     ['older', new Date('2026-09-01T14:54:59Z')],
     ['newer', new Date('2026-09-01T15:05:01Z')],
-  ])('rejects a timestamp more than five minutes %s than the verifier clock', async (_, timestamp) => {
-    const { device, privateKey } = fixture();
+  ])(
+    'rejects a timestamp more than five minutes %s than the verifier clock',
+    async (_, timestamp) => {
+      const { device, privateKey } = fixture();
 
-    await expectCode(
-      verifyDeviceSignature({
-        deviceId: device.id,
-        timestamp: timestamp.toISOString(),
-        signature: signatureFor(device, privateKey, timestamp),
-        rawBody,
-        now,
-        deviceRepository: repositoryWith(device),
-      }),
-      'DEVICE_TIMESTAMP_INVALID',
-    );
-  });
+      await expectCode(
+        verifyDeviceSignature({
+          deviceId: device.id,
+          timestamp: timestamp.toISOString(),
+          signature: signatureFor(device, privateKey, timestamp),
+          rawBody,
+          now,
+          deviceRepository: repositoryWith(device),
+        }),
+        'DEVICE_TIMESTAMP_INVALID',
+      );
+    },
+  );
 
   it('rejects an unknown device before cryptographic verification', async () => {
     const { device, privateKey } = fixture();
