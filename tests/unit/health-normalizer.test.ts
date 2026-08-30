@@ -36,7 +36,10 @@ function input(
 
 describe('normalizeHealthMeasurement', () => {
   it('normalizes steps into the canonical contract', () => {
-    const result = normalizeHealthMeasurement(input('steps', 8432, 'count', 'hc-steps-42'), context);
+    const result = normalizeHealthMeasurement(
+      input('steps', 8432, 'count', 'hc-steps-42'),
+      context,
+    );
 
     expect(result.kind).toBe('steps');
     expect(result.unit).toBe('count');
@@ -72,7 +75,9 @@ describe('normalizeHealthMeasurement', () => {
     ['weight', 0, 'kg'],
     ['active_energy', 20001, 'kcal'],
   ] as const)('rejects invalid %s values', (kind, value, unit) => {
-    expect(() => normalizeHealthMeasurement(input(kind, value, unit, `${kind}-bad`), context)).toThrow();
+    expect(() =>
+      normalizeHealthMeasurement(input(kind, value, unit, `${kind}-bad`), context),
+    ).toThrow();
   });
 
   it('rejects measurements too far in the future', () => {
