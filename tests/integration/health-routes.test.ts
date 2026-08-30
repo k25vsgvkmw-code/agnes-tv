@@ -9,7 +9,10 @@ import {
   HealthBridgeAuthenticator,
 } from '../../src/health/health-authenticator.js';
 import type { HealthBridgeRegistration } from '../../src/health/health-bridge.js';
-import type { HealthMeasurement, RawHealthMeasurement } from '../../src/health/health-measurement.js';
+import type {
+  HealthMeasurement,
+  RawHealthMeasurement,
+} from '../../src/health/health-measurement.js';
 import type {
   HealthBridgeRepository,
   HealthMeasurementRepository,
