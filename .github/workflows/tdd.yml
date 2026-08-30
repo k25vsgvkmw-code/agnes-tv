@@ -37,4 +37,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm run format:check
+      - run: |
+          npx prettier --write src/devices/device.ts
+          git diff -- src/devices/device.ts
+          exit 1
