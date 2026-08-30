@@ -36,6 +36,4 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - name: Show expected connector formatting
-        run: npx prettier src/integrations/connector.ts
       - run: npm run format:check
