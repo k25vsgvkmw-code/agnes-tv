@@ -98,7 +98,8 @@ function sendError(reply: FastifyReply, error: unknown) {
 }
 
 async function rejectUnsupportedMeasurementFields(request: FastifyRequest, reply: FastifyReply) {
-  if (request.body === null || typeof request.body !== 'object' || Array.isArray(request.body)) return;
+  if (request.body === null || typeof request.body !== 'object' || Array.isArray(request.body))
+    return;
 
   const unsupported = Object.keys(request.body).filter((field) => !measurementFields.has(field));
   if (unsupported.length === 0) return;
