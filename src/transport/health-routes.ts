@@ -97,7 +97,7 @@ function sendError(reply: FastifyReply, error: unknown) {
   });
 }
 
-function rejectUnsupportedMeasurementFields(request: FastifyRequest, reply: FastifyReply) {
+async function rejectUnsupportedMeasurementFields(request: FastifyRequest, reply: FastifyReply) {
   if (request.body === null || typeof request.body !== 'object' || Array.isArray(request.body)) return;
 
   const unsupported = Object.keys(request.body).filter((field) => !measurementFields.has(field));
