@@ -68,7 +68,8 @@ export function bundleDeparturePreparation(
     { name: 'presence_state', value: 'PRESENT' },
   ];
 
-  const freshRoute = input.route !== undefined && isFresh(input.route.expiresAt, now) ? input.route : undefined;
+  const freshRoute =
+    input.route !== undefined && isFresh(input.route.expiresAt, now) ? input.route : undefined;
   let requiredDepartureAt: Date | undefined;
   let minutesEarly: number | undefined;
 
