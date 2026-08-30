@@ -2,12 +2,7 @@ import type { DeviceRepository } from './device-repository.js';
 import type { Device } from './device.js';
 import type { OfflineCommandRepository } from './offline-command-repository.js';
 import { AgnesError, ValidationError } from '../kernel/errors.js';
-import {
-  newCommandId,
-  type CommandId,
-  type DeviceId,
-  type PersonId,
-} from '../kernel/ids.js';
+import { newCommandId, type CommandId, type DeviceId, type PersonId } from '../kernel/ids.js';
 import type { LivePolicyResult } from '../permissions/live-policy-engine.js';
 import type { NamedCapability } from '../permissions/named-capability.js';
 
