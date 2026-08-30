@@ -37,7 +37,4 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: |
-          npx prettier --write tests/contract/google-routes-adapter.test.ts
-          git diff -- tests/contract/google-routes-adapter.test.ts
-          exit 1
+      - run: npm run format:check
