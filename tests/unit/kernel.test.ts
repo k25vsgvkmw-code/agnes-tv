@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { FixedClock, SystemClock } from '../../src/kernel/clock.js';
 import { AgnesError, ValidationError } from '../../src/kernel/errors.js';
-import { newEventId, newHouseholdId } from '../../src/kernel/ids.js';
+import {
+  newCommandId,
+  newDeviceId,
+  newEventId,
+  newHouseholdId,
+  newSituationId,
+} from '../../src/kernel/ids.js';
 import { err, ok } from '../../src/kernel/result.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -27,9 +33,12 @@ describe('kernel primitives', () => {
     expect(now).toBeLessThanOrEqual(after);
   });
 
-  it('creates UUID-backed event and household ids', () => {
+  it('creates UUID-backed core and Live v2 ids', () => {
     expect(newEventId()).toMatch(UUID_PATTERN);
     expect(newHouseholdId()).toMatch(UUID_PATTERN);
+    expect(newDeviceId()).toMatch(UUID_PATTERN);
+    expect(newSituationId()).toMatch(UUID_PATTERN);
+    expect(newCommandId()).toMatch(UUID_PATTERN);
   });
 
   it('represents successful and failed results without throwing', () => {
