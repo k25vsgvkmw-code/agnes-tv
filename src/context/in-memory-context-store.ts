@@ -23,8 +23,7 @@ function cloneContext(context: HouseholdContext): HouseholdContext {
     activeTasks: [...context.activeTasks],
     urgentTasks: [...context.urgentTasks],
     currentWeather: context.currentWeather === null ? null : { ...context.currentWeather },
-    travelConditions:
-      context.travelConditions === null ? null : { ...context.travelConditions },
+    travelConditions: context.travelConditions === null ? null : { ...context.travelConditions },
     activeRoutines: [...context.activeRoutines],
     deviceStates: [...context.deviceStates],
     openNotifications: [...context.openNotifications],
