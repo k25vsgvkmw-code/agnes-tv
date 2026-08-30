@@ -37,4 +37,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm run format:check
+      - run: |
+          npx prettier --write src/notifications/channel-router.ts src/notifications/routed-notification-delivery.ts tests/unit/channel-router.test.ts
+          git diff -- src/notifications/channel-router.ts src/notifications/routed-notification-delivery.ts tests/unit/channel-router.test.ts
+          exit 1
