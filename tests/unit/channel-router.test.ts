@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createDevice, type DeviceConnectionState, type DeviceTrustLevel } from '../../src/devices/device.js';
+import {
+  createDevice,
+  type DeviceConnectionState,
+  type DeviceTrustLevel,
+} from '../../src/devices/device.js';
 import { newDeviceId, newHouseholdId, newPersonId, type PersonId } from '../../src/kernel/ids.js';
 import { routeNotification } from '../../src/notifications/channel-router.js';
 import type { DeliveryChannel } from '../../src/notifications/delivery-channel.js';
