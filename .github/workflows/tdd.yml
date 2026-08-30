@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/agnes-core-v1
+      - feature/agnes-live-core-v2
   pull_request:
     branches:
       - main
