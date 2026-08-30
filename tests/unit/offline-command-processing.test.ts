@@ -50,10 +50,7 @@ class MemoryCommandRepository implements OfflineCommandRepository {
     return this.replace(id, { status: 'EXPIRED' });
   }
 
-  private replace(
-    id: OfflineCommand['id'],
-    patch: Partial<OfflineCommand>,
-  ): OfflineCommand {
+  private replace(id: OfflineCommand['id'], patch: Partial<OfflineCommand>): OfflineCommand {
     const current = this.byId.get(id);
     if (current === undefined) throw new Error('missing command');
     const next = { ...current, ...patch } as OfflineCommand;
