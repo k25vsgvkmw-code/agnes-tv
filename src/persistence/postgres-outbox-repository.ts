@@ -133,4 +133,16 @@ export class PostgresOutboxRepository implements OutboxRepository<PoolClient> {
       [eventId],
     );
   }
+
+  async markFailed(eventId: EventId, error: string, availableAt: Date): Promise<void> {
+    await this.database.query(
+      `UPDATE outbox_events
+       SET attempts = attempts + 1,
+           available_at = $3,
+           claimed_at = NULL,
+           last_error = $2
+       WHERE event_id = $1`,
+      [eventId, error, availableAt],
+    );
+  }
 }
