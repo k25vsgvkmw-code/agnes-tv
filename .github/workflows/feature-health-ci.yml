@@ -37,6 +37,8 @@ jobs:
         run: npm install
       - name: Apply core migration
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f src/persistence/migrations/001_core.sql
+      - name: Apply health migration
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f src/persistence/migrations/002_health_bridge.sql
       - name: Lint
         run: npm run lint
       - name: Test
