@@ -45,5 +45,9 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Show Health Bridge Prettier diff
+        run: |
+          npx prettier src/persistence/postgres-health-bridge-repository.ts > /tmp/postgres-health-bridge-repository.ts
+          diff -u src/persistence/postgres-health-bridge-repository.ts /tmp/postgres-health-bridge-repository.ts || true
       - name: Format check
         run: npm run format:check
