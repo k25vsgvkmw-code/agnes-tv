@@ -37,33 +37,30 @@ function calendarEvent(
 }
 
 describe('updateContextFromEvent', () => {
-  it(
-    'adds a created calendar event to upcoming context with the canonical empty fields present',
-    async () => {
-      const store = new InMemoryContextStore();
+  it('adds a created calendar event to upcoming context with the canonical empty fields present', async () => {
+    const store = new InMemoryContextStore();
 
-      await updateContextFromEvent(calendarEvent('calendar.event.created.v1'), store);
-      const context = await store.get(householdId);
+    await updateContextFromEvent(calendarEvent('calendar.event.created.v1'), store);
+    const context = await store.get(householdId);
 
-      expect(context).not.toBeNull();
-      expect(context?.timestamp).toEqual(projectedAt);
-      expect(context?.upcomingEvents.map((event) => event.id)).toContain(calendarEventId);
-      expect(context).toMatchObject({
-        peoplePresent: [],
-        peopleAway: [],
-        activeEvents: [],
-        activeTasks: [],
-        urgentTasks: [],
-        currentWeather: null,
-        travelConditions: null,
-        activeRoutines: [],
-        deviceStates: [],
-        openNotifications: [],
-        attentionStates: [],
-        detectedSituations: [],
-      });
-    },
-  );
+    expect(context).not.toBeNull();
+    expect(context?.timestamp).toEqual(projectedAt);
+    expect(context?.upcomingEvents.map((event) => event.id)).toContain(calendarEventId);
+    expect(context).toMatchObject({
+      peoplePresent: [],
+      peopleAway: [],
+      activeEvents: [],
+      activeTasks: [],
+      urgentTasks: [],
+      currentWeather: null,
+      travelConditions: null,
+      activeRoutines: [],
+      deviceStates: [],
+      openNotifications: [],
+      attentionStates: [],
+      detectedSituations: [],
+    });
+  });
 
   it('classifies an event spanning the projection timestamp as active', async () => {
     const store = new InMemoryContextStore();
