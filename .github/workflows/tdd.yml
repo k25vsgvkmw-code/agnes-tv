@@ -37,4 +37,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm run format:check
+      - run: |
+          npx prettier --write src/presence/presence-state.ts src/presence/presence-resolver.ts tests/unit/presence-resolver.test.ts
+          git diff -- src/presence/presence-state.ts src/presence/presence-resolver.ts tests/unit/presence-resolver.test.ts
+          exit 1
