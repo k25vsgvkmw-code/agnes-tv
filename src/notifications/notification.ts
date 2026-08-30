@@ -17,5 +17,6 @@ export interface Notification {
   readonly state: NotificationState;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  readonly correlationId?: string;
   readonly deliveryReceipt?: NotificationDeliveryReceipt;
 }
