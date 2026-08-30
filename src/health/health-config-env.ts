@@ -15,7 +15,12 @@ function parsePositiveFinite(
   const numeric = Number(trimmed);
   const scaled = numeric * multiplier;
 
-  if (trimmed.length === 0 || !Number.isFinite(numeric) || numeric <= 0 || !Number.isFinite(scaled)) {
+  if (
+    trimmed.length === 0 ||
+    !Number.isFinite(numeric) ||
+    numeric <= 0 ||
+    !Number.isFinite(scaled)
+  ) {
     throw new Error(`${name} must be a positive finite number`);
   }
 
