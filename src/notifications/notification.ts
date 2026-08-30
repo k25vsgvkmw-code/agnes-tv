@@ -4,13 +4,7 @@ import type { SituationSupportingFactor } from '../situations/situation.js';
 import type { NotificationDeliveryReceipt } from './notification-delivery.js';
 
 export type NotificationState =
-  | 'pending'
-  | 'delivering'
-  | 'delivered'
-  | 'failed'
-  | 'acknowledged'
-  | 'expired'
-  | 'suppressed';
+  'pending' | 'delivering' | 'delivered' | 'failed' | 'acknowledged' | 'expired' | 'suppressed';
 
 export interface Notification {
   readonly id: string;
