@@ -7,5 +7,6 @@ export interface AuditRecord {
   readonly entityId: string;
   readonly householdId: HouseholdId;
   readonly occurredAt: Date;
+  readonly correlationId?: string;
   readonly metadata: Readonly<Record<string, unknown>>;
 }
