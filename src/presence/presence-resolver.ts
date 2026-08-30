@@ -47,10 +47,7 @@ function scoreEvidence(evidence: PresenceEvidence): number {
   return SOURCE_WEIGHTS[evidence.source] * clampConfidence(evidence.confidence);
 }
 
-export function resolvePresence(
-  evidence: readonly PresenceEvidence[],
-  now: Date,
-): PresenceState {
+export function resolvePresence(evidence: readonly PresenceEvidence[], now: Date): PresenceState {
   const fresh = evidence.filter((item) => item.expiresAt.getTime() > now.getTime());
 
   if (fresh.length === 0) {
