@@ -116,12 +116,16 @@ describe('calendar import', () => {
     const household = await createTestHousehold();
 
     await expect(
-      importCalendarRecord(record, { householdId: household.id }, {
-        calendarRepository,
-        outboxRepository: new FailingOutboxRepository(),
-        clock,
-        runInTransaction: withTransaction,
-      }),
+      importCalendarRecord(
+        record,
+        { householdId: household.id },
+        {
+          calendarRepository,
+          outboxRepository: new FailingOutboxRepository(),
+          clock,
+          runInTransaction: withTransaction,
+        },
+      ),
     ).rejects.toThrow('outbox unavailable');
 
     expect((await pool.query('SELECT id FROM calendar_events')).rows).toHaveLength(0);
