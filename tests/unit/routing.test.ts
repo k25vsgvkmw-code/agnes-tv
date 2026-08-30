@@ -26,9 +26,9 @@ describe('canonical travel conditions', () => {
     expect(() =>
       createTravelCondition({ ...validTravelConditionInput(), durationMinutes: -1 }),
     ).toThrow('durationMinutes');
-    expect(() =>
-      createTravelCondition({ ...validTravelConditionInput(), distanceKm: -1 }),
-    ).toThrow('distanceKm');
+    expect(() => createTravelCondition({ ...validTravelConditionInput(), distanceKm: -1 })).toThrow(
+      'distanceKm',
+    );
     expect(() =>
       createTravelCondition({ ...validTravelConditionInput(), trafficDelayMinutes: -1 }),
     ).toThrow('trafficDelayMinutes');
