@@ -3,9 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createAgnesEvent } from '../../src/events/agnes-event.js';
+import { newHouseholdId } from '../../src/kernel/ids.js';
 import { PostgresOutboxRepository } from '../../src/persistence/postgres-outbox-repository.js';
 import { pool, withTransaction } from '../../src/persistence/postgres.js';
-import { newHouseholdId } from '../../src/kernel/ids.js';
 
 const outbox = new PostgresOutboxRepository(pool);
 
@@ -49,7 +49,9 @@ describe('PostgreSQL transactional outbox', () => {
       await outbox.append(tx, event);
     });
 
-    const householdRows = await pool.query('SELECT id FROM households WHERE id = $1', [householdId]);
+    const householdRows = await pool.query('SELECT id FROM households WHERE id = $1', [
+      householdId,
+    ]);
     const outboxRows = await pool.query(
       'SELECT event_type, attempts, published_at FROM outbox_events WHERE event_id = $1',
       [event.id],
@@ -88,12 +90,12 @@ describe('PostgreSQL transactional outbox', () => {
       }),
     ).rejects.toThrow('force rollback');
 
-    expect((await pool.query('SELECT id FROM households WHERE id = $1', [householdId])).rows).toHaveLength(
-      0,
-    );
-    expect((await pool.query('SELECT event_id FROM outbox_events WHERE event_id = $1', [event.id])).rows).toHaveLength(
-      0,
-    );
+    expect(
+      (await pool.query('SELECT id FROM households WHERE id = $1', [householdId])).rows,
+    ).toHaveLength(0);
+    expect(
+      (await pool.query('SELECT event_id FROM outbox_events WHERE event_id = $1', [event.id])).rows,
+    ).toHaveLength(0);
   });
 
   it('enforces one external reference per provider and external id', async () => {
