@@ -37,4 +37,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm run format:check
+      - run: |
+          npx prettier --write tests/unit/routing.test.ts
+          git diff -- tests/unit/routing.test.ts
+          exit 1
