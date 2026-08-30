@@ -164,7 +164,9 @@ async function upsertCalendarEvent(
     };
   }
 
-  const change: CalendarUpsertChange = sameCanonicalState(existing, event) ? 'unchanged' : 'updated';
+  const change: CalendarUpsertChange = sameCanonicalState(existing, event)
+    ? 'unchanged'
+    : 'updated';
 
   if (change === 'updated') {
     await client.query(
