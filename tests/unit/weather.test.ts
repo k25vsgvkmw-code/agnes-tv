@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newHouseholdId } from '../../src/kernel/ids.js';
+import { FakeWeatherPort } from '../../src/weather/fake-weather-port.js';
 import { createWeatherSnapshot } from '../../src/weather/weather-snapshot.js';
 
 function validWeatherInput() {
@@ -52,5 +53,28 @@ describe('canonical weather snapshot', () => {
         expiresAt: new Date('2026-09-01T15:00:00Z'),
       }),
     ).toThrow('expiresAt');
+  });
+
+  it('returns cloned deterministic snapshots from the fake weather port', async () => {
+    const source = createWeatherSnapshot(validWeatherInput());
+    const port = new FakeWeatherPort(source);
+
+    const first = await port.getCurrent({
+      householdId: source.householdId,
+      placeId: source.placeId,
+      point: { latitude: 34.92, longitude: 33.63 },
+      now: new Date('2026-09-01T15:00:00Z'),
+    });
+    const second = await port.getCurrent({
+      householdId: source.householdId,
+      placeId: source.placeId,
+      point: { latitude: 34.92, longitude: 33.63 },
+      now: new Date('2026-09-01T15:00:00Z'),
+    });
+
+    expect(first).toEqual(source);
+    expect(first).not.toBe(source);
+    expect(second).not.toBe(first);
+    expect(first.observedAt).not.toBe(source.observedAt);
   });
 });
