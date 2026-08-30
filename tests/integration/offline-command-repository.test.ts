@@ -7,8 +7,12 @@ import { createOfflineCommand } from '../../src/devices/offline-command.js';
 import { createHousehold } from '../../src/household/household.js';
 import { createPerson } from '../../src/household/person.js';
 import { PostgresDeviceRepository } from '../../src/persistence/postgres-device-repository.js';
-import { PostgresHouseholdRepository } from '../../src/persistence/postgres-household-repository.js';
-import { PostgresOfflineCommandRepository } from '../../src/persistence/postgres-offline-command-repository.js';
+import {
+  PostgresHouseholdRepository,
+} from '../../src/persistence/postgres-household-repository.js';
+import {
+  PostgresOfflineCommandRepository,
+} from '../../src/persistence/postgres-offline-command-repository.js';
 import { pool } from '../../src/persistence/postgres.js';
 
 const householdRepository = new PostgresHouseholdRepository(pool);
@@ -91,32 +95,39 @@ describe('PostgreSQL Live v2 offline command repository', () => {
     await expect(commandRepository.get(command.id)).resolves.toEqual(command);
   });
 
-  it('deduplicates the same device and idempotency key without replacing the first command', async () => {
-    const { person, device } = await seedDevice();
-    const first = createOfflineCommand({
-      deviceId: device.id,
-      actorPersonId: person.id,
-      capability: 'shopping.list.modify',
-      payload: { item: 'milk' },
-      idempotencyKey: 'shopping-add-milk-1',
-      createdAt: new Date('2026-09-01T15:00:00Z'),
-      expiresAt: new Date('2026-09-01T15:30:00Z'),
-    });
-    const duplicate = createOfflineCommand({
-      deviceId: device.id,
-      actorPersonId: person.id,
-      capability: 'shopping.list.modify',
-      payload: { item: 'changed-payload' },
-      idempotencyKey: 'shopping-add-milk-1',
-      createdAt: new Date('2026-09-01T15:01:00Z'),
-      expiresAt: new Date('2026-09-01T15:31:00Z'),
-    });
+  it(
+    'deduplicates the same device and idempotency key without replacing the first command',
+    async () => {
+      const { person, device } = await seedDevice();
+      const first = createOfflineCommand({
+        deviceId: device.id,
+        actorPersonId: person.id,
+        capability: 'shopping.list.modify',
+        payload: { item: 'milk' },
+        idempotencyKey: 'shopping-add-milk-1',
+        createdAt: new Date('2026-09-01T15:00:00Z'),
+        expiresAt: new Date('2026-09-01T15:30:00Z'),
+      });
+      const duplicate = createOfflineCommand({
+        deviceId: device.id,
+        actorPersonId: person.id,
+        capability: 'shopping.list.modify',
+        payload: { item: 'changed-payload' },
+        idempotencyKey: 'shopping-add-milk-1',
+        createdAt: new Date('2026-09-01T15:01:00Z'),
+        expiresAt: new Date('2026-09-01T15:31:00Z'),
+      });
 
-    await expect(commandRepository.enqueue(first)).resolves.toEqual(first);
-    await expect(commandRepository.enqueue(duplicate)).resolves.toEqual(first);
-    await expect(commandRepository.getByDeviceAndIdempotencyKey(device.id, first.idempotencyKey)).resolves.toEqual(first);
+      await expect(commandRepository.enqueue(first)).resolves.toEqual(first);
+      await expect(commandRepository.enqueue(duplicate)).resolves.toEqual(first);
+      await expect(
+        commandRepository.getByDeviceAndIdempotencyKey(device.id, first.idempotencyKey),
+      ).resolves.toEqual(first);
 
-    const count = await pool.query<{ count: string }>('SELECT COUNT(*)::text AS count FROM offline_commands');
-    expect(count.rows[0]?.count).toBe('1');
-  });
+      const count = await pool.query<{ count: string }>(
+        'SELECT COUNT(*)::text AS count FROM offline_commands',
+      );
+      expect(count.rows[0]?.count).toBe('1');
+    },
+  );
 });
