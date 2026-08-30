@@ -37,8 +37,26 @@ CREATE TABLE IF NOT EXISTS health_measurements (
   CHECK (source_provider IN ('healthkit', 'health_connect'))
 );
 
+CREATE TABLE IF NOT EXISTS audit_records (
+  id uuid PRIMARY KEY,
+  household_id uuid NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  action text NOT NULL,
+  outcome text NOT NULL,
+  actor_id text,
+  entity_type text,
+  entity_id text,
+  correlation_id text,
+  error_code text,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  occurred_at timestamptz NOT NULL,
+  CHECK (outcome IN ('success', 'failure'))
+);
+
 CREATE INDEX IF NOT EXISTS health_measurements_person_measured_idx
   ON health_measurements (person_id, measured_at DESC);
 
 CREATE INDEX IF NOT EXISTS health_measurements_bridge_measured_idx
   ON health_measurements (bridge_id, measured_at DESC);
+
+CREATE INDEX IF NOT EXISTS audit_records_correlation_occurred_idx
+  ON audit_records (correlation_id, occurred_at DESC);
