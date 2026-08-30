@@ -51,10 +51,7 @@ export function decideSituation(input: DecideSituationInput): DecisionOutcome {
   if (!policy.allowed) return 'ignore';
 
   const config = input.config ?? defaultDecisionPolicyConfig;
-  if (
-    input.attentionState === 'sleeping' &&
-    input.signals.urgency < config.sleepingUrgencyBypass
-  ) {
+  if (input.attentionState === 'sleeping' && input.signals.urgency < config.sleepingUrgencyBypass) {
     return 'ignore';
   }
 
