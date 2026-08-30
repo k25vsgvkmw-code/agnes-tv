@@ -1,8 +1,10 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { HealthBridgeAuthState, HealthBridgeRegistration } from '../health/health-bridge.js';
 import type { HealthKind, HealthProvider } from '../health/health-measurement.js';
 import type { HealthBridgeRepository } from '../health/health-repositories.js';
 import type { HouseholdId, PersonId } from '../kernel/ids.js';
+
+type Queryable = Pool | PoolClient;
 
 interface HealthBridgeRow {
   id: string;
@@ -106,8 +108,9 @@ export class PostgresHealthBridgeRepository implements HealthBridgeRepository {
     );
   }
 
-  async recordMeasurementSeen(id: string, at: Date): Promise<void> {
-    await this.pool.query(
+  async recordMeasurementSeen(id: string, at: Date, client?: PoolClient): Promise<void> {
+    const executor: Queryable = client ?? this.pool;
+    await executor.query(
       `UPDATE health_bridges
        SET last_measurement_at = CASE
              WHEN last_measurement_at IS NULL OR last_measurement_at < $2 THEN $2
