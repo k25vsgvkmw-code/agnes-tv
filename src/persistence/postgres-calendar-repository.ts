@@ -1,17 +1,10 @@
 import type { Pool, PoolClient } from 'pg';
-import type {
-  CalendarEvent,
-  ExternalReference,
-} from '../calendar/calendar-event.js';
+import type { CalendarEvent, ExternalReference } from '../calendar/calendar-event.js';
 import type {
   CalendarRepository,
   CalendarUpsertChange,
 } from '../calendar/calendar-repository.js';
-import type {
-  CalendarEventId,
-  ExternalReferenceId,
-  HouseholdId,
-} from '../kernel/ids.js';
+import type { CalendarEventId, ExternalReferenceId, HouseholdId } from '../kernel/ids.js';
 
 interface CalendarJoinRow {
   readonly id: string;
@@ -89,7 +82,10 @@ function storedExternalReference(
   };
 }
 
-async function transaction<T>(database: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
+async function transaction<T>(
+  database: Pool,
+  work: (client: PoolClient) => Promise<T>,
+): Promise<T> {
   const client = await database.connect();
   try {
     await client.query('BEGIN');
