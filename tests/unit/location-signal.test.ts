@@ -19,7 +19,17 @@ function validLocationInput() {
 
 describe('canonical location signals', () => {
   it('requires latitude and longitude together', () => {
-    const { longitude: _longitude, ...input } = validLocationInput();
+    const base = validLocationInput();
+    const input = {
+      deviceId: base.deviceId,
+      semanticPlace: base.semanticPlace,
+      latitude: base.latitude,
+      observedAt: base.observedAt,
+      expiresAt: base.expiresAt,
+      movementState: base.movementState,
+      source: base.source,
+      privacyScope: base.privacyScope,
+    };
 
     expect(() => createLocationSignal(input)).toThrow('longitude');
   });
