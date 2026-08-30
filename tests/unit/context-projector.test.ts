@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AgnesEvent } from '../../src/events/agnes-event.js';
 import { InMemoryContextStore } from '../../src/context/in-memory-context-store.js';
 import { updateContextFromEvent } from '../../src/context/update-context-from-event.js';
-import {
-  newEventId,
-  type CalendarEventId,
-  type HouseholdId,
-} from '../../src/kernel/ids.js';
+import { newEventId, type CalendarEventId, type HouseholdId } from '../../src/kernel/ids.js';
 
 const householdId = '83000000-0000-4000-8000-000000000001' as HouseholdId;
 const calendarEventId = '83000000-0000-4000-8000-000000000002' as CalendarEventId;
@@ -41,30 +37,33 @@ function calendarEvent(
 }
 
 describe('updateContextFromEvent', () => {
-  it('adds a created calendar event to upcoming context with the canonical empty fields present', async () => {
-    const store = new InMemoryContextStore();
+  it(
+    'adds a created calendar event to upcoming context with the canonical empty fields present',
+    async () => {
+      const store = new InMemoryContextStore();
 
-    await updateContextFromEvent(calendarEvent('calendar.event.created.v1'), store);
-    const context = await store.get(householdId);
+      await updateContextFromEvent(calendarEvent('calendar.event.created.v1'), store);
+      const context = await store.get(householdId);
 
-    expect(context).not.toBeNull();
-    expect(context?.timestamp).toEqual(projectedAt);
-    expect(context?.upcomingEvents.map((event) => event.id)).toContain(calendarEventId);
-    expect(context).toMatchObject({
-      peoplePresent: [],
-      peopleAway: [],
-      activeEvents: [],
-      activeTasks: [],
-      urgentTasks: [],
-      currentWeather: null,
-      travelConditions: null,
-      activeRoutines: [],
-      deviceStates: [],
-      openNotifications: [],
-      attentionStates: [],
-      detectedSituations: [],
-    });
-  });
+      expect(context).not.toBeNull();
+      expect(context?.timestamp).toEqual(projectedAt);
+      expect(context?.upcomingEvents.map((event) => event.id)).toContain(calendarEventId);
+      expect(context).toMatchObject({
+        peoplePresent: [],
+        peopleAway: [],
+        activeEvents: [],
+        activeTasks: [],
+        urgentTasks: [],
+        currentWeather: null,
+        travelConditions: null,
+        activeRoutines: [],
+        deviceStates: [],
+        openNotifications: [],
+        attentionStates: [],
+        detectedSituations: [],
+      });
+    },
+  );
 
   it('classifies an event spanning the projection timestamp as active', async () => {
     const store = new InMemoryContextStore();
