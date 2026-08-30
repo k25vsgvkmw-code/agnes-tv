@@ -43,12 +43,14 @@ class MemoryBridgeRepository implements HealthBridgeRepository {
 
   async recordHeartbeat(id: string, at: Date): Promise<void> {
     const bridge = this.bridges.get(id);
-    if (bridge !== undefined) this.bridges.set(id, { ...bridge, lastHeartbeatAt: at, updatedAt: at });
+    if (bridge !== undefined)
+      this.bridges.set(id, { ...bridge, lastHeartbeatAt: at, updatedAt: at });
   }
 
   async recordMeasurementSeen(id: string, at: Date): Promise<void> {
     const bridge = this.bridges.get(id);
-    if (bridge !== undefined) this.bridges.set(id, { ...bridge, lastMeasurementAt: at, updatedAt: at });
+    if (bridge !== undefined)
+      this.bridges.set(id, { ...bridge, lastMeasurementAt: at, updatedAt: at });
   }
 }
 
@@ -71,15 +73,18 @@ describe('HealthStatusService', () => {
     });
   });
 
-  it.each(['expired', 'revoked'] as const)('returns auth_expired for %s auth', async (authState) => {
-    bridgeRepo.seed({
-      authState,
-      lastHeartbeatAt: new Date('2026-08-30T11:30:00Z'),
-      lastMeasurementAt: new Date('2026-08-30T11:45:00Z'),
-    });
+  it.each(['expired', 'revoked'] as const)(
+    'returns auth_expired for %s auth',
+    async (authState) => {
+      bridgeRepo.seed({
+        authState,
+        lastHeartbeatAt: new Date('2026-08-30T11:30:00Z'),
+        lastMeasurementAt: new Date('2026-08-30T11:45:00Z'),
+      });
 
-    expect(await service.getStatus('bridge-1')).toMatchObject({ state: 'auth_expired' });
-  });
+      expect(await service.getStatus('bridge-1')).toMatchObject({ state: 'auth_expired' });
+    },
+  );
 
   it('returns live when a valid measurement is fresh', async () => {
     bridgeRepo.seed({
