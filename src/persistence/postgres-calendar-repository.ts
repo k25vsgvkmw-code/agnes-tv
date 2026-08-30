@@ -1,9 +1,9 @@
 import type { Pool, PoolClient } from 'pg';
-import type { CalendarRepository, CalendarUpsertChange } from '../calendar/calendar-repository.js';
 import type { CalendarEvent } from '../calendar/calendar-event.js';
+import type { CalendarRepository, CalendarUpsertChange } from '../calendar/calendar-repository.js';
 import type { ExternalReference } from '../integrations/calendar/external-calendar-record.js';
-import type { CalendarEventId, HouseholdId, PersonId } from '../kernel/ids.js';
 import { ValidationError } from '../kernel/errors.js';
+import type { CalendarEventId, HouseholdId, PersonId } from '../kernel/ids.js';
 import { withTransaction } from './postgres.js';
 
 interface CalendarRow {
@@ -85,73 +85,20 @@ export class PostgresCalendarRepository implements CalendarRepository {
 
   async upsertByExternalReference(
     event: CalendarEvent,
+    client?: PoolClient,
   ): Promise<{ event: CalendarEvent; change: CalendarUpsertChange }> {
     const reference = event.externalReference;
     if (reference === undefined) {
       throw new ValidationError('externalReference is required for imported calendar events');
     }
 
-    return withTransaction(this.pool, async (client) => {
-      const externalReferenceId = await this.upsertExternalReference(client, reference);
-      const existingResult = await client.query<CalendarRow>(
-        `${calendarSelect} WHERE c.external_reference_id = $1 FOR UPDATE OF c`,
-        [externalReferenceId],
-      );
-      const existing = existingResult.rows[0];
+    if (client !== undefined) {
+      return this.upsertUsing(client, event, reference);
+    }
 
-      if (existing === undefined) {
-        await client.query(
-          `INSERT INTO calendar_events (
-             id, household_id, owner_person_id, title, description, starts_at, ends_at,
-             timezone, participants, visibility, status, external_reference_id
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12)`,
-          [
-            event.id,
-            event.householdId,
-            event.ownerPersonId ?? null,
-            event.title,
-            event.description ?? null,
-            event.startsAt,
-            event.endsAt,
-            event.timezone,
-            JSON.stringify(event.participants),
-            event.visibility,
-            event.status,
-            externalReferenceId,
-          ],
-        );
-        return { event, change: 'created' as const };
-      }
-
-      if (sameLogicalEvent(existing, event)) {
-        return { event: rowToEvent(existing), change: 'unchanged' as const };
-      }
-
-      await client.query(
-        `UPDATE calendar_events SET
-           household_id = $2, owner_person_id = $3, title = $4, description = $5,
-           starts_at = $6, ends_at = $7, timezone = $8, participants = $9::jsonb,
-           visibility = $10, status = $11, updated_at = now()
-         WHERE id = $1`,
-        [
-          existing.id,
-          event.householdId,
-          event.ownerPersonId ?? null,
-          event.title,
-          event.description ?? null,
-          event.startsAt,
-          event.endsAt,
-          event.timezone,
-          JSON.stringify(event.participants),
-          event.visibility,
-          event.status,
-        ],
-      );
-
-      const updated = await this.getByIdUsing(client, existing.id as CalendarEventId);
-      if (updated === null) throw new Error('calendar event disappeared during update');
-      return { event: updated, change: 'updated' as const };
-    });
+    return withTransaction(this.pool, (transactionClient) =>
+      this.upsertUsing(transactionClient, event, reference),
+    );
   }
 
   async listUpcoming(householdId: HouseholdId, from: Date): Promise<readonly CalendarEvent[]> {
@@ -166,6 +113,72 @@ export class PostgresCalendarRepository implements CalendarRepository {
 
   async getById(id: CalendarEventId): Promise<CalendarEvent | null> {
     return this.getByIdUsing(this.pool, id);
+  }
+
+  private async upsertUsing(
+    client: PoolClient,
+    event: CalendarEvent,
+    reference: ExternalReference,
+  ): Promise<{ event: CalendarEvent; change: CalendarUpsertChange }> {
+    const externalReferenceId = await this.upsertExternalReference(client, reference);
+    const existingResult = await client.query<CalendarRow>(
+      `${calendarSelect} WHERE c.external_reference_id = $1 FOR UPDATE OF c`,
+      [externalReferenceId],
+    );
+    const existing = existingResult.rows[0];
+
+    if (existing === undefined) {
+      await client.query(
+        `INSERT INTO calendar_events (
+           id, household_id, owner_person_id, title, description, starts_at, ends_at,
+           timezone, participants, visibility, status, external_reference_id
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12)`,
+        [
+          event.id,
+          event.householdId,
+          event.ownerPersonId ?? null,
+          event.title,
+          event.description ?? null,
+          event.startsAt,
+          event.endsAt,
+          event.timezone,
+          JSON.stringify(event.participants),
+          event.visibility,
+          event.status,
+          externalReferenceId,
+        ],
+      );
+      return { event, change: 'created' };
+    }
+
+    if (sameLogicalEvent(existing, event)) {
+      return { event: rowToEvent(existing), change: 'unchanged' };
+    }
+
+    await client.query(
+      `UPDATE calendar_events SET
+         household_id = $2, owner_person_id = $3, title = $4, description = $5,
+         starts_at = $6, ends_at = $7, timezone = $8, participants = $9::jsonb,
+         visibility = $10, status = $11, updated_at = now()
+       WHERE id = $1`,
+      [
+        existing.id,
+        event.householdId,
+        event.ownerPersonId ?? null,
+        event.title,
+        event.description ?? null,
+        event.startsAt,
+        event.endsAt,
+        event.timezone,
+        JSON.stringify(event.participants),
+        event.visibility,
+        event.status,
+      ],
+    );
+
+    const updated = await this.getByIdUsing(client, existing.id as CalendarEventId);
+    if (updated === null) throw new Error('calendar event disappeared during update');
+    return { event: updated, change: 'updated' };
   }
 
   private async getByIdUsing(
