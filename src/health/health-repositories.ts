@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import type { HealthBridgeRegistration } from './health-bridge.js';
 import type { HealthMeasurement } from './health-measurement.js';
 
@@ -6,7 +7,7 @@ export interface HealthBridgeRepository {
   getByTokenHash(tokenHash: string): Promise<HealthBridgeRegistration | null>;
   save(bridge: HealthBridgeRegistration): Promise<void>;
   recordHeartbeat(id: string, at: Date): Promise<void>;
-  recordMeasurementSeen(id: string, at: Date): Promise<void>;
+  recordMeasurementSeen(id: string, at: Date, client?: PoolClient): Promise<void>;
 }
 
 export type HealthMeasurementInsertChange = 'created' | 'unchanged';
@@ -14,6 +15,7 @@ export type HealthMeasurementInsertChange = 'created' | 'unchanged';
 export interface HealthMeasurementRepository {
   insertIfAbsent(
     measurement: HealthMeasurement,
+    client?: PoolClient,
   ): Promise<{ measurement: HealthMeasurement; change: HealthMeasurementInsertChange }>;
   getLatestMeasuredAt(bridgeId: string): Promise<Date | null>;
 }
