@@ -1,5 +1,11 @@
 export type ConnectorHealthState =
-  'connected' | 'degraded' | 'auth_expired' | 'rate_limited' | 'error' | 'disconnected';
+  | 'connected'
+  | 'connected_no_data'
+  | 'degraded'
+  | 'auth_expired'
+  | 'rate_limited'
+  | 'error'
+  | 'disconnected';
 
 export interface ConnectorHealth {
   readonly state: ConnectorHealthState;
