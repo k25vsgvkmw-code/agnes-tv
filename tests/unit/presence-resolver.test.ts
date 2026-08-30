@@ -70,10 +70,7 @@ describe('presence resolver', () => {
 
   it('lets a fresh manual state override stronger automatic evidence', () => {
     const result = resolvePresence(
-      [
-        evidence('LOCATION', 'PRESENT'),
-        evidence('MANUAL', 'AWAY', { confidence: 0.6 }),
-      ],
+      [evidence('LOCATION', 'PRESENT'), evidence('MANUAL', 'AWAY', { confidence: 0.6 })],
       now,
     );
 
@@ -102,14 +99,8 @@ describe('presence resolver', () => {
   });
 
   it('normalizes evidence confidence to the zero-to-one range', () => {
-    const high = resolvePresence(
-      [evidence('LOCATION', 'PRESENT', { confidence: 2 })],
-      now,
-    );
-    const low = resolvePresence(
-      [evidence('LOCATION', 'PRESENT', { confidence: -1 })],
-      now,
-    );
+    const high = resolvePresence([evidence('LOCATION', 'PRESENT', { confidence: 2 })], now);
+    const low = resolvePresence([evidence('LOCATION', 'PRESENT', { confidence: -1 })], now);
 
     expect(high.confidence).toBe(0.9);
     expect(low.confidence).toBe(0);
