@@ -26,18 +26,18 @@ describe('canonical travel conditions', () => {
     expect(() =>
       createTravelCondition({ ...validTravelConditionInput(), durationMinutes: -1 }),
     ).toThrow('durationMinutes');
-    expect(() => createTravelCondition({ ...validTravelConditionInput(), distanceKm: -1 })).toThrow(
-      'distanceKm',
-    );
+    expect(() =>
+      createTravelCondition({ ...validTravelConditionInput(), distanceKm: -1 }),
+    ).toThrow('distanceKm');
     expect(() =>
       createTravelCondition({ ...validTravelConditionInput(), trafficDelayMinutes: -1 }),
     ).toThrow('trafficDelayMinutes');
   });
 
   it('requires confidence between zero and one', () => {
-    expect(() => createTravelCondition({ ...validTravelConditionInput(), confidence: 1.1 })).toThrow(
-      'confidence',
-    );
+    expect(() =>
+      createTravelCondition({ ...validTravelConditionInput(), confidence: 1.1 }),
+    ).toThrow('confidence');
   });
 
   it('requires expiry after observation', () => {
