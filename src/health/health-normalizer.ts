@@ -42,11 +42,7 @@ function validateMeasurement(input: RawHealthMeasurement): void {
   }
 }
 
-function parseMeasuredAt(
-  measuredAt: string,
-  receivedAt: Date,
-  config: HealthConfig,
-): Date {
+function parseMeasuredAt(measuredAt: string, receivedAt: Date, config: HealthConfig): Date {
   const parsed = new Date(measuredAt);
   if (Number.isNaN(parsed.getTime())) {
     throw new ValidationError('measurement timestamp is invalid');
