@@ -43,5 +43,11 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Show Health Prettier diffs
+        run: |
+          npx prettier src/health/health-normalizer.ts > /tmp/health-normalizer.ts
+          diff -u src/health/health-normalizer.ts /tmp/health-normalizer.ts || true
+          npx prettier tests/unit/health-normalizer.test.ts > /tmp/health-normalizer.test.ts
+          diff -u tests/unit/health-normalizer.test.ts /tmp/health-normalizer.test.ts || true
       - name: Format check
         run: npm run format:check
