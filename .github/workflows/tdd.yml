@@ -37,4 +37,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm run format:check
+      - run: |
+          npx prettier --write src/context/update-context-from-event.ts
+          git diff -- src/context/update-context-from-event.ts
+          exit 1
