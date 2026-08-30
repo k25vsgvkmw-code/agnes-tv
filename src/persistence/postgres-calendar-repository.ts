@@ -51,9 +51,7 @@ function rowToEvent(row: CalendarRow): CalendarEvent {
     participants: row.participants.map((id) => id as PersonId),
     visibility: row.visibility,
     status: row.status,
-    ...(row.owner_person_id === null
-      ? {}
-      : { ownerPersonId: row.owner_person_id as PersonId }),
+    ...(row.owner_person_id === null ? {} : { ownerPersonId: row.owner_person_id as PersonId }),
     ...(row.description === null ? {} : { description: row.description }),
     ...(externalReference === undefined ? {} : { externalReference }),
   };
@@ -156,10 +154,7 @@ export class PostgresCalendarRepository implements CalendarRepository {
     });
   }
 
-  async listUpcoming(
-    householdId: HouseholdId,
-    from: Date,
-  ): Promise<readonly CalendarEvent[]> {
+  async listUpcoming(householdId: HouseholdId, from: Date): Promise<readonly CalendarEvent[]> {
     const result = await this.pool.query<CalendarRow>(
       `${calendarSelect}
        WHERE c.household_id = $1 AND c.ends_at >= $2
