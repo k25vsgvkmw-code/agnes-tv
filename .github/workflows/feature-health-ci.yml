@@ -45,5 +45,9 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Connector prettier diff diagnostic
+        run: |
+          npx prettier src/integrations/connector.ts --write
+          git diff -- src/integrations/connector.ts
       - name: Format check
         run: npm run format:check
