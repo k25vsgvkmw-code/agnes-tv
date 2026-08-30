@@ -43,20 +43,14 @@ function requiredString(value: unknown, field: string): string {
 }
 
 function numberArray(value: unknown, field: string): readonly number[] {
-  if (
-    !Array.isArray(value) ||
-    value.some((entry) => typeof entry !== 'number')
-  ) {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'number')) {
     throw providerError(`Malformed Open-Meteo field: ${field}`, { field });
   }
   return value as readonly number[];
 }
 
 function stringArray(value: unknown, field: string): readonly string[] {
-  if (
-    !Array.isArray(value) ||
-    value.some((entry) => typeof entry !== 'string')
-  ) {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
     throw providerError(`Malformed Open-Meteo field: ${field}`, { field });
   }
   return value as readonly string[];
@@ -67,10 +61,8 @@ function conditionFromCode(code: number): string {
   if (code >= 1 && code <= 3) return 'cloudy';
   if (code === 45 || code === 48) return 'fog';
   if (code >= 51 && code <= 57) return 'drizzle';
-  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82))
-    return 'rain';
-  if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86))
-    return 'snow';
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+  if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return 'snow';
   if (code >= 95 && code <= 99) return 'thunderstorm';
   return 'unknown';
 }
@@ -101,10 +93,7 @@ export class OpenMeteoWeatherAdapter implements WeatherPort {
         'wind_gusts_10m',
       ].join(','),
     );
-    url.searchParams.set(
-      'hourly',
-      'precipitation_probability,visibility,uv_index',
-    );
+    url.searchParams.set('hourly', 'precipitation_probability,visibility,uv_index');
 
     let response: Response;
     try {
@@ -131,9 +120,7 @@ export class OpenMeteoWeatherAdapter implements WeatherPort {
     const current = payload.current;
     const hourly = payload.hourly;
     if (current === undefined || hourly === undefined) {
-      throw providerError(
-        'Open-Meteo response is missing current or hourly weather',
-      );
+      throw providerError('Open-Meteo response is missing current or hourly weather');
     }
 
     const observedText = requiredString(current.time, 'current.time');
@@ -156,10 +143,7 @@ export class OpenMeteoWeatherAdapter implements WeatherPort {
       rainProbabilities[index],
       'hourly.precipitation_probability',
     );
-    const visibilityMeters = requiredNumber(
-      visibility[index],
-      'hourly.visibility',
-    );
+    const visibilityMeters = requiredNumber(visibility[index], 'hourly.visibility');
     const uv = requiredNumber(uvIndex[index], 'hourly.uv_index');
 
     return createWeatherSnapshot({
@@ -167,34 +151,14 @@ export class OpenMeteoWeatherAdapter implements WeatherPort {
       placeId: query.placeId,
       observedAt,
       expiresAt: new Date(observedAt.getTime() + 20 * 60 * 1000),
-      temperatureC: requiredNumber(
-        current.temperature_2m,
-        'current.temperature_2m',
-      ),
-      feelsLikeC: requiredNumber(
-        current.apparent_temperature,
-        'current.apparent_temperature',
-      ),
-      condition: conditionFromCode(
-        requiredNumber(current.weather_code, 'current.weather_code'),
-      ),
+      temperatureC: requiredNumber(current.temperature_2m, 'current.temperature_2m'),
+      feelsLikeC: requiredNumber(current.apparent_temperature, 'current.apparent_temperature'),
+      condition: conditionFromCode(requiredNumber(current.weather_code, 'current.weather_code')),
       rainProbability: rainProbability / 100,
-      precipitationMm: requiredNumber(
-        current.precipitation,
-        'current.precipitation',
-      ),
-      windSpeedKmh: requiredNumber(
-        current.wind_speed_10m,
-        'current.wind_speed_10m',
-      ),
-      windGustKmh: requiredNumber(
-        current.wind_gusts_10m,
-        'current.wind_gusts_10m',
-      ),
-      humidity: requiredNumber(
-        current.relative_humidity_2m,
-        'current.relative_humidity_2m',
-      ),
+      precipitationMm: requiredNumber(current.precipitation, 'current.precipitation'),
+      windSpeedKmh: requiredNumber(current.wind_speed_10m, 'current.wind_speed_10m'),
+      windGustKmh: requiredNumber(current.wind_gusts_10m, 'current.wind_gusts_10m'),
+      humidity: requiredNumber(current.relative_humidity_2m, 'current.relative_humidity_2m'),
       visibilityKm: visibilityMeters / 1000,
       uvIndex: uv,
       source: 'open-meteo',
