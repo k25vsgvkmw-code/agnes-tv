@@ -6,21 +6,13 @@ const now = new Date('2026-09-01T15:00:00Z');
 describe('live fact freshness', () => {
   it('marks a recently observed live fact fresh', () => {
     expect(
-      evaluateFreshness(
-        new Date('2026-09-01T14:55:00Z'),
-        new Date('2026-09-01T15:20:00Z'),
-        now,
-      ),
+      evaluateFreshness(new Date('2026-09-01T14:55:00Z'), new Date('2026-09-01T15:20:00Z'), now),
     ).toBe('FRESH');
   });
 
   it('marks a valid but aging live fact stale', () => {
     expect(
-      evaluateFreshness(
-        new Date('2026-09-01T14:00:00Z'),
-        new Date('2026-09-01T15:15:00Z'),
-        now,
-      ),
+      evaluateFreshness(new Date('2026-09-01T14:00:00Z'), new Date('2026-09-01T15:15:00Z'), now),
     ).toBe('STALE');
   });
 
