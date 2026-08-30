@@ -14,6 +14,7 @@ export interface CreateNotificationInput {
   readonly message: string;
   readonly situationType: string;
   readonly supportingFactors: readonly SituationSupportingFactor[];
+  readonly correlationId?: string;
 }
 
 export interface CreateNotificationDependencies {
@@ -38,6 +39,7 @@ export async function createNotification(
     state: 'pending',
     createdAt,
     updatedAt: createdAt,
+    ...(input.correlationId === undefined ? {} : { correlationId: input.correlationId }),
   };
   await dependencies.repository.save(pending);
 
