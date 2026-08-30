@@ -85,14 +85,19 @@ function eligibleDevices(
   channel: DeliveryChannel,
   attention: AttentionState,
 ): Device[] {
-  if ((channel === 'VOICE_HOME' || channel === 'VOICE_PERSONAL_DEVICE') && isVoiceSuppressed(attention)) {
+  if (
+    (channel === 'VOICE_HOME' || channel === 'VOICE_PERSONAL_DEVICE') &&
+    isVoiceSuppressed(attention)
+  ) {
     return [];
   }
 
   return devices
     .filter(isReachable)
     .filter((device) => supportsChannel(device, channel))
-    .filter((device) => candidate.privacy !== 'PRIVATE' || isPersonalForCandidate(device, candidate))
+    .filter(
+      (device) => candidate.privacy !== 'PRIVATE' || isPersonalForCandidate(device, candidate),
+    )
     .filter((device) => channel !== 'VOICE_HOME' || device.ownerPersonId === undefined)
     .sort((left, right) => {
       const personalDifference =
