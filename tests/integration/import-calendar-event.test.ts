@@ -64,6 +64,8 @@ class FailingOutboxRepository implements OutboxRepository<PoolClient> {
   }
 
   async markPublished(): Promise<void> {}
+
+  async markFailed(): Promise<void> {}
 }
 
 describe('calendar import', () => {
