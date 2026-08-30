@@ -147,7 +147,9 @@ describe('importHealthMeasurement', () => {
       externalId: 'hr-1',
     };
 
-    await expect(importHealthMeasurement(raw, bridge, dependencies('corr-kind-1'))).rejects.toMatchObject({
+    await expect(
+      importHealthMeasurement(raw, bridge, dependencies('corr-kind-1')),
+    ).rejects.toMatchObject({
       code: 'HEALTH_KIND_NOT_ALLOWED',
     });
 
