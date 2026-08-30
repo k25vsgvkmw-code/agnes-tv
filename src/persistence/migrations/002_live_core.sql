@@ -43,3 +43,24 @@ CREATE TABLE IF NOT EXISTS device_push_tokens (
 CREATE INDEX IF NOT EXISTS device_push_tokens_active_idx
   ON device_push_tokens(device_id, created_at DESC)
   WHERE revoked_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS offline_commands (
+  id uuid PRIMARY KEY,
+  device_id uuid NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  actor_person_id uuid NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+  capability text NOT NULL,
+  payload jsonb NOT NULL CHECK (jsonb_typeof(payload) = 'object'),
+  idempotency_key text NOT NULL,
+  created_at timestamptz NOT NULL,
+  expires_at timestamptz NOT NULL,
+  base_version text,
+  status text NOT NULL CHECK (status IN ('PENDING', 'APPLIED', 'REJECTED', 'EXPIRED')),
+  applied_at timestamptz,
+  rejection_code text,
+  CHECK (expires_at > created_at),
+  UNIQUE (device_id, idempotency_key)
+);
+
+CREATE INDEX IF NOT EXISTS offline_commands_pending_idx
+  ON offline_commands(device_id, created_at)
+  WHERE status = 'PENDING';
