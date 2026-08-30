@@ -22,8 +22,7 @@ export type DepartureRiskSituation = Situation<DepartureRiskFactors>;
 
 export class DepartureRiskDetector {
   detect(input: DepartureRiskInput): readonly DepartureRiskSituation[] {
-    const remainingMinutes =
-      (input.eventStartsAt.getTime() - input.now.getTime()) / 60_000;
+    const remainingMinutes = (input.eventStartsAt.getTime() - input.now.getTime()) / 60_000;
     const requiredLeadMinutes = input.travelMinutes + input.bufferMinutes;
 
     if (remainingMinutes <= 0 || remainingMinutes >= requiredLeadMinutes) return [];
