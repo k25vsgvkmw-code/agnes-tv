@@ -1,12 +1,7 @@
 export type PresenceStateName = 'PRESENT' | 'AWAY' | 'ARRIVING' | 'LEAVING' | 'UNKNOWN';
 
 export type PresenceEvidenceSource =
-  | 'MANUAL'
-  | 'LOCATION'
-  | 'HOME_WIFI'
-  | 'NEARBY'
-  | 'INTERACTION'
-  | 'CALENDAR';
+  'MANUAL' | 'LOCATION' | 'HOME_WIFI' | 'NEARBY' | 'INTERACTION' | 'CALENDAR';
 
 export interface PresenceEvidence {
   readonly source: PresenceEvidenceSource;
