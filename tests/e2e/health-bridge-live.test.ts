@@ -78,7 +78,9 @@ afterAll(async () => {
 
 describe('Health Bridge end-to-end live proof', () => {
   it('moves health from connected_no_data to live only after a real accepted measurement', async () => {
-    if (app === undefined || pool === undefined) throw new Error('E2E application was not initialized');
+    if (app === undefined || pool === undefined) {
+      throw new Error('E2E application was not initialized');
+    }
 
     const authorization = { authorization: `Bearer ${token}` };
 
@@ -101,7 +103,9 @@ describe('Health Bridge end-to-end live proof', () => {
     expect(beforeSummary.statusCode).toBe(200);
     expect(beforeSummary.json()).toMatchObject({ total: 1, live: 0 });
     expect(beforeSummary.json().items).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: 'health', state: 'connected_no_data' })]),
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'health', state: 'connected_no_data' }),
+      ]),
     );
 
     const payload = {
