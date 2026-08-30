@@ -36,6 +36,4 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - name: Show expected context formatting
-        run: npx prettier src/context/household-context.ts
       - run: npm run format:check
