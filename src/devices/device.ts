@@ -2,14 +2,7 @@ import { ValidationError } from '../kernel/errors.js';
 import { newDeviceId, type DeviceId, type HouseholdId, type PersonId } from '../kernel/ids.js';
 
 export type DeviceType =
-  | 'PHONE'
-  | 'TABLET'
-  | 'TV'
-  | 'HOME_PANEL'
-  | 'SPEAKER'
-  | 'WATCH'
-  | 'COMPUTER'
-  | 'OTHER';
+  'PHONE' | 'TABLET' | 'TV' | 'HOME_PANEL' | 'SPEAKER' | 'WATCH' | 'COMPUTER' | 'OTHER';
 
 export type DeviceTrustLevel = 'UNTRUSTED' | 'LIMITED' | 'TRUSTED' | 'HIGH_TRUST';
 export type DeviceConnectionState = 'ONLINE' | 'STALE' | 'OFFLINE';
@@ -65,10 +58,7 @@ export function createDevice(input: CreateDeviceInput): Device {
     });
   }
 
-  if (
-    input.revokedAt !== undefined &&
-    input.revokedAt.getTime() < input.registeredAt.getTime()
-  ) {
+  if (input.revokedAt !== undefined && input.revokedAt.getTime() < input.registeredAt.getTime()) {
     throw new ValidationError('revokedAt must not be before registeredAt', {
       field: 'revokedAt',
     });
