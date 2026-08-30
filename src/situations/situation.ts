@@ -1,4 +1,4 @@
-export type SituationType = 'LATE_DEPARTURE_RISK';
+export type SituationType = 'LATE_DEPARTURE_RISK' | 'DEPARTURE_PREPARATION';
 
 export interface SituationEntityReference {
   readonly type: string;
