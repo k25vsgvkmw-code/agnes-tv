@@ -83,15 +83,21 @@ describe('GoogleRoutesAdapter', () => {
   });
 
   it('throws ROUTING_PROVIDER_ERROR for provider or malformed response failures', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('unavailable', { status: 503 }));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response('unavailable', { status: 503 }),
+    );
     const adapter = new GoogleRoutesAdapter({ apiKey: 'test-key', clock });
 
-    await expect(adapter.getRoute(request())).rejects.toMatchObject({ code: 'ROUTING_PROVIDER_ERROR' });
+    await expect(adapter.getRoute(request())).rejects.toMatchObject({
+      code: 'ROUTING_PROVIDER_ERROR',
+    });
 
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ routes: [{ duration: 'bad' }] }), { status: 200 }),
     );
 
-    await expect(adapter.getRoute(request())).rejects.toMatchObject({ code: 'ROUTING_PROVIDER_ERROR' });
+    await expect(adapter.getRoute(request())).rejects.toMatchObject({
+      code: 'ROUTING_PROVIDER_ERROR',
+    });
   });
 });
