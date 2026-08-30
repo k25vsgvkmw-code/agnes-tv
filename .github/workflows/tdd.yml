@@ -17,4 +17,4 @@ jobs:
         with:
           node-version: 24
       - run: npm install
-      - run: npm test -- tests/unit/health-routes.test.ts
+      - run: npm test
