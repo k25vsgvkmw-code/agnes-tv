@@ -1,8 +1,5 @@
 import type { Pool } from 'pg';
-import type {
-  HealthBridgeAuthState,
-  HealthBridgeRegistration,
-} from '../health/health-bridge.js';
+import type { HealthBridgeAuthState, HealthBridgeRegistration } from '../health/health-bridge.js';
 import type { HealthKind, HealthProvider } from '../health/health-measurement.js';
 import type { HealthBridgeRepository } from '../health/health-repositories.js';
 import type { HouseholdId, PersonId } from '../kernel/ids.js';
