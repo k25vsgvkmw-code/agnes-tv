@@ -1,9 +1,6 @@
 import type { Pool } from 'pg';
 import type { OfflineCommandRepository } from '../devices/offline-command-repository.js';
-import type {
-  OfflineCommand,
-  OfflineCommandStatus,
-} from '../devices/offline-command.js';
+import type { OfflineCommand, OfflineCommandStatus } from '../devices/offline-command.js';
 import { AgnesError } from '../kernel/errors.js';
 import type { CommandId, DeviceId, PersonId } from '../kernel/ids.js';
 import type { NamedCapability } from '../permissions/named-capability.js';
