@@ -35,7 +35,9 @@ export interface CreateAgnesEventInput<TPayload> {
   readonly metadata: AgnesEventMetadata;
 }
 
-export function createAgnesEvent<TPayload>(input: CreateAgnesEventInput<TPayload>): AgnesEvent<TPayload> {
+export function createAgnesEvent<TPayload>(
+  input: CreateAgnesEventInput<TPayload>,
+): AgnesEvent<TPayload> {
   return {
     id: newEventId(),
     type: input.type,
