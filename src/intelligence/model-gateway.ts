@@ -27,7 +27,10 @@ export interface GeneratedResponse {
 
 export interface ModelGateway {
   extractIntent(input: string): Promise<Result<ExtractedIntent, ModelError>>;
-  createPlan(input: string, allowedActions: readonly string[]): Promise<Result<ConstrainedPlan, ModelError>>;
+  createPlan(
+    input: string,
+    allowedActions: readonly string[],
+  ): Promise<Result<ConstrainedPlan, ModelError>>;
   summarize(input: string): Promise<Result<string, ModelError>>;
   generateResponse(input: string): Promise<Result<GeneratedResponse, ModelError>>;
 }
