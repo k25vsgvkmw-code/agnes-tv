@@ -7,8 +7,10 @@ const DEPARTURE_SHIFT_THRESHOLD_MS = 10 * 60 * 1000;
 const URGENCY_THRESHOLD = 0.8;
 
 function crossesUrgencyThreshold(previous: number, current: number): boolean {
-  return (previous < URGENCY_THRESHOLD && current >= URGENCY_THRESHOLD) ||
-    (previous >= URGENCY_THRESHOLD && current < URGENCY_THRESHOLD);
+  return (
+    (previous < URGENCY_THRESHOLD && current >= URGENCY_THRESHOLD) ||
+    (previous >= URGENCY_THRESHOLD && current < URGENCY_THRESHOLD)
+  );
 }
 
 export function hasMaterialDepartureChange(
