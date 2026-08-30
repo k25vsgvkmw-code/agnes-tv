@@ -27,7 +27,9 @@ export interface CalendarImportContext<TTransaction> {
   readonly clock: Clock;
   readonly calendarRepository: TransactionalCalendarRepository<TTransaction>;
   readonly outboxRepository: TransactionalCalendarOutbox<TTransaction>;
-  readonly runInTransaction: <T>(operation: (transaction: TTransaction) => Promise<T>) => Promise<T>;
+  readonly runInTransaction: <T>(
+    operation: (transaction: TTransaction) => Promise<T>,
+  ) => Promise<T>;
 }
 
 export interface CalendarImportResult {
