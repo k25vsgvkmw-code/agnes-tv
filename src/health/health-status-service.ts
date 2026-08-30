@@ -7,10 +7,7 @@ function ageMs(now: Date, timestamp: Date): number {
   return Math.max(0, now.getTime() - timestamp.getTime());
 }
 
-function latestActivity(
-  lastHeartbeatAt: Date | null,
-  lastMeasurementAt: Date | null,
-): Date | null {
+function latestActivity(lastHeartbeatAt: Date | null, lastMeasurementAt: Date | null): Date | null {
   if (lastHeartbeatAt === null) return lastMeasurementAt;
   if (lastMeasurementAt === null) return lastHeartbeatAt;
   return lastHeartbeatAt.getTime() >= lastMeasurementAt.getTime()
@@ -49,15 +46,9 @@ export class HealthStatusService {
       state = 'live';
     } else {
       const activity = latestActivity(bridge.lastHeartbeatAt, bridge.lastMeasurementAt);
-      if (
-        activity !== null &&
-        ageMs(evaluatedAt, activity) <= this.config.heartbeatFreshnessMs
-      ) {
+      if (activity !== null && ageMs(evaluatedAt, activity) <= this.config.heartbeatFreshnessMs) {
         state = 'connected_no_data';
-      } else if (
-        activity !== null &&
-        ageMs(evaluatedAt, activity) <= this.config.degradedGraceMs
-      ) {
+      } else if (activity !== null && ageMs(evaluatedAt, activity) <= this.config.degradedGraceMs) {
         state = 'degraded';
       } else {
         state = 'disconnected';
