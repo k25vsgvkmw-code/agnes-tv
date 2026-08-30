@@ -43,5 +43,9 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Show Prettier diff
+        run: |
+          npx prettier src/persistence/postgres-calendar-repository.ts > /tmp/postgres-calendar-repository.ts
+          diff -u src/persistence/postgres-calendar-repository.ts /tmp/postgres-calendar-repository.ts || true
       - name: Format check
         run: npm run format:check
