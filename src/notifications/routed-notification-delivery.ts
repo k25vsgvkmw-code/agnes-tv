@@ -7,10 +7,7 @@ import {
   type NotificationRoute,
 } from './channel-router.js';
 import type { DeliveryChannel } from './delivery-channel.js';
-import type {
-  NotificationDelivery,
-  NotificationDeliveryReceipt,
-} from './notification-delivery.js';
+import type { NotificationDelivery, NotificationDeliveryReceipt } from './notification-delivery.js';
 import type { NotificationCandidate } from './notification-candidate.js';
 import type { Notification } from './notification.js';
 
