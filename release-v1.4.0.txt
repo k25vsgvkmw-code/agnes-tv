@@ -1,2 +1,0 @@
-AGNES OS v1.4.0
-Home-first launcher with left/right service carousel and Play Store access.

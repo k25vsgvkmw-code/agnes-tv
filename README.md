@@ -1,19 +1,26 @@
-# AGNES TV 0.1.0
+# AGNES
 
-Android TV / Google TV starter for AGNES.
+Greenfield foundation for the unified AGNES Personal & Family Operating System.
 
-## Περιλαμβάνει
-- Full-screen AGNES TV Home
-- Remote / D-pad focus navigation
-- TV-friendly cards
-- Football panel με ώρα αγώνα + κανάλι
-- Προτεραιότητα σε αγαπημένες ομάδες
-- Έτοιμη βάση για live football API
+## Reset baseline
 
-## Build
-Το GitHub Actions workflow χτίζει αυτόματα debug APK σε κάθε push στο `main`.
+This branch intentionally starts from a clean product and technical foundation. No legacy AGNES TV UI, navigation, screen architecture, or implementation is inherited by default.
 
-Άνοιξε **Actions → Build AGNES TV APK** και κατέβασε το artifact **AGNES-TV-debug** όταν ολοκληρωθεί το build.
+The previous repository state is preserved on:
 
-## Σημαντικό
-Τα δεδομένα αγώνων στην 0.1.0 είναι demo. Το πραγματικό live πρόγραμμα και το mapping καναλιών Cytavision θα προστεθούν σε επόμενη έκδοση.
+`backup/pre-greenfield-2026-08-30`
+
+## Build order
+
+1. Core architecture and domain boundaries
+2. Household graph and canonical data model
+3. Event bus and context engine
+4. Integration gateway and connectors
+5. Memory, priority, automation, notifications
+6. AI orchestrator and opportunity engine
+7. Security, permissions, audit and observability
+8. UI/UX and visual design last
+
+## Product principle
+
+AGNES is one coherent Personal & Family Operating System, not a collection of legacy screens or disconnected mini-apps.
