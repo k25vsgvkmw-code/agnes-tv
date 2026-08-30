@@ -1,3 +1,4 @@
+import type { Result } from '../kernel/result.js';
 import { err } from '../kernel/result.js';
 import type {
   ConstrainedPlan,
@@ -6,24 +7,31 @@ import type {
   ModelError,
   ModelGateway,
 } from './model-gateway.js';
-import type { Result } from '../kernel/result.js';
 
 const MODEL_UNAVAILABLE: ModelError = { code: 'MODEL_UNAVAILABLE' };
 
 export class UnavailableModelGateway implements ModelGateway {
-  async extractIntent(): Promise<Result<ExtractedIntent, ModelError>> {
+  async extractIntent(input: string): Promise<Result<ExtractedIntent, ModelError>> {
+    void input;
     return err(MODEL_UNAVAILABLE);
   }
 
-  async createPlan(): Promise<Result<ConstrainedPlan, ModelError>> {
+  async createPlan(
+    input: string,
+    allowedActions: readonly string[],
+  ): Promise<Result<ConstrainedPlan, ModelError>> {
+    void input;
+    void allowedActions;
     return err(MODEL_UNAVAILABLE);
   }
 
-  async summarize(): Promise<Result<string, ModelError>> {
+  async summarize(input: string): Promise<Result<string, ModelError>> {
+    void input;
     return err(MODEL_UNAVAILABLE);
   }
 
-  async generateResponse(): Promise<Result<GeneratedResponse, ModelError>> {
+  async generateResponse(input: string): Promise<Result<GeneratedResponse, ModelError>> {
+    void input;
     return err(MODEL_UNAVAILABLE);
   }
 }
