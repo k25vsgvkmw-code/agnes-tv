@@ -31,9 +31,12 @@ export async function buildApp(config: BuildAppConfig) {
 
   connectorRegistry.register(calendarConnector);
 
-  const unsubscribeCalendarCreated = domainEventBus.subscribe('calendar.event.created.v1', async (event) => {
-    await updateContextFromEvent(event, contextStore);
-  });
+  const unsubscribeCalendarCreated = domainEventBus.subscribe(
+    'calendar.event.created.v1',
+    async (event) => {
+      await updateContextFromEvent(event, contextStore);
+    },
+  );
 
   const outboxWorker = new OutboxWorker(outboxRepository, domainEventBus);
 
