@@ -98,110 +98,118 @@ async function transaction<T>(
   }
 }
 
-export class PostgresCalendarRepository implements CalendarRepository {
+async function upsertCalendarEvent(
+  client: PoolClient,
+  event: CalendarEvent,
+): Promise<{ event: CalendarEvent; change: CalendarUpsertChange }> {
+  const externalResult = await client.query<{ id: string }>(
+    `INSERT INTO external_references(
+      id, provider, external_id, external_version, etag, sync_token, last_synced_at, authoritative
+    ) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+    ON CONFLICT(provider, external_id) DO UPDATE SET
+      external_version = EXCLUDED.external_version,
+      etag = EXCLUDED.etag,
+      sync_token = EXCLUDED.sync_token,
+      last_synced_at = EXCLUDED.last_synced_at,
+      authoritative = EXCLUDED.authoritative
+    RETURNING id`,
+    [
+      event.externalReference.id,
+      event.externalReference.provider,
+      event.externalReference.externalId,
+      event.externalReference.externalVersion ?? null,
+      event.externalReference.etag ?? null,
+      event.externalReference.syncToken ?? null,
+      event.externalReference.lastSyncedAt,
+      event.externalReference.authoritative,
+    ],
+  );
+
+  const externalReferenceId = externalResult.rows[0]?.id as ExternalReferenceId | undefined;
+  if (externalReferenceId === undefined) {
+    throw new Error('external reference upsert did not return an id');
+  }
+
+  const existingResult = await client.query<CalendarStateRow>(
+    `SELECT id, household_id, title, starts_at, ends_at, timezone, status
+     FROM calendar_events
+     WHERE external_reference_id = $1
+     FOR UPDATE`,
+    [externalReferenceId],
+  );
+
+  const existing = existingResult.rows[0];
+  const externalReference = storedExternalReference(event, externalReferenceId);
+
+  if (existing === undefined) {
+    await client.query(
+      `INSERT INTO calendar_events(
+        id, household_id, title, starts_at, ends_at, timezone, status, external_reference_id
+      ) VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        event.id,
+        event.householdId,
+        event.title,
+        event.startsAt,
+        event.endsAt,
+        event.timezone,
+        event.status,
+        externalReferenceId,
+      ],
+    );
+
+    return {
+      event: { ...event, externalReference },
+      change: 'created',
+    };
+  }
+
+  const change: CalendarUpsertChange = sameCanonicalState(existing, event) ? 'unchanged' : 'updated';
+
+  if (change === 'updated') {
+    await client.query(
+      `UPDATE calendar_events
+       SET household_id = $2,
+           title = $3,
+           starts_at = $4,
+           ends_at = $5,
+           timezone = $6,
+           status = $7
+       WHERE id = $1`,
+      [
+        existing.id,
+        event.householdId,
+        event.title,
+        event.startsAt,
+        event.endsAt,
+        event.timezone,
+        event.status,
+      ],
+    );
+  }
+
+  return {
+    event: {
+      ...event,
+      id: existing.id as CalendarEventId,
+      externalReference,
+    },
+    change,
+  };
+}
+
+export class PostgresCalendarRepository implements CalendarRepository<PoolClient> {
   constructor(private readonly database: Pool) {}
 
   async upsertByExternalReference(
     event: CalendarEvent,
+    transactionClient?: PoolClient,
   ): Promise<{ event: CalendarEvent; change: CalendarUpsertChange }> {
-    return transaction(this.database, async (client) => {
-      const externalResult = await client.query<{ id: string }>(
-        `INSERT INTO external_references(
-          id, provider, external_id, external_version, etag, sync_token, last_synced_at, authoritative
-        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8)
-        ON CONFLICT(provider, external_id) DO UPDATE SET
-          external_version = EXCLUDED.external_version,
-          etag = EXCLUDED.etag,
-          sync_token = EXCLUDED.sync_token,
-          last_synced_at = EXCLUDED.last_synced_at,
-          authoritative = EXCLUDED.authoritative
-        RETURNING id`,
-        [
-          event.externalReference.id,
-          event.externalReference.provider,
-          event.externalReference.externalId,
-          event.externalReference.externalVersion ?? null,
-          event.externalReference.etag ?? null,
-          event.externalReference.syncToken ?? null,
-          event.externalReference.lastSyncedAt,
-          event.externalReference.authoritative,
-        ],
-      );
+    if (transactionClient !== undefined) {
+      return upsertCalendarEvent(transactionClient, event);
+    }
 
-      const externalReferenceId = externalResult.rows[0]?.id as ExternalReferenceId | undefined;
-      if (externalReferenceId === undefined) {
-        throw new Error('external reference upsert did not return an id');
-      }
-
-      const existingResult = await client.query<CalendarStateRow>(
-        `SELECT id, household_id, title, starts_at, ends_at, timezone, status
-         FROM calendar_events
-         WHERE external_reference_id = $1
-         FOR UPDATE`,
-        [externalReferenceId],
-      );
-
-      const existing = existingResult.rows[0];
-      const externalReference = storedExternalReference(event, externalReferenceId);
-
-      if (existing === undefined) {
-        await client.query(
-          `INSERT INTO calendar_events(
-            id, household_id, title, starts_at, ends_at, timezone, status, external_reference_id
-          ) VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [
-            event.id,
-            event.householdId,
-            event.title,
-            event.startsAt,
-            event.endsAt,
-            event.timezone,
-            event.status,
-            externalReferenceId,
-          ],
-        );
-
-        return {
-          event: { ...event, externalReference },
-          change: 'created',
-        };
-      }
-
-      const change: CalendarUpsertChange = sameCanonicalState(existing, event)
-        ? 'unchanged'
-        : 'updated';
-
-      if (change === 'updated') {
-        await client.query(
-          `UPDATE calendar_events
-           SET household_id = $2,
-               title = $3,
-               starts_at = $4,
-               ends_at = $5,
-               timezone = $6,
-               status = $7
-           WHERE id = $1`,
-          [
-            existing.id,
-            event.householdId,
-            event.title,
-            event.startsAt,
-            event.endsAt,
-            event.timezone,
-            event.status,
-          ],
-        );
-      }
-
-      return {
-        event: {
-          ...event,
-          id: existing.id as CalendarEventId,
-          externalReference,
-        },
-        change,
-      };
-    });
+    return transaction(this.database, async (client) => upsertCalendarEvent(client, event));
   }
 
   async listUpcoming(householdId: HouseholdId, from: Date): Promise<readonly CalendarEvent[]> {
