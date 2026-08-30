@@ -14,4 +14,5 @@ export interface OutboxRepository<TTransaction = unknown> {
   append(transaction: TTransaction, event: AgnesEvent): Promise<void>;
   claimBatch(limit: number): Promise<readonly OutboxRecord[]>;
   markPublished(eventId: EventId): Promise<void>;
+  markFailed(eventId: EventId, error: string, availableAt: Date): Promise<void>;
 }
