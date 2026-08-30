@@ -1,8 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
-import type {
-  CalendarRepository,
-  CalendarUpsertChange,
-} from '../calendar/calendar-repository.js';
+import type { CalendarRepository, CalendarUpsertChange } from '../calendar/calendar-repository.js';
 import type { CalendarEvent } from '../calendar/calendar-event.js';
 import type { ExternalReference } from '../integrations/calendar/external-calendar-record.js';
 import type { CalendarEventId, HouseholdId, PersonId } from '../kernel/ids.js';
@@ -54,7 +51,9 @@ function rowToEvent(row: CalendarRow): CalendarEvent {
     participants: row.participants.map((id) => id as PersonId),
     visibility: row.visibility,
     status: row.status,
-    ...(row.owner_person_id === null ? {} : { ownerPersonId: row.owner_person_id as PersonId }),
+    ...(row.owner_person_id === null
+      ? {}
+      : { ownerPersonId: row.owner_person_id as PersonId }),
     ...(row.description === null ? {} : { description: row.description }),
     ...(externalReference === undefined ? {} : { externalReference }),
   };
@@ -157,7 +156,10 @@ export class PostgresCalendarRepository implements CalendarRepository {
     });
   }
 
-  async listUpcoming(householdId: HouseholdId, from: Date): Promise<readonly CalendarEvent[]> {
+  async listUpcoming(
+    householdId: HouseholdId,
+    from: Date,
+  ): Promise<readonly CalendarEvent[]> {
     const result = await this.pool.query<CalendarRow>(
       `${calendarSelect}
        WHERE c.household_id = $1 AND c.ends_at >= $2
