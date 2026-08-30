@@ -62,17 +62,19 @@ afterAll(async () => {
 });
 
 function dependencies(outbox: Pick<OutboxRepository, 'append'>) {
-  if (pool === undefined || calendarRepository === undefined) {
+  const activePool = pool;
+  const activeCalendarRepository = calendarRepository;
+  if (activePool === undefined || activeCalendarRepository === undefined) {
     throw new Error('calendar import test dependencies were not initialized');
   }
 
   return {
     householdId,
     clock,
-    calendarRepository,
+    calendarRepository: activeCalendarRepository,
     outboxRepository: outbox,
     runInTransaction: <T>(operation: Parameters<typeof withTransaction<T>>[1]) =>
-      withTransaction(pool, operation),
+      withTransaction(activePool, operation),
   };
 }
 
