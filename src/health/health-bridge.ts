@@ -19,11 +19,7 @@ export interface HealthBridgeRegistration {
 }
 
 export type HealthBridgeStatusState =
-  | 'live'
-  | 'connected_no_data'
-  | 'degraded'
-  | 'disconnected'
-  | 'auth_expired';
+  'live' | 'connected_no_data' | 'degraded' | 'disconnected' | 'auth_expired';
 
 export interface HealthBridgeStatus {
   readonly state: HealthBridgeStatusState;
