@@ -1,8 +1,5 @@
 import type { DeviceId } from '../kernel/ids.js';
-import {
-  createLocationSignal,
-  type LocationSignal,
-} from '../location/location-signal.js';
+import { createLocationSignal, type LocationSignal } from '../location/location-signal.js';
 import type {
   LocationSource,
   MovementState,
@@ -23,11 +20,7 @@ const SEMANTIC_PLACES = new Set<SemanticPlace>([
   'UNKNOWN',
 ]);
 const MOVEMENT_STATES = new Set<MovementState>(['STATIONARY', 'MOVING', 'UNKNOWN']);
-const LOCATION_SOURCES = new Set<LocationSource>([
-  'DEVICE_GEOFENCE',
-  'DEVICE_LOCATION',
-  'MANUAL',
-]);
+const LOCATION_SOURCES = new Set<LocationSource>(['DEVICE_GEOFENCE', 'DEVICE_LOCATION', 'MANUAL']);
 const PRIVACY_SCOPES = new Set<PrivacyScope>([
   'PRIVATE',
   'HOUSEHOLD',
@@ -52,11 +45,7 @@ function readDate(field: string, value: unknown): Date {
   return date;
 }
 
-function readUnion<T extends string>(
-  field: string,
-  value: unknown,
-  allowed: ReadonlySet<T>,
-): T {
+function readUnion<T extends string>(field: string, value: unknown, allowed: ReadonlySet<T>): T {
   if (typeof value !== 'string' || !allowed.has(value as T)) {
     throw new ValidationError(`${field} is invalid`, { field, value });
   }
