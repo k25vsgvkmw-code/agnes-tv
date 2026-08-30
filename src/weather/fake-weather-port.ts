@@ -1,10 +1,11 @@
-import type { WeatherPort } from './weather-port.js';
+import type { WeatherPort, WeatherQuery } from './weather-port.js';
 import { createWeatherSnapshot, type WeatherSnapshot } from './weather-snapshot.js';
 
 export class FakeWeatherPort implements WeatherPort {
   constructor(private readonly snapshot: WeatherSnapshot) {}
 
-  async getCurrent(): Promise<WeatherSnapshot> {
+  async getCurrent(query: WeatherQuery): Promise<WeatherSnapshot> {
+    void query;
     return createWeatherSnapshot({
       ...this.snapshot,
       observedAt: new Date(this.snapshot.observedAt.getTime()),
