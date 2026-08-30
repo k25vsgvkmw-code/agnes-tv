@@ -1,33 +1,135 @@
 import Fastify, { type FastifyInstance } from 'fastify';
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { PostgresAuditRepository } from '../../src/persistence/postgres-audit-repository.js';
-import { PostgresHealthBridgeRepository } from '../../src/persistence/postgres-health-bridge-repository.js';
-import { PostgresHealthMeasurementRepository } from '../../src/persistence/postgres-health-measurement-repository.js';
-import { PostgresOutboxRepository } from '../../src/persistence/postgres-outbox-repository.js';
-import { createPostgresPool, withTransaction } from '../../src/persistence/postgres.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { AuditRecord, AuditRepository } from '../../src/audit/audit-record.js';
+import type { AgnesEvent } from '../../src/events/agnes-event.js';
+import type { OutboxRecord, OutboxRepository } from '../../src/events/outbox.js';
 import { defaultHealthConfig } from '../../src/health/health-config.js';
-import { hashHealthBridgeToken, HealthBridgeAuthenticator } from '../../src/health/health-authenticator.js';
+import {
+  hashHealthBridgeToken,
+  HealthBridgeAuthenticator,
+} from '../../src/health/health-authenticator.js';
 import type { HealthBridgeRegistration } from '../../src/health/health-bridge.js';
-import type { RawHealthMeasurement } from '../../src/health/health-measurement.js';
+import type { HealthMeasurement, RawHealthMeasurement } from '../../src/health/health-measurement.js';
+import type {
+  HealthBridgeRepository,
+  HealthMeasurementRepository,
+} from '../../src/health/health-repositories.js';
 import { importHealthMeasurement } from '../../src/health/import-health-measurement.js';
 import { recordHealthHeartbeat } from '../../src/health/record-health-heartbeat.js';
 import { HealthStatusService } from '../../src/health/health-status-service.js';
 import { FixedClock } from '../../src/kernel/clock.js';
-import type { HouseholdId, PersonId } from '../../src/kernel/ids.js';
+import type { EventId, HouseholdId, PersonId } from '../../src/kernel/ids.js';
 import { registerHealthRoutes } from '../../src/transport/health-routes.js';
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error('DATABASE_URL is required for PostgreSQL integration tests');
+class MemoryBridgeRepository implements HealthBridgeRepository {
+  private readonly bridges = new Map<string, HealthBridgeRegistration>();
 
-const pool = createPostgresPool(databaseUrl);
-const bridgeRepository = new PostgresHealthBridgeRepository(pool);
-const measurementRepository = new PostgresHealthMeasurementRepository(pool);
-const outboxRepository = new PostgresOutboxRepository(pool);
-const auditRepository = new PostgresAuditRepository(pool);
+  async getById(id: string): Promise<HealthBridgeRegistration | null> {
+    return this.bridges.get(id) ?? null;
+  }
+
+  async getByTokenHash(tokenHash: string): Promise<HealthBridgeRegistration | null> {
+    return [...this.bridges.values()].find((bridge) => bridge.tokenHash === tokenHash) ?? null;
+  }
+
+  async save(bridge: HealthBridgeRegistration): Promise<void> {
+    this.bridges.set(bridge.id, bridge);
+  }
+
+  async recordHeartbeat(id: string, at: Date): Promise<void> {
+    const bridge = this.bridges.get(id);
+    if (bridge !== undefined) {
+      this.bridges.set(id, { ...bridge, lastHeartbeatAt: at, updatedAt: at });
+    }
+  }
+
+  async recordMeasurementSeen(id: string, at: Date): Promise<void> {
+    const bridge = this.bridges.get(id);
+    if (bridge !== undefined) {
+      this.bridges.set(id, { ...bridge, lastMeasurementAt: at, updatedAt: at });
+    }
+  }
+}
+
+class MemoryMeasurementRepository implements HealthMeasurementRepository {
+  private readonly measurements = new Map<string, HealthMeasurement>();
+
+  get size(): number {
+    return this.measurements.size;
+  }
+
+  async insertIfAbsent(measurement: HealthMeasurement) {
+    const existing = this.measurements.get(measurement.dedupeKey);
+    if (existing !== undefined) {
+      return { measurement: existing, change: 'unchanged' as const };
+    }
+
+    this.measurements.set(measurement.dedupeKey, measurement);
+    return { measurement, change: 'created' as const };
+  }
+
+  async getLatestMeasuredAt(): Promise<Date | null> {
+    const latest = [...this.measurements.values()].reduce<Date | null>((current, measurement) => {
+      if (current === null || measurement.measuredAt.getTime() > current.getTime()) {
+        return measurement.measuredAt;
+      }
+      return current;
+    }, null);
+    return latest;
+  }
+}
+
+class MemoryOutboxRepository implements OutboxRepository {
+  private readonly records = new Map<EventId, OutboxRecord>();
+
+  async append(event: AgnesEvent): Promise<void> {
+    this.records.set(event.id, {
+      event,
+      createdAt: event.receivedAt,
+      publishedAt: null,
+      attempts: 0,
+      nextAttemptAt: null,
+      lastError: null,
+    });
+  }
+
+  async get(eventId: EventId): Promise<OutboxRecord | null> {
+    return this.records.get(eventId) ?? null;
+  }
+
+  async claimPending(limit: number): Promise<readonly OutboxRecord[]> {
+    return [...this.records.values()].slice(0, limit);
+  }
+
+  async markPublished(eventId: EventId, publishedAt: Date): Promise<void> {
+    const record = this.records.get(eventId);
+    if (record !== undefined) {
+      this.records.set(eventId, { ...record, publishedAt });
+    }
+  }
+
+  async markFailed(eventId: EventId, error: string, nextAttemptAt: Date): Promise<void> {
+    const record = this.records.get(eventId);
+    if (record !== undefined) {
+      this.records.set(eventId, {
+        ...record,
+        attempts: record.attempts + 1,
+        lastError: error,
+        nextAttemptAt,
+      });
+    }
+  }
+}
+
+class MemoryAuditRepository implements AuditRepository {
+  readonly records: AuditRecord[] = [];
+
+  async append(record: AuditRecord): Promise<void> {
+    this.records.push(record);
+  }
+}
+
 const clock = new FixedClock(new Date('2026-08-30T12:00:00Z'));
-const authenticator = new HealthBridgeAuthenticator(bridgeRepository);
-const statusService = new HealthStatusService(bridgeRepository, clock, defaultHealthConfig);
-
 const householdId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as HouseholdId;
 const personId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' as PersonId;
 const bridgeId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -57,13 +159,20 @@ const measurement: RawHealthMeasurement = {
 };
 
 let app: FastifyInstance;
+let bridgeRepository: MemoryBridgeRepository;
+let measurementRepository: MemoryMeasurementRepository;
 
 function authorization(value = token): Record<string, string> {
   return { authorization: `Bearer ${value}` };
 }
 
 async function buildTestApp(): Promise<FastifyInstance> {
+  const outboxRepository = new MemoryOutboxRepository();
+  const auditRepository = new MemoryAuditRepository();
+  const authenticator = new HealthBridgeAuthenticator(bridgeRepository);
+  const statusService = new HealthStatusService(bridgeRepository, clock, defaultHealthConfig);
   const instance = Fastify();
+
   await registerHealthRoutes(instance, {
     authenticator,
     statusService,
@@ -78,8 +187,7 @@ async function buildTestApp(): Promise<FastifyInstance> {
         clock,
         config: defaultHealthConfig,
         correlationId,
-        runInTransaction: <T>(operation: Parameters<typeof withTransaction<T>>[1]) =>
-          withTransaction(pool, operation),
+        runInTransaction: async (operation) => operation(undefined as never),
       }),
   });
   await instance.ready();
@@ -87,33 +195,14 @@ async function buildTestApp(): Promise<FastifyInstance> {
 }
 
 beforeEach(async () => {
-  await pool.query('DELETE FROM audit_records');
-  await pool.query('DELETE FROM outbox_events');
-  await pool.query('DELETE FROM health_measurements');
-  await pool.query('DELETE FROM health_bridges');
-  await pool.query('DELETE FROM people');
-  await pool.query('DELETE FROM households');
-
-  await pool.query(
-    `INSERT INTO households (id, name, timezone, locale, status)
-     VALUES ($1, 'AGNES Route Home', 'Asia/Nicosia', 'el-CY', 'active')`,
-    [householdId],
-  );
-  await pool.query(
-    `INSERT INTO people (id, household_id, display_name, role, locale, timezone, status)
-     VALUES ($1, $2, 'Daddy', 'parent', 'el-CY', 'Asia/Nicosia', 'active')`,
-    [personId, householdId],
-  );
+  bridgeRepository = new MemoryBridgeRepository();
+  measurementRepository = new MemoryMeasurementRepository();
   await bridgeRepository.save(bridge);
   app = await buildTestApp();
 });
 
 afterEach(async () => {
   await app.close();
-});
-
-afterAll(async () => {
-  await pool.end();
 });
 
 describe('Fastify health integration routes', () => {
@@ -222,12 +311,7 @@ describe('Fastify health integration routes', () => {
     expect(first.statusCode).toBe(201);
     expect(second.statusCode).toBe(200);
     expect(second.json()).toEqual({ id: first.json().id, change: 'unchanged' });
-
-    const rows = await pool.query<{ count: string }>(
-      'SELECT count(*) FROM health_measurements WHERE bridge_id = $1',
-      [bridgeId],
-    );
-    expect(Number(rows.rows[0]?.count ?? 0)).toBe(1);
+    expect(measurementRepository.size).toBe(1);
   });
 
   it('returns 400 for a measurement with an invalid unit pairing', async () => {
@@ -260,8 +344,9 @@ describe('Fastify health integration routes', () => {
     });
 
     expect(response.statusCode).toBe(400);
-
-    const rows = await pool.query<{ count: string }>('SELECT count(*) FROM health_measurements');
-    expect(Number(rows.rows[0]?.count ?? 0)).toBe(0);
+    expect(response.json()).toMatchObject({
+      error: { code: 'VALIDATION_ERROR' },
+    });
+    expect(measurementRepository.size).toBe(0);
   });
 });
