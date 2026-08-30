@@ -9,6 +9,7 @@ import type { ExternalCalendarRecord } from '../integrations/calendar/external-c
 
 export interface CalendarImportContext {
   readonly householdId: HouseholdId;
+  readonly correlationId?: string;
 }
 
 export interface CalendarImportResult {
@@ -65,6 +66,7 @@ export async function importCalendarRecord<TTransaction>(
         externalProvider: record.provider,
         externalId: record.externalId,
       },
+      ...(context.correlationId === undefined ? {} : { correlationId: context.correlationId }),
     });
 
     await dependencies.outboxRepository.append(transaction, domainEvent);
