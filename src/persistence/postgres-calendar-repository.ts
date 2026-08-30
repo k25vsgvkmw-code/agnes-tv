@@ -1,9 +1,6 @@
 import type { Pool, PoolClient } from 'pg';
 import type { CalendarEvent, ExternalReference } from '../calendar/calendar-event.js';
-import type {
-  CalendarRepository,
-  CalendarUpsertChange,
-} from '../calendar/calendar-repository.js';
+import type { CalendarRepository, CalendarUpsertChange } from '../calendar/calendar-repository.js';
 import type { CalendarEventId, ExternalReferenceId, HouseholdId } from '../kernel/ids.js';
 
 interface CalendarJoinRow {
@@ -71,10 +68,7 @@ function sameCanonicalState(row: CalendarStateRow, event: CalendarEvent): boolea
   );
 }
 
-function storedExternalReference(
-  event: CalendarEvent,
-  id: ExternalReferenceId,
-): ExternalReference {
+function storedExternalReference(event: CalendarEvent, id: ExternalReferenceId): ExternalReference {
   return {
     ...event.externalReference,
     id,
