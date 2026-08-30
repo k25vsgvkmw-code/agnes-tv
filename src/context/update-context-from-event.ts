@@ -7,10 +7,7 @@ import {
   type HouseholdContext,
 } from './household-context.js';
 
-const supportedCalendarEvents = new Set([
-  'calendar.event.created.v1',
-  'calendar.event.updated.v1',
-]);
+const supportedCalendarEvents = new Set(['calendar.event.created.v1', 'calendar.event.updated.v1']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -96,7 +93,10 @@ function projectCalendarEvent(
   };
 }
 
-export async function updateContextFromEvent(event: AgnesEvent, store: ContextStore): Promise<void> {
+export async function updateContextFromEvent(
+  event: AgnesEvent,
+  store: ContextStore,
+): Promise<void> {
   if (!supportedCalendarEvents.has(event.type)) return;
 
   const calendarEvent = parseCalendarProjection(event.payload);
