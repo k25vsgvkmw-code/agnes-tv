@@ -11,6 +11,7 @@ import {
 } from '../../src/devices/offline-command.js';
 import type { OfflineCommandRepository } from '../../src/devices/offline-command-repository.js';
 import { newHouseholdId, newPersonId } from '../../src/kernel/ids.js';
+import type { LivePolicyResult } from '../../src/permissions/live-policy-engine.js';
 
 class MemoryCommandRepository implements OfflineCommandRepository {
   private readonly byId = new Map<string, OfflineCommand>();
@@ -122,24 +123,25 @@ function countingExecutor() {
   return { calls, executor };
 }
 
-function policy(result: Awaited<ReturnType<OfflineCommandPolicyEvaluator['evaluate']>>) {
-  const evaluator: OfflineCommandPolicyEvaluator = {
-    async evaluate() {
+function policy(result: LivePolicyResult): OfflineCommandPolicyEvaluator {
+  return {
+    async evaluate(): Promise<LivePolicyResult> {
       return result;
     },
   };
-  return evaluator;
 }
 
 describe('Live v2 offline command processing', () => {
   it('marks expired commands EXPIRED without calling policy or executor', async () => {
     const targetDevice = device();
     const repository = new MemoryCommandRepository();
-    const queued = await repository.enqueue(command(targetDevice, new Date('2026-09-01T15:05:00Z')));
+    const queued = await repository.enqueue(
+      command(targetDevice, new Date('2026-09-01T15:05:00Z')),
+    );
     const { calls, executor } = countingExecutor();
     let policyCalls = 0;
     const evaluator: OfflineCommandPolicyEvaluator = {
-      async evaluate() {
+      async evaluate(): Promise<LivePolicyResult> {
         policyCalls += 1;
         return 'ALLOW';
       },
