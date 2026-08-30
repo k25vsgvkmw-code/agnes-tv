@@ -1,7 +1,4 @@
-import type {
-  NotificationDelivery,
-  NotificationDeliveryReceipt,
-} from './notification-delivery.js';
+import type { NotificationDelivery, NotificationDeliveryReceipt } from './notification-delivery.js';
 import type { Notification } from './notification.js';
 
 export interface FcmSender {
