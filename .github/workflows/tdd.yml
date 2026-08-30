@@ -36,4 +36,5 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+      - run: npx prettier src/notifications/notification.ts
       - run: npm run format:check
