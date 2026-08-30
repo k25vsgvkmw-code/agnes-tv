@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FakeRoutingPort } from '../../src/routing/fake-routing-port.js';
 import { createTravelCondition } from '../../src/routing/travel-condition.js';
 
 function validTravelConditionInput() {
@@ -47,5 +48,19 @@ describe('canonical travel conditions', () => {
         expiresAt: new Date('2026-09-01T15:00:00Z'),
       }),
     ).toThrow('expiresAt');
+  });
+
+  it('returns a deterministic route and records the request in the fake port', async () => {
+    const condition = createTravelCondition(validTravelConditionInput());
+    const port = new FakeRoutingPort(condition);
+    const request = {
+      origin: { latitude: 34.9, longitude: 33.6 },
+      destination: { latitude: 34.92, longitude: 33.64 },
+      mode: 'DRIVE' as const,
+      departureAt: new Date('2026-09-01T15:30:00Z'),
+    };
+
+    await expect(port.getRoute(request)).resolves.toEqual(condition);
+    expect(port.requests).toEqual([request]);
   });
 });
