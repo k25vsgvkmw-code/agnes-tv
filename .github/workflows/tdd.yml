@@ -37,4 +37,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm run format:check
+      - run: |
+          npx prettier --write src/weather/open-meteo-weather-adapter.ts
+          git diff -- src/weather/open-meteo-weather-adapter.ts
+          exit 1
