@@ -1,7 +1,11 @@
 import type { CalendarEvent } from '../calendar/calendar-event.js';
 import type { AgnesEvent } from '../events/agnes-event.js';
 import type { DeviceId, HouseholdId, PersonId } from '../kernel/ids.js';
-import type { PresenceEvidenceSource, PresenceState, PresenceStateName } from '../presence/presence-state.js';
+import type {
+  PresenceEvidenceSource,
+  PresenceState,
+  PresenceStateName,
+} from '../presence/presence-state.js';
 import { createTravelCondition, type TravelCondition } from '../routing/travel-condition.js';
 import { createWeatherSnapshot, type WeatherSnapshot } from '../weather/weather-snapshot.js';
 import type { ContextStore } from './context-store.js';
@@ -276,7 +280,10 @@ function readDeviceState(event: AgnesEvent): DeviceStateContext | null {
 }
 
 async function getContext(event: AgnesEvent, store: ContextStore): Promise<HouseholdContext> {
-  return (await store.get(event.householdId)) ?? emptyHouseholdContext(event.householdId, event.occurredAt);
+  return (
+    (await store.get(event.householdId)) ??
+    emptyHouseholdContext(event.householdId, event.occurredAt)
+  );
 }
 
 function withoutPerson(people: readonly PersonId[], personId: PersonId): PersonId[] {
