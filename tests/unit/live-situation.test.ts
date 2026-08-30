@@ -10,8 +10,6 @@ function situation(
   const detectedAt = new Date('2026-09-01T15:00:00Z');
   return {
     id: newSituationId(),
-    householdId: overrides.householdId,
-    fingerprint: overrides.fingerprint,
     type: 'DEPARTURE_PREPARATION',
     state: 'DETECTED',
     confidence: 0.9,
@@ -83,7 +81,11 @@ describe('Live v2 situation lifecycle and deduplication', () => {
   it('expires active entries at or before the cutoff and removes them from active lookup', async () => {
     const householdId = newHouseholdId();
     const store = new InMemoryActiveSituationStore();
-    const early = situation({ householdId, fingerprint: 'b', expiresAt: new Date('2026-09-01T15:10:00Z') });
+    const early = situation({
+      householdId,
+      fingerprint: 'b',
+      expiresAt: new Date('2026-09-01T15:10:00Z'),
+    });
     const sameTime = situation({
       householdId,
       fingerprint: 'a',
