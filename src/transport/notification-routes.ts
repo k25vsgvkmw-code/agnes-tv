@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 
 export type AcknowledgeNotificationHandler = (id: string) => Promise<void>;
 
-export async function registerNotificationRoutes(
+export function registerNotificationRoutes(
   app: FastifyInstance,
   acknowledge: AcknowledgeNotificationHandler,
 ): Promise<void> {
@@ -10,4 +10,5 @@ export async function registerNotificationRoutes(
     await acknowledge(request.params.id);
     return reply.code(204).send();
   });
+  return Promise.resolve();
 }
