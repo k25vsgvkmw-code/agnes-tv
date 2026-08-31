@@ -7,8 +7,7 @@ describe('buildApp', () => {
     const modelGateway = new UnavailableModelGateway();
     const app = await buildApp({
       databaseUrl:
-        process.env.DATABASE_URL ??
-        'postgres://postgres:postgres@localhost:5432/agnes_test',
+        process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/agnes_test',
       modelGateway,
     });
 
