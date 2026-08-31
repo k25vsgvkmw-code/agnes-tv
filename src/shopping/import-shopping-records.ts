@@ -1,7 +1,8 @@
 import type { Clock } from '../kernel/clock.js';
+import { matchProduct, type MatchDecision } from './product-matcher.js';
 import { shoppingRecordSchema } from './shopping-schemas.js';
 import type { ShoppingRepository } from './shopping-repository.js';
-import type { OfferStatus, RetailerSlug } from './shopping-types.js';
+import type { OfferStatus, Product, RetailerSlug } from './shopping-types.js';
 import { normalizePackageSize } from './unit-normalization.js';
 
 export interface ShoppingImportSummary {
@@ -67,6 +68,12 @@ function unknownRecordInfo(value: unknown): { recordKind?: string; externalId?: 
   };
 }
 
+function candidateQuery(title: string, brand?: string): string {
+  if (brand?.trim()) return brand.trim();
+  const tokens = title.trim().split(/\s+/).slice(0, 2);
+  return tokens.join(' ');
+}
+
 export class ImportShoppingRecords {
   constructor(
     private readonly repository: ShoppingRepository,
@@ -98,7 +105,36 @@ export class ImportShoppingRecords {
       try {
         const retailer = await this.repository.upsertRetailer(retailerDefinition(record.retailerSlug));
         if (record.kind === 'listing') {
-          let product = record.gtin ? await this.repository.findProductByGtin(record.gtin) : null;
+          const existingListing = await this.repository.findListing(record.retailerSlug, record.externalId);
+          let product: Product | null = existingListing
+            ? await this.repository.getProduct(existingListing.productId)
+            : null;
+          let matchDecision: MatchDecision | null = null;
+
+          if (!product && record.gtin) {
+            product = await this.repository.findProductByGtin(record.gtin);
+            if (product) {
+              matchDecision = { product, method: 'gtin', confidence: 1, exact: true };
+            }
+          }
+
+          if (!product) {
+            const candidates = await this.repository.searchProducts(
+              candidateQuery(record.title, record.brand),
+              20,
+            );
+            matchDecision = matchProduct(
+              {
+                title: record.title,
+                ...(record.brand ? { brand: record.brand } : {}),
+                ...(record.packageText ? { packageText: record.packageText } : {}),
+                ...(record.gtin ? { gtin: record.gtin } : {}),
+              },
+              candidates,
+            );
+            if (matchDecision?.exact) product = matchDecision.product;
+          }
+
           if (!product) {
             const normalizedPackage = record.packageText ? normalizePackageSize(record.packageText) : null;
             product = await this.repository.createProduct({
@@ -113,7 +149,8 @@ export class ImportShoppingRecords {
                 : {}),
             });
           }
-          await this.repository.upsertListing({
+
+          const listing = await this.repository.upsertListing({
             productId: product.id,
             retailerId: retailer.id,
             externalId: record.externalId,
@@ -127,6 +164,17 @@ export class ImportShoppingRecords {
             ...(record.imageUrl ? { imageUrl: record.imageUrl } : {}),
             ...(record.gtin ? { gtin: record.gtin } : {}),
           });
+
+          if (matchDecision) {
+            await this.repository.saveProductMatch({
+              productId: matchDecision.product.id,
+              retailerListingId: listing.id,
+              method: matchDecision.method,
+              confidence: matchDecision.confidence,
+              exact: matchDecision.exact,
+              createdAt: this.clock.now(),
+            });
+          }
           listings += 1;
         } else if (record.kind === 'price') {
           const listing = await this.repository.findListing(record.retailerSlug, record.externalId);
