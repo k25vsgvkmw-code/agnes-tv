@@ -46,11 +46,11 @@ jobs:
       - name: Apply core migration
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f src/persistence/migrations/001_core.sql
 
+      - name: Run focused health-route test
+        run: npm test -- tests/unit/health-routes.test.ts
+
       - name: Run quality gates
         run: npm run check
 
-      - name: Diagnose formatting
-        run: |
-          npx prettier src/calendar/import-calendar-event.ts --write
-          git diff -- src/calendar/import-calendar-event.ts
-          git diff --exit-code -- src/calendar/import-calendar-event.ts
+      - name: Check formatting
+        run: npm run format:check
