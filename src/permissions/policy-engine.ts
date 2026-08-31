@@ -8,7 +8,11 @@ export interface PolicyDecision {
 
 export function evaluateCapability(request: CapabilityRequest): PolicyDecision {
   if (request.requested === 'view') {
-    return { allowed: request.grant.view, requiresConfirmation: false, capability: request.capability };
+    return {
+      allowed: request.grant.view,
+      requiresConfirmation: false,
+      capability: request.capability,
+    };
   }
 
   if (request.requested === 'suggest') {
@@ -23,5 +27,9 @@ export function evaluateCapability(request: CapabilityRequest): PolicyDecision {
     return { allowed: false, requiresConfirmation: true, capability: request.capability };
   }
 
-  return { allowed: request.grant.act, requiresConfirmation: false, capability: request.capability };
+  return {
+    allowed: request.grant.act,
+    requiresConfirmation: false,
+    capability: request.capability,
+  };
 }
