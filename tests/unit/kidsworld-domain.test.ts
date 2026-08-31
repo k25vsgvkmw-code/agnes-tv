@@ -38,7 +38,9 @@ describe('KidsWorld domain', () => {
     expect(typeof module?.createMission).toBe('function');
     expect(typeof module?.completeMissionRecord).toBe('function');
 
-    const createMission = module?.createMission as (input: Record<string, unknown>) => Record<string, unknown>;
+    const createMission = module?.createMission as (
+      input: Record<string, unknown>,
+    ) => Record<string, unknown>;
     const completeMissionRecord = module?.completeMissionRecord as (
       mission: Record<string, unknown>,
       completedAt: Date,
@@ -67,7 +69,9 @@ describe('KidsWorld domain', () => {
     expect(module, 'star-ledger module should exist').not.toBeNull();
     expect(typeof module?.createStarLedgerEntry).toBe('function');
 
-    const createStarLedgerEntry = module?.createStarLedgerEntry as (input: Record<string, unknown>) => unknown;
+    const createStarLedgerEntry = module?.createStarLedgerEntry as (
+      input: Record<string, unknown>,
+    ) => unknown;
 
     expect(() =>
       createStarLedgerEntry({

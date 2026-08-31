@@ -6,7 +6,13 @@ import {
   type PersonId,
 } from '../kernel/ids.js';
 
-export type MissionType = 'routine' | 'learning' | 'activity' | 'exploration' | 'story' | 'creative';
+export type MissionType =
+  | 'routine'
+  | 'learning'
+  | 'activity'
+  | 'exploration'
+  | 'story'
+  | 'creative';
 export type MissionStatus = 'available' | 'completed' | 'expired' | 'cancelled';
 export type MissionSource = 'system' | 'calendar' | 'parent' | 'content';
 
