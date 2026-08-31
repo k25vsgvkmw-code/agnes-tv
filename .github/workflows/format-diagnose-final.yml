@@ -1,0 +1,25 @@
+name: Format diagnose final
+
+on:
+  push:
+    branches:
+      - feat/core-v1-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Show exact Prettier delta
+        run: |
+          npx prettier src/intelligence/unavailable-model-gateway.ts src/workers/outbox-worker.ts tests/unit/build-app.test.ts --write
+          git diff -- src/intelligence/unavailable-model-gateway.ts src/workers/outbox-worker.ts tests/unit/build-app.test.ts
+          git diff --exit-code -- src/intelligence/unavailable-model-gateway.ts src/workers/outbox-worker.ts tests/unit/build-app.test.ts
