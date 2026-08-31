@@ -1,4 +1,6 @@
 import { afterAll, describe, expect, it } from 'vitest';
+import type { AuditRecord } from '../../src/audit/audit-record.js';
+import type { AuditRepository } from '../../src/audit/audit-repository.js';
 import { importCalendarRecord } from '../../src/calendar/import-calendar-event.js';
 import { InMemoryContextStore } from '../../src/context/in-memory-context-store.js';
 import { updateContextFromEvent } from '../../src/context/update-context-from-event.js';
@@ -16,8 +18,6 @@ import type {
 } from '../../src/notifications/notification-delivery.js';
 import type { NotificationRepository } from '../../src/notifications/notification-repository.js';
 import type { Notification } from '../../src/notifications/notification.js';
-import type { AuditRecord } from '../../src/audit/audit-record.js';
-import type { AuditRepository } from '../../src/audit/audit-repository.js';
 import { evaluateCapability } from '../../src/permissions/policy-engine.js';
 import { PostgresCalendarRepository } from '../../src/persistence/postgres-calendar-repository.js';
 import { PostgresHouseholdRepository } from '../../src/persistence/postgres-household-repository.js';
@@ -72,10 +72,11 @@ describe('calendar to notification vertical slice', () => {
     await households.saveHousehold(household);
     await households.savePerson(person);
 
+    const externalId = `evt-e2e-${household.id}`;
     const connector = new FakeCalendarConnector('test-calendar', [
       {
         provider: 'test-calendar',
-        externalId: 'evt-e2e-1',
+        externalId,
         title: 'Football',
         startsAt: '2026-09-01T18:30:00+03:00',
         endsAt: '2026-09-01T19:30:00+03:00',
@@ -146,7 +147,7 @@ describe('calendar to notification vertical slice', () => {
 
     const notifications = new MemoryNotificationRepository();
     const audit = new MemoryAuditRepository();
-    const correlationId = 'calendar:test-calendar:evt-e2e-1';
+    const correlationId = `calendar:test-calendar:${externalId}`;
     const delivery: NotificationDelivery = {
       send(): Promise<NotificationDeliveryReceipt> {
         return Promise.resolve({
@@ -171,7 +172,9 @@ describe('calendar to notification vertical slice', () => {
       now: () => new Date('2026-09-01T15:00:01Z'),
     });
     expect(delivered.ok).toBe(true);
-    expect([...notifications.values.values()].filter((item) => item.state === 'delivered')).toHaveLength(1);
+    expect(
+      [...notifications.values.values()].filter((item) => item.state === 'delivered'),
+    ).toHaveLength(1);
 
     await acknowledgeNotification(candidate.id, {
       repository: notifications,
