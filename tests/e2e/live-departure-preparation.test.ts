@@ -298,10 +298,19 @@ describe('Live v2 departure preparation end-to-end', () => {
       expect(repeated?.situation.id).toBe(first?.situation.id);
       expect(repeated?.situation.fingerprint).toBe(first?.situation.fingerprint);
 
-      const materialChange = hasMaterialDepartureChange(
-        { requiredDepartureAt: first!.requiredDepartureAt, urgency: first!.urgency },
-        { requiredDepartureAt: repeated!.requiredDepartureAt, urgency: repeated!.urgency },
-      );
+      const firstSnapshot = {
+        urgency: first!.urgency,
+        ...(first!.requiredDepartureAt === undefined
+          ? {}
+          : { requiredDepartureAt: first!.requiredDepartureAt }),
+      };
+      const repeatedSnapshot = {
+        urgency: repeated!.urgency,
+        ...(repeated!.requiredDepartureAt === undefined
+          ? {}
+          : { requiredDepartureAt: repeated!.requiredDepartureAt }),
+      };
+      const materialChange = hasMaterialDepartureChange(firstSnapshot, repeatedSnapshot);
       const suppressed = shouldSuppressByCooldown({
         lastEmittedAt: delivered.createdAt,
         now,
