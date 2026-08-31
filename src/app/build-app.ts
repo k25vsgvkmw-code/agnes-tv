@@ -19,6 +19,7 @@ import { ConnectorRegistry } from '../integrations/connector-registry.js';
 import type { Clock } from '../kernel/clock.js';
 import { SystemClock } from '../kernel/clock.js';
 import { newEventId, type HouseholdId } from '../kernel/ids.js';
+import type { LocationSignalPort } from '../location/location-signal-port.js';
 import { createNotification } from '../notifications/create-notification.js';
 import type { NotificationDelivery } from '../notifications/notification-delivery.js';
 import type { Notification } from '../notifications/notification.js';
@@ -27,9 +28,12 @@ import { evaluateCapability } from '../permissions/policy-engine.js';
 import { PostgresCalendarRepository } from '../persistence/postgres-calendar-repository.js';
 import { PostgresHouseholdRepository } from '../persistence/postgres-household-repository.js';
 import { PostgresOutboxRepository } from '../persistence/postgres-outbox-repository.js';
+import type { RoutingPort } from '../routing/routing-port.js';
 import { DepartureRiskDetector } from '../situations/departure-risk-detector.js';
 import type { Situation } from '../situations/situation.js';
+import type { WeatherPort } from '../weather/weather-port.js';
 import { OutboxWorker } from '../workers/outbox-worker.js';
+import { buildLiveServices } from './build-live-services.js';
 
 export interface BuildAppConfig {
   readonly databaseUrl: string;
@@ -39,6 +43,9 @@ export interface BuildAppConfig {
   readonly notificationRepository?: NotificationRepository;
   readonly notificationDelivery?: NotificationDelivery;
   readonly auditRepository?: AuditRepository;
+  readonly weatherPort?: WeatherPort;
+  readonly locationSignalPort?: LocationSignalPort;
+  readonly routingPort?: RoutingPort;
 }
 
 export interface DepartureSuggestionInput {
@@ -79,6 +86,17 @@ export async function buildApp(config: BuildAppConfig) {
     },
   );
 
+  const liveServices = buildLiveServices({
+    database,
+    clock,
+    domainEventBus,
+    contextStore,
+    ...(config.weatherPort === undefined ? {} : { weatherPort: config.weatherPort }),
+    ...(config.locationSignalPort === undefined
+      ? {}
+      : { locationSignalPort: config.locationSignalPort }),
+    ...(config.routingPort === undefined ? {} : { routingPort: config.routingPort }),
+  });
   const outboxWorker = new OutboxWorker(outboxRepository, domainEventBus, clock);
   const departureRiskDetector = new DepartureRiskDetector(clock);
 
@@ -206,11 +224,20 @@ export async function buildApp(config: BuildAppConfig) {
     connectorRegistry,
     outboxWorker,
     modelGateway: config.modelGateway,
+    deviceRepository: liveServices.deviceRepository,
+    pushTokenRepository: liveServices.pushTokenRepository,
+    offlineCommandRepository: liveServices.offlineCommandRepository,
+    activeSituationStore: liveServices.activeSituationStore,
     syncCalendar,
     suggestDepartureIfRisk,
     acknowledgeNotification,
+    syncWeather: liveServices.syncWeather,
+    ingestLocationSignal: liveServices.ingestLocationSignal,
+    refreshRoute: liveServices.refreshRoute,
+    evaluateDeparturePreparation: liveServices.evaluateDeparturePreparation,
     async close(): Promise<void> {
       unsubscribeCalendarCreated();
+      liveServices.dispose();
       await database.end();
     },
   };
