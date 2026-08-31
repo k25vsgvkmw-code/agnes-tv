@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "format:check": "prettier src/decisions/decide-situation.ts && prettier --check .",
+    "format:check": "prettier --check .",
     "check": "npm run lint && npm run build && npm test"
   },
   "dependencies": {
