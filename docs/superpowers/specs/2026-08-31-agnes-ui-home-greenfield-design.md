@@ -70,8 +70,9 @@ The frontend uses:
 - React;
 - TypeScript;
 - Vite;
-- browser APIs suitable for PWA installation;
-- component and integration testing appropriate to the selected React stack.
+- Vitest and React Testing Library for unit/component tests;
+- Playwright for route and end-to-end browser tests;
+- browser APIs required for PWA installation.
 
 The UI is responsive rather than split into separate desktop, mobile, or TV codebases.
 
@@ -135,7 +136,7 @@ The component must distinguish verified/current information from stale or unavai
 
 A high-priority `HAPPENING NOW` / `ΣΥΜΒΑΙΝΕΙ ΤΩΡΑ` surface appears only when the Core reports a time-critical active situation.
 
-This surface receives visual priority above routine information. It must support acknowledgement/action semantics once those Core contracts are available.
+This surface receives visual priority above routine information. Acknowledgement/action controls are included only for actions already exposed by verified Core contracts; Release 1 must not invent client-only state changes.
 
 ### 5.5 Today Timeline
 
@@ -158,7 +159,7 @@ In Release 1 this is content inside Home, not a separate route.
 
 Home provides a clear entry point for voice or typed interaction without requiring navigation to a chatbot page.
 
-The interaction surface should be progressively enhanced: Home remains usable when microphone or speech capabilities are unavailable.
+The interaction surface is progressively enhanced: typed interaction remains available when microphone or speech capabilities are unavailable.
 
 ## 6. Visual Direction
 
@@ -215,6 +216,10 @@ type HomeSnapshot = {
     state: DataState;
     items: unknown[];
   };
+  environment: {
+    state: DataState;
+    weather: unknown | null;
+  };
   system: {
     state: DataState;
     connectors: unknown[];
@@ -226,7 +231,7 @@ The implementation plan must replace `unknown` with explicit DTOs derived from c
 
 ### Snapshot principle
 
-Home should normally perform one primary snapshot fetch rather than coordinate many provider-specific calls in the browser.
+Home performs one primary snapshot fetch rather than coordinating provider-specific calls in the browser.
 
 Aggregation belongs in the application/backend layer because it can:
 
@@ -245,7 +250,7 @@ Responsibilities:
 - request `/api/v1/home`;
 - validate/normalize the response;
 - map API DTOs to UI view models;
-- retain last-known-good snapshot where appropriate;
+- retain the last-known-good snapshot only in the approved private cache layer defined during implementation;
 - expose loading, live, stale, and unavailable states;
 - avoid provider-specific logic.
 
@@ -262,7 +267,7 @@ Examples:
 - weather unavailable → weather area shows unavailable/stale state; timeline remains usable;
 - one connector degraded → connector-dependent sections degrade independently;
 - opportunities unavailable → Home still displays current situation and today timeline;
-- complete Home API failure → UI shows last-known-good snapshot when safe, clearly marked stale, plus a Core-unavailable status.
+- complete Home API failure → UI may show an approved last-known-good snapshot, clearly marked stale, plus a Core-unavailable status; if no approved cached snapshot exists, it shows an explicit unavailable state rather than demo data.
 
 Rules:
 
@@ -280,8 +285,8 @@ The same Home feature set adapts to three primary presentation classes.
 
 - high information visibility at distance;
 - large type and focus targets;
-- primary hero and Family Status visible without deep scrolling where practical;
-- keyboard/remote focus behavior considered in component primitives.
+- primary hero and Family Status are prioritized in the first viewport;
+- keyboard/remote focus behavior is supported by shared component primitives.
 
 ### Desktop / monitor
 
@@ -299,16 +304,15 @@ Responsive behavior changes layout, not product semantics.
 
 ## 11. PWA Boundary
 
-Release 1 should be installable as a PWA when practical, but PWA infrastructure must not delay the basic Home vertical slice.
+Release 1 includes the minimum installable PWA shell:
 
-PWA responsibilities may include:
+- web app manifest;
+- installable application metadata/icons;
+- safe static shell/asset caching required for installation and reload resilience.
 
-- app manifest;
-- installable shell;
-- safe static asset caching;
-- last-known Home presentation where privacy and freshness rules permit.
+Release 1 does **not** include offline mutation queues, advanced push workflows, background sync, or device-specific native integrations.
 
-Offline mutation queues, advanced push, background sync, and device-specific native integrations are out of scope unless already required by a verified Core contract.
+Caching of household snapshot data is separate from static PWA caching and must follow the privacy/freshness rules in Sections 8, 9, and 12.
 
 ## 12. Security and Privacy
 
@@ -332,6 +336,7 @@ Tests verify that `/api/v1/home`:
 - returns the versioned snapshot shape;
 - composes available Core data correctly;
 - represents unavailable dependencies explicitly;
+- includes environment/weather freshness independently from other groups;
 - does not require frontend knowledge of providers;
 - preserves existing Core behavior.
 
@@ -344,6 +349,7 @@ Tests cover:
 - Happens Now priority behavior;
 - timeline rendering;
 - Never-Miss rendering;
+- weather/environment state;
 - loading and degraded states.
 
 ### 13.3 Responsive tests
@@ -374,6 +380,7 @@ At least one E2E flow starts the Core and UI, loads a deterministic Home Snapsho
 - current priority/situation;
 - family status;
 - a Today timeline item;
+- weather/environment status;
 - explicit health/freshness state.
 
 ## 14. CI / Merge Gate
@@ -387,15 +394,15 @@ The final CI composition must include:
 - UI linting;
 - UI unit/component tests;
 - UI production build;
-- selected route/E2E tests.
+- Playwright route/E2E tests.
 
 Adding UI must not weaken the existing Core CI guarantees.
 
 ## 15. Build Sequence
 
-Implementation should proceed in vertical slices rather than building the complete visual shell first.
+Implementation proceeds in vertical slices rather than building the complete visual shell first.
 
-Recommended order:
+Required order:
 
 1. create `ui` package and minimal Home route;
 2. create Home Snapshot DTO/endpoint with deterministic test data from Core/application contracts;
@@ -406,10 +413,12 @@ Recommended order:
 7. implement Happens Now;
 8. implement Today timeline;
 9. implement Never-Miss/opportunities;
-10. add degraded/stale states and last-known-good handling;
-11. add responsive/large-display behavior;
-12. add CI and E2E route/legacy guards;
-13. polish seasonal visuals and interaction motion only after functional tests are green.
+10. implement environment/weather state;
+11. add degraded/stale states and approved last-known-good handling;
+12. add responsive/large-display behavior;
+13. add minimum installable PWA shell;
+14. add CI and E2E route/legacy guards;
+15. polish seasonal visuals and interaction motion only after functional tests are green.
 
 ## 16. Acceptance Criteria
 
@@ -418,10 +427,11 @@ The design is successfully implemented when all of the following are true:
 - the existing AGNES Core remains intact and its tests still pass;
 - a new isolated React/TypeScript UI package exists in the repository;
 - `/` is the only active product screen;
-- Home visibly provides current priority, family status, Today timeline, and system/freshness context;
+- Home visibly provides current priority, family status, Today timeline, weather/environment state, and system/freshness context;
 - unavailable sources degrade independently and honestly;
 - Home consumes a versioned Core read contract rather than provider payloads or database access;
 - desktop, large-display/TV, and mobile layouts are usable;
+- the minimum PWA shell is installable;
 - legacy AGNES 9.2 and pre-greenfield screens/navigation are not dependencies of the new UI;
 - the 10.5.0 archive has not been imported wholesale as a UI baseline;
 - CI verifies both Core and UI before merge.
