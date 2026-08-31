@@ -3,14 +3,36 @@ import type { shoppingRecordSchema } from '../../shopping/shopping-schemas.js';
 
 export type ShoppingRecord = z.output<typeof shoppingRecordSchema>;
 
+export interface RevalidationItem {
+  readonly externalId: string;
+  readonly quantity: number;
+  readonly quotedUnitPrice: number;
+}
+
+export interface RevalidatedItem {
+  readonly externalId: string;
+  readonly availability: 'available' | 'unavailable' | 'unknown';
+  readonly unitPrice?: number;
+}
+
+export interface BasketRevalidationResult {
+  readonly supported: boolean;
+  readonly items?: readonly RevalidatedItem[];
+}
+
 export interface RevalidateBasketAction {
   readonly kind: 'revalidate_basket';
-  readonly items: readonly { externalId: string; quantity: number }[];
+  readonly items: readonly RevalidationItem[];
+}
+
+export interface HandoffItem {
+  readonly externalId: string;
+  readonly quantity: number;
 }
 
 export interface PrepareCheckoutHandoffAction {
   readonly kind: 'prepare_checkout_handoff';
-  readonly items: readonly { externalId: string; quantity: number }[];
+  readonly items: readonly HandoffItem[];
 }
 
 export type ShoppingAction = RevalidateBasketAction | PrepareCheckoutHandoffAction;
