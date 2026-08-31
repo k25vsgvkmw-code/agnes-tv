@@ -1,10 +1,5 @@
 export type ConnectorHealthState =
-  | 'connected'
-  | 'degraded'
-  | 'auth_expired'
-  | 'rate_limited'
-  | 'error'
-  | 'disconnected';
+  'connected' | 'degraded' | 'auth_expired' | 'rate_limited' | 'error' | 'disconnected';
 
 export interface ConnectorCapabilities {
   readonly read: boolean;
