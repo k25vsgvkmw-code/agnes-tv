@@ -31,7 +31,7 @@ const checkoutSchema = z.object({
   createdByPersonId: z.string().uuid(),
 });
 
-export async function registerShoppingRoutes(
+export function registerShoppingRoutes(
   app: FastifyInstance,
   dependencies: ShoppingRouteDependencies,
 ): Promise<void> {
@@ -94,4 +94,6 @@ export async function registerShoppingRoutes(
     if (!basket) return { error: 'basket_not_found' };
     return dependencies.checkoutService.prepareCheckout(input.quoteId, input.createdByPersonId);
   });
+
+  return Promise.resolve();
 }
