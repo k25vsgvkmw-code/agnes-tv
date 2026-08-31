@@ -1,11 +1,5 @@
 export type NotificationState =
-  | 'pending'
-  | 'delivering'
-  | 'delivered'
-  | 'failed'
-  | 'acknowledged'
-  | 'expired'
-  | 'suppressed';
+  'pending' | 'delivering' | 'delivered' | 'failed' | 'acknowledged' | 'expired' | 'suppressed';
 
 export interface NotificationCandidate {
   readonly id: string;
