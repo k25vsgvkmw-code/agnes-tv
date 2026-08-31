@@ -147,121 +147,129 @@ export class PostgresCalendarRepository implements CalendarRepository {
   async upsertByExternalReference(
     event: CalendarEvent,
   ): Promise<{ event: CalendarEvent; change: CalendarUpsertChange }> {
-    const reference = event.externalReference;
-    if (!reference) {
-      throw new ValidationError('calendar upsert requires an external reference');
-    }
-
     const tx = await this.db.connect();
     try {
       await tx.query('begin');
-      const referenceResult = await tx.query<{ id: string }>(
-        `insert into external_references(
-           id,provider,external_id,external_version,etag,sync_token,last_synced_at,authoritative
-         ) values($1,$2,$3,$4,$5,$6,$7,$8)
-         on conflict(provider, external_id) do update set
-           external_version = excluded.external_version,
-           etag = excluded.etag,
-           sync_token = excluded.sync_token,
-           last_synced_at = excluded.last_synced_at,
-           authoritative = excluded.authoritative
-         returning id`,
-        [
-          reference.id,
-          reference.provider,
-          reference.externalId,
-          reference.externalVersion,
-          reference.etag,
-          reference.syncToken,
-          reference.lastSyncedAt,
-          reference.authoritative,
-        ],
-      );
-      const externalReferenceId = referenceResult.rows[0]?.id;
-      if (!externalReferenceId) {
-        throw new AgnesError(
-          'PERSISTENCE_ERROR',
-          'calendar external reference upsert returned no id',
-        );
-      }
-
-      const existing = await readByExternalReference(tx, externalReferenceId, true);
-      let change: CalendarUpsertChange;
-
-      if (!existing) {
-        await tx.query(
-          `insert into calendar_events(
-             id,household_id,owner_person_id,title,description,starts_at,ends_at,timezone,
-             participants,location_id,recurrence,visibility,status,external_reference_id
-           ) values($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14)`,
-          [
-            event.id,
-            event.householdId,
-            event.ownerPersonId,
-            event.title,
-            event.description,
-            event.startsAt,
-            event.endsAt,
-            event.timezone,
-            JSON.stringify(event.participants),
-            event.locationId,
-            event.recurrence,
-            event.visibility,
-            event.status,
-            externalReferenceId,
-          ],
-        );
-        change = 'created';
-      } else if (isSameCanonicalEvent(existing, event)) {
-        change = 'unchanged';
-      } else {
-        await tx.query(
-          `update calendar_events set
-             household_id = $2,
-             owner_person_id = $3,
-             title = $4,
-             description = $5,
-             starts_at = $6,
-             ends_at = $7,
-             timezone = $8,
-             participants = $9::jsonb,
-             location_id = $10,
-             recurrence = $11,
-             visibility = $12,
-             status = $13
-           where id = $1`,
-          [
-            existing.id,
-            event.householdId,
-            event.ownerPersonId,
-            event.title,
-            event.description,
-            event.startsAt,
-            event.endsAt,
-            event.timezone,
-            JSON.stringify(event.participants),
-            event.locationId,
-            event.recurrence,
-            event.visibility,
-            event.status,
-          ],
-        );
-        change = 'updated';
-      }
-
-      const stored = await readByExternalReference(tx, externalReferenceId);
-      if (!stored) {
-        throw new AgnesError('PERSISTENCE_ERROR', 'calendar upsert returned no stored event');
-      }
-
+      const result = await this.upsertByExternalReferenceInTransaction(tx, event);
       await tx.query('commit');
-      return { event: toCalendarEvent(stored), change };
+      return result;
     } catch (error) {
       await tx.query('rollback');
       throw error;
     } finally {
       tx.release();
     }
+  }
+
+  async upsertByExternalReferenceInTransaction(
+    tx: PoolClient,
+    event: CalendarEvent,
+  ): Promise<{ event: CalendarEvent; change: CalendarUpsertChange }> {
+    const reference = event.externalReference;
+    if (!reference) {
+      throw new ValidationError('calendar upsert requires an external reference');
+    }
+
+    const referenceResult = await tx.query<{ id: string }>(
+      `insert into external_references(
+         id,provider,external_id,external_version,etag,sync_token,last_synced_at,authoritative
+       ) values($1,$2,$3,$4,$5,$6,$7,$8)
+       on conflict(provider, external_id) do update set
+         external_version = excluded.external_version,
+         etag = excluded.etag,
+         sync_token = excluded.sync_token,
+         last_synced_at = excluded.last_synced_at,
+         authoritative = excluded.authoritative
+       returning id`,
+      [
+        reference.id,
+        reference.provider,
+        reference.externalId,
+        reference.externalVersion,
+        reference.etag,
+        reference.syncToken,
+        reference.lastSyncedAt,
+        reference.authoritative,
+      ],
+    );
+    const externalReferenceId = referenceResult.rows[0]?.id;
+    if (!externalReferenceId) {
+      throw new AgnesError(
+        'PERSISTENCE_ERROR',
+        'calendar external reference upsert returned no id',
+      );
+    }
+
+    const existing = await readByExternalReference(tx, externalReferenceId, true);
+    let change: CalendarUpsertChange;
+
+    if (!existing) {
+      await tx.query(
+        `insert into calendar_events(
+           id,household_id,owner_person_id,title,description,starts_at,ends_at,timezone,
+           participants,location_id,recurrence,visibility,status,external_reference_id
+         ) values($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14)`,
+        [
+          event.id,
+          event.householdId,
+          event.ownerPersonId,
+          event.title,
+          event.description,
+          event.startsAt,
+          event.endsAt,
+          event.timezone,
+          JSON.stringify(event.participants),
+          event.locationId,
+          event.recurrence,
+          event.visibility,
+          event.status,
+          externalReferenceId,
+        ],
+      );
+      change = 'created';
+    } else if (isSameCanonicalEvent(existing, event)) {
+      change = 'unchanged';
+    } else {
+      await tx.query(
+        `update calendar_events set
+           household_id = $2,
+           owner_person_id = $3,
+           title = $4,
+           description = $5,
+           starts_at = $6,
+           ends_at = $7,
+           timezone = $8,
+           participants = $9::jsonb,
+           location_id = $10,
+           recurrence = $11,
+           visibility = $12,
+           status = $13
+         where id = $1`,
+        [
+          existing.id,
+          event.householdId,
+          event.ownerPersonId,
+          event.title,
+          event.description,
+          event.startsAt,
+          event.endsAt,
+          event.timezone,
+          JSON.stringify(event.participants),
+          event.locationId,
+          event.recurrence,
+          event.visibility,
+          event.status,
+        ],
+      );
+      change = 'updated';
+    }
+
+    const stored = await readByExternalReference(tx, externalReferenceId);
+    if (!stored) {
+      throw new AgnesError('PERSISTENCE_ERROR', 'calendar upsert returned no stored event');
+    }
+
+    return { event: toCalendarEvent(stored), change };
   }
 
   async listUpcoming(householdId: HouseholdId, from: Date): Promise<readonly CalendarEvent[]> {
