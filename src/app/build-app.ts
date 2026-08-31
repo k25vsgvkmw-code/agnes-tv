@@ -19,6 +19,7 @@ import { PostgresShoppingRepository } from '../persistence/postgres-shopping-rep
 import { BasketService } from '../shopping/basket-service.js';
 import { CheckoutService } from '../shopping/checkout-service.js';
 import { ImportShoppingRecords } from '../shopping/import-shopping-records.js';
+import { RefreshRetailerData } from '../shopping/refresh-retailer-data.js';
 import type { RetailerSlug } from '../shopping/shopping-types.js';
 import { SupermarketHomeService } from '../shopping/supermarket-home.js';
 import { DepartureRiskDetector } from '../situations/departure-risk-detector.js';
@@ -43,6 +44,7 @@ export interface AgnesApp {
   readonly basketService: BasketService;
   readonly checkoutService: CheckoutService;
   readonly shoppingImportService: ImportShoppingRecords;
+  readonly refreshRetailerData: RefreshRetailerData;
   readonly supermarketHomeService: SupermarketHomeService;
   close(): Promise<void>;
 }
@@ -85,6 +87,7 @@ export async function buildApp(options: BuildAppOptions): Promise<AgnesApp> {
   const basketService = new BasketService(shoppingRepository, clock);
   const checkoutService = new CheckoutService(shoppingRepository, shoppingConnectors, clock);
   const shoppingImportService = new ImportShoppingRecords(shoppingRepository, clock);
+  const refreshRetailerData = new RefreshRetailerData(shoppingConnectors, shoppingImportService);
   const supermarketHomeService = new SupermarketHomeService(shoppingRepository, clock);
 
   return {
@@ -101,6 +104,7 @@ export async function buildApp(options: BuildAppOptions): Promise<AgnesApp> {
     basketService,
     checkoutService,
     shoppingImportService,
+    refreshRetailerData,
     supermarketHomeService,
     async close(): Promise<void> {
       await testCalendarConnector.disconnect();
