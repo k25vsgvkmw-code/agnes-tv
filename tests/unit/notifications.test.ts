@@ -16,20 +16,22 @@ import type { AuditRepository } from '../../src/audit/audit-repository.js';
 class MemoryNotificationRepository implements NotificationRepository {
   private readonly values = new Map<string, Notification>();
 
-  async save(notification: Notification): Promise<void> {
+  save(notification: Notification): Promise<void> {
     this.values.set(notification.id, notification);
+    return Promise.resolve();
   }
 
-  async get(id: string): Promise<Notification | null> {
-    return this.values.get(id) ?? null;
+  get(id: string): Promise<Notification | null> {
+    return Promise.resolve(this.values.get(id) ?? null);
   }
 }
 
 class MemoryAuditRepository implements AuditRepository {
   readonly values: AuditRecord[] = [];
 
-  async append(record: AuditRecord): Promise<void> {
+  append(record: AuditRecord): Promise<void> {
     this.values.push(record);
+    return Promise.resolve();
   }
 }
 
@@ -47,8 +49,8 @@ describe('notification lifecycle', () => {
   it('does not mark notification delivered when provider delivery fails', async () => {
     const repository = new MemoryNotificationRepository();
     const delivery: NotificationDelivery = {
-      async send(): Promise<NotificationDeliveryReceipt> {
-        throw new Error('provider down');
+      send(): Promise<NotificationDeliveryReceipt> {
+        return Promise.reject(new Error('provider down'));
       },
     };
 
@@ -66,8 +68,12 @@ describe('notification lifecycle', () => {
     const repository = new MemoryNotificationRepository();
     const audit = new MemoryAuditRepository();
     const delivery: NotificationDelivery = {
-      async send(): Promise<NotificationDeliveryReceipt> {
-        return { provider: 'fake', receiptId: 'receipt-1', deliveredAt: new Date('2026-09-01T15:00:01Z') };
+      send(): Promise<NotificationDeliveryReceipt> {
+        return Promise.resolve({
+          provider: 'fake',
+          receiptId: 'receipt-1',
+          deliveredAt: new Date('2026-09-01T15:00:01Z'),
+        });
       },
     };
 
