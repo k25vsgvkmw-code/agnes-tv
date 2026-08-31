@@ -8,19 +8,23 @@ import type {
 const unavailable = (): ModelGatewayError => ({ code: 'MODEL_UNAVAILABLE' });
 
 export class UnavailableModelGateway implements ModelGateway {
-  extractIntent(): Promise<Result<IntentExtraction, ModelGatewayError>> {
+  extractIntent(input: string): Promise<Result<IntentExtraction, ModelGatewayError>> {
+    void input;
     return Promise.resolve(err(unavailable()));
   }
 
-  plan(): Promise<Result<unknown, ModelGatewayError>> {
+  plan(input: unknown): Promise<Result<unknown, ModelGatewayError>> {
+    void input;
     return Promise.resolve(err(unavailable()));
   }
 
-  summarize(): Promise<Result<string, ModelGatewayError>> {
+  summarize(input: string): Promise<Result<string, ModelGatewayError>> {
+    void input;
     return Promise.resolve(err(unavailable()));
   }
 
-  generateResponse(): Promise<Result<string, ModelGatewayError>> {
+  generateResponse(input: unknown): Promise<Result<string, ModelGatewayError>> {
+    void input;
     return Promise.resolve(err(unavailable()));
   }
 }
