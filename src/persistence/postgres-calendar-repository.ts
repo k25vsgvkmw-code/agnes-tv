@@ -69,7 +69,9 @@ function parseParticipants(value: unknown): readonly PersonId[] {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.filter((item): item is string => typeof item === 'string').map((id) => id as PersonId);
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((id) => id as PersonId);
 }
 
 function toExternalReference(row: CalendarEventRow): ExternalReference | null {
@@ -182,7 +184,10 @@ export class PostgresCalendarRepository implements CalendarRepository {
       );
       const externalReferenceId = referenceResult.rows[0]?.id;
       if (!externalReferenceId) {
-        throw new AgnesError('PERSISTENCE_ERROR', 'calendar external reference upsert returned no id');
+        throw new AgnesError(
+          'PERSISTENCE_ERROR',
+          'calendar external reference upsert returned no id',
+        );
       }
 
       const existing = await readByExternalReference(tx, externalReferenceId, true);
