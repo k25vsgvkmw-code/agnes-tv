@@ -44,5 +44,11 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Diagnostic context Prettier diff
+        run: |
+          cp tests/unit/context-projector.test.ts /tmp/context-projector.test.ts
+          npx prettier --write tests/unit/context-projector.test.ts
+          git diff -- tests/unit/context-projector.test.ts || true
+          cp /tmp/context-projector.test.ts tests/unit/context-projector.test.ts
       - name: Format check
         run: npm run format:check
