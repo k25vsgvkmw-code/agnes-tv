@@ -43,10 +43,10 @@ it('leases claimed events and recovers processing records after the lease expire
   expect(leased.rows[0]?.available_at.getTime()).toBeGreaterThan(Date.now());
   expect(await outbox.claimBatch(10)).toHaveLength(0);
 
-  await pool.query('update outbox_events set available_at = now() - interval $2 where event_id = $1', [
-    event.id,
-    '1 second',
-  ]);
+  await pool.query(
+    'update outbox_events set available_at = now() - $2::interval where event_id = $1',
+    [event.id, '1 second'],
+  );
 
   const recovered = await outbox.claimBatch(10);
   const recoveredEvent = recovered.find((record) => record.event.id === event.id);
