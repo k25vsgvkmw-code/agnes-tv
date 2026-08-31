@@ -1,16 +1,10 @@
 import { err, type Result } from '../kernel/result.js';
-import type {
-  IntentExtraction,
-  ModelGateway,
-  ModelGatewayError,
-} from './model-gateway.js';
+import type { IntentExtraction, ModelGateway, ModelGatewayError } from './model-gateway.js';
 
 const unavailable = (): ModelGatewayError => ({ code: 'MODEL_UNAVAILABLE' });
 
 export class UnavailableModelGateway implements ModelGateway {
-  extractIntent(
-    input: string,
-  ): Promise<Result<IntentExtraction, ModelGatewayError>> {
+  extractIntent(input: string): Promise<Result<IntentExtraction, ModelGatewayError>> {
     void input;
     return Promise.resolve(err(unavailable()));
   }
