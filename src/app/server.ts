@@ -21,6 +21,7 @@ async function main(): Promise<void> {
     repository: services.shoppingRepository,
     basketService: services.basketService,
     checkoutService: services.checkoutService,
+    refreshRetailerData: services.refreshRetailerData,
     homeService: services.supermarketHomeService,
   });
 
