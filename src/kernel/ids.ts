@@ -9,6 +9,8 @@ export type HouseholdId = Brand<string, 'HouseholdId'>;
 export type PersonId = Brand<string, 'PersonId'>;
 export type CalendarEventId = Brand<string, 'CalendarEventId'>;
 export type ExternalReferenceId = Brand<string, 'ExternalReferenceId'>;
+export type KidsWorldMissionId = Brand<string, 'KidsWorldMissionId'>;
+export type StarLedgerEntryId = Brand<string, 'StarLedgerEntryId'>;
 
 export function newEventId(): EventId {
   return randomUUID() as EventId;
@@ -28,4 +30,12 @@ export function newCalendarEventId(): CalendarEventId {
 
 export function newExternalReferenceId(): ExternalReferenceId {
   return randomUUID() as ExternalReferenceId;
+}
+
+export function newKidsWorldMissionId(): KidsWorldMissionId {
+  return randomUUID() as KidsWorldMissionId;
+}
+
+export function newStarLedgerEntryId(): StarLedgerEntryId {
+  return randomUUID() as StarLedgerEntryId;
 }
