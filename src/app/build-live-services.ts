@@ -11,7 +11,11 @@ import { AgnesError } from '../kernel/errors.js';
 import type { LocationSignalPort } from '../location/location-signal-port.js';
 import type { LocationSignal } from '../location/location-signal.js';
 import type { DeliveryChannel } from '../notifications/delivery-channel.js';
-import type { PresenceEvidence, PresenceState, PresenceStateName } from '../presence/presence-state.js';
+import type {
+  PresenceEvidence,
+  PresenceState,
+  PresenceStateName,
+} from '../presence/presence-state.js';
 import { resolvePresence } from '../presence/presence-resolver.js';
 import { PostgresDeviceRepository } from '../persistence/postgres-device-repository.js';
 import { PostgresOfflineCommandRepository } from '../persistence/postgres-offline-command-repository.js';
@@ -96,8 +100,7 @@ function locationEvidence(signal: LocationSignal): PresenceEvidence {
     state: presenceName(signal),
     observedAt: new Date(signal.observedAt),
     expiresAt: new Date(signal.expiresAt),
-    confidence:
-      signal.source === 'MANUAL' ? 1 : signal.source === 'DEVICE_GEOFENCE' ? 0.95 : 0.9,
+    confidence: signal.source === 'MANUAL' ? 1 : signal.source === 'DEVICE_GEOFENCE' ? 0.95 : 0.9,
   };
 }
 
@@ -225,11 +228,12 @@ export function buildLiveServices(config: BuildLiveServicesConfig) {
     const context = await config.contextStore.get(input.householdId);
     if (context === null) return null;
 
-    const event = input.eventId === undefined
-      ? [...context.upcomingEvents]
-          .filter((candidate) => candidate.startsAt.getTime() > config.clock.now().getTime())
-          .sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime())[0]
-      : context.upcomingEvents.find((candidate) => candidate.id === input.eventId);
+    const event =
+      input.eventId === undefined
+        ? [...context.upcomingEvents]
+            .filter((candidate) => candidate.startsAt.getTime() > config.clock.now().getTime())
+            .sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime())[0]
+        : context.upcomingEvents.find((candidate) => candidate.id === input.eventId);
     if (event === undefined) return null;
 
     const presence = context.presenceByPerson[input.targetPersonId];
