@@ -7,6 +7,8 @@ type Brand<TValue, TBrand extends string> = TValue & {
 export type EventId = Brand<string, 'EventId'>;
 export type HouseholdId = Brand<string, 'HouseholdId'>;
 export type PersonId = Brand<string, 'PersonId'>;
+export type CalendarEventId = Brand<string, 'CalendarEventId'>;
+export type ExternalReferenceId = Brand<string, 'ExternalReferenceId'>;
 
 export function newEventId(): EventId {
   return randomUUID() as EventId;
@@ -18,4 +20,12 @@ export function newHouseholdId(): HouseholdId {
 
 export function newPersonId(): PersonId {
   return randomUUID() as PersonId;
+}
+
+export function newCalendarEventId(): CalendarEventId {
+  return randomUUID() as CalendarEventId;
+}
+
+export function newExternalReferenceId(): ExternalReferenceId {
+  return randomUUID() as ExternalReferenceId;
 }
