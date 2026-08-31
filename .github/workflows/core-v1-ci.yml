@@ -1,0 +1,41 @@
+name: Core v1 CI
+
+on:
+  push:
+    branches:
+      - feat/core-v1-foundation
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run focused health-route test
+        run: npm test -- tests/unit/health-routes.test.ts
+
+      - name: Run quality gates
+        run: npm run check
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Upload generated lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-lock
+          path: package-lock.json
+          if-no-files-found: error
