@@ -14,37 +14,39 @@ export class FakeCalendarConnector implements Connector<ExternalCalendarRecord> 
     private readonly records: readonly ExternalCalendarRecord[],
   ) {}
 
-  async connect(): Promise<void> {
+  connect(): Promise<void> {
     this.connected = true;
+    return Promise.resolve();
   }
 
-  async disconnect(): Promise<void> {
+  disconnect(): Promise<void> {
     this.connected = false;
+    return Promise.resolve();
   }
 
-  async health(): Promise<ConnectorHealth> {
-    return {
+  health(): Promise<ConnectorHealth> {
+    return Promise.resolve({
       state: this.connected ? 'connected' : 'disconnected',
       checkedAt: new Date(),
-    };
+    });
   }
 
   capabilities(): ConnectorCapabilities {
     return { read: true, write: false, incrementalSync: true };
   }
 
-  async sync(cursor?: string): Promise<ConnectorSyncResult<ExternalCalendarRecord>> {
+  sync(cursor?: string): Promise<ConnectorSyncResult<ExternalCalendarRecord>> {
     if (!this.connected) {
-      throw new Error(`connector ${this.id} is disconnected`);
+      return Promise.reject(new Error(`connector ${this.id} is disconnected`));
     }
 
     const offset = cursor ? Number.parseInt(cursor, 10) : 0;
     const safeOffset = Number.isFinite(offset) && offset >= 0 ? offset : 0;
     const records = this.records.slice(safeOffset);
 
-    return {
+    return Promise.resolve({
       records,
       cursor: String(this.records.length),
-    };
+    });
   }
 }
