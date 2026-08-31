@@ -66,9 +66,9 @@ export async function buildApp(options: BuildAppOptions): Promise<AgnesApp> {
   await alphaMegaConnector.connect();
   await lidlConnector.connect();
   await eKalathiConnector.connect();
-  connectorRegistry.register(alphaMegaConnector as Connector<unknown, unknown>);
-  connectorRegistry.register(lidlConnector as Connector<unknown, unknown>);
-  connectorRegistry.register(eKalathiConnector as Connector<unknown, unknown>);
+  connectorRegistry.register(alphaMegaConnector);
+  connectorRegistry.register(lidlConnector);
+  connectorRegistry.register(eKalathiConnector);
 
   eventBus.subscribe('calendar.event.created.v1', (event) =>
     updateContextFromEvent(event, contextStore),
