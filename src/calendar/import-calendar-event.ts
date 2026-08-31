@@ -86,9 +86,7 @@ export async function importCalendarRecord(
     const domainEvent = createAgnesEvent(
       {
         type:
-          result.change === 'created'
-            ? 'calendar.event.created.v1'
-            : 'calendar.event.updated.v1',
+          result.change === 'created' ? 'calendar.event.created.v1' : 'calendar.event.updated.v1',
         version: 1,
         source: record.provider,
         householdId: context.householdId,
