@@ -10,6 +10,8 @@ import { PostgresCalendarRepository } from '../persistence/postgres-calendar-rep
 import { PostgresHouseholdRepository } from '../persistence/postgres-household-repository.js';
 import { PostgresOutboxRepository } from '../persistence/postgres-outbox-repository.js';
 import { DepartureRiskDetector } from '../situations/departure-risk-detector.js';
+import { createFixtureTravelPorts } from '../travel/adapters/fixture-travel-ports.js';
+import { TravelOpportunityEngine } from '../travel/application/opportunity-engine.js';
 import { OutboxWorker } from '../workers/outbox-worker.js';
 
 export interface BuildAppOptions {
@@ -27,6 +29,7 @@ export interface AgnesApp {
   readonly eventBus: InMemoryDomainEventBus;
   readonly outboxWorker: OutboxWorker;
   readonly departureRiskDetector: DepartureRiskDetector;
+  readonly travelOpportunityEngine: TravelOpportunityEngine;
   close(): Promise<void>;
 }
 
@@ -48,6 +51,11 @@ export async function buildApp(options: BuildAppOptions): Promise<AgnesApp> {
   );
 
   const outboxRepository = new PostgresOutboxRepository(pool);
+  const travelOpportunityEngine = new TravelOpportunityEngine({
+    ...createFixtureTravelPorts(),
+    clock,
+    timeZone: 'Asia/Nicosia',
+  });
 
   return {
     modelGateway: options.modelGateway,
@@ -59,6 +67,7 @@ export async function buildApp(options: BuildAppOptions): Promise<AgnesApp> {
     eventBus,
     outboxWorker: new OutboxWorker(outboxRepository, eventBus),
     departureRiskDetector: new DepartureRiskDetector(),
+    travelOpportunityEngine,
     async close(): Promise<void> {
       await testCalendarConnector.disconnect();
       await pool.end();
