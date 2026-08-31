@@ -124,4 +124,13 @@ export class PostgresOutboxRepository implements OutboxRepository {
       [id],
     );
   }
+
+  async markFailed(id: EventId, error: string, retryAt: Date): Promise<void> {
+    await this.db.query(
+      `update outbox_events
+       set publication_state = 'pending', available_at = $2, last_error = $3
+       where event_id = $1`,
+      [id, retryAt, error],
+    );
+  }
 }
