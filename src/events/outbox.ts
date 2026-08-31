@@ -15,4 +15,5 @@ export interface OutboxRepository {
   append(tx: PoolClient, event: AgnesEvent): Promise<void>;
   claimBatch(limit: number): Promise<readonly OutboxRecord[]>;
   markPublished(id: EventId): Promise<void>;
+  markFailed(id: EventId, error: string, retryAt: Date): Promise<void>;
 }
