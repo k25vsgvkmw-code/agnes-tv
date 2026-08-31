@@ -14,7 +14,7 @@ async function main(): Promise<void> {
     modelGateway: new UnavailableModelGateway(),
   });
   const app = Fastify({ logger: true });
-  app.addHook('onClose', async () => services.close());
+  app.addHook('onClose', () => services.close());
   await registerHealthRoutes(app);
 
   const port = Number.parseInt(process.env.PORT ?? '3000', 10);
