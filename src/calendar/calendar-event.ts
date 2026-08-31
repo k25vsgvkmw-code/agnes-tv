@@ -42,7 +42,7 @@ export interface CreateCalendarEventInput {
   readonly householdId: HouseholdId;
   readonly ownerPersonId?: PersonId;
   readonly title: string;
-  readonly description?: string;
+  readonly description?: string | null;
   readonly startsAt: Date;
   readonly endsAt: Date;
   readonly timezone: string;
