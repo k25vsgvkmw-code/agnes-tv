@@ -40,8 +40,12 @@ export async function buildApp(options: BuildAppOptions): Promise<AgnesApp> {
   await testCalendarConnector.connect();
   connectorRegistry.register(testCalendarConnector);
 
-  eventBus.subscribe('calendar.event.created.v1', (event) => updateContextFromEvent(event, contextStore));
-  eventBus.subscribe('calendar.event.updated.v1', (event) => updateContextFromEvent(event, contextStore));
+  eventBus.subscribe('calendar.event.created.v1', (event) =>
+    updateContextFromEvent(event, contextStore),
+  );
+  eventBus.subscribe('calendar.event.updated.v1', (event) =>
+    updateContextFromEvent(event, contextStore),
+  );
 
   const outboxRepository = new PostgresOutboxRepository(pool);
 
