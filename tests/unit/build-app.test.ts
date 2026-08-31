@@ -6,7 +6,9 @@ describe('buildApp', () => {
   it('composes the model gateway and connector registry', async () => {
     const modelGateway = new UnavailableModelGateway();
     const app = await buildApp({
-      databaseUrl: process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/agnes_test',
+      databaseUrl:
+        process.env.DATABASE_URL ??
+        'postgres://postgres:postgres@localhost:5432/agnes_test',
       modelGateway,
     });
 
