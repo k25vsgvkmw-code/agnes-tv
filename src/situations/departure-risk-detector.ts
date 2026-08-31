@@ -21,10 +21,7 @@ export class DepartureRiskDetector {
     }
 
     const deficit = requiredMinutes - remainingMinutes;
-    const confidence = Math.min(
-      0.99,
-      0.82 + (deficit / Math.max(requiredMinutes, 1)) * 0.17,
-    );
+    const confidence = Math.min(0.99, 0.82 + (deficit / Math.max(requiredMinutes, 1)) * 0.17);
 
     return [
       {
