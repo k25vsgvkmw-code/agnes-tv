@@ -42,7 +42,8 @@ class MemoryOutbox implements OutboxRepository {
     return Promise.resolve();
   }
 
-  markFailed(_id: EventId, error: string, retryAt: Date): Promise<void> {
+  markFailed(id: EventId, error: string, retryAt: Date): Promise<void> {
+    void id;
     this.record = {
       ...this.record,
       publicationState: 'pending',
