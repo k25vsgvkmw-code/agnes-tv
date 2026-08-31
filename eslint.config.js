@@ -6,8 +6,12 @@ export default tseslint.config(
     ignores: ['dist/**', 'node_modules/**'],
   },
   js.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.recommendedTypeChecked.map((config) => ({
+    ...config,
+    files: ['**/*.ts'],
+  })),
   {
+    files: ['**/*.ts'],
     languageOptions: {
       parserOptions: {
         projectService: true,
