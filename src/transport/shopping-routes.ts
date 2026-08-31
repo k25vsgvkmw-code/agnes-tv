@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { BasketService } from '../shopping/basket-service.js';
 import type { CheckoutService } from '../shopping/checkout-service.js';
+import type { RefreshRetailerData } from '../shopping/refresh-retailer-data.js';
 import type { ShoppingRepository } from '../shopping/shopping-repository.js';
 import type { SupermarketHomeService } from '../shopping/supermarket-home.js';
 
@@ -9,6 +10,7 @@ export interface ShoppingRouteDependencies {
   readonly repository: ShoppingRepository;
   readonly basketService: BasketService;
   readonly checkoutService: CheckoutService;
+  readonly refreshRetailerData: RefreshRetailerData;
   readonly homeService: SupermarketHomeService;
 }
 
@@ -34,6 +36,10 @@ export async function registerShoppingRoutes(
   dependencies: ShoppingRouteDependencies,
 ): Promise<void> {
   app.get('/shopping/home', async () => dependencies.homeService.getHome());
+
+  app.post('/shopping/refresh', async () => ({
+    retailers: await dependencies.refreshRetailerData.refreshAll(),
+  }));
 
   app.get<{ Querystring: { limit?: string } }>('/shopping/offers', async (request) => {
     const parsed = Number(request.query.limit ?? '24');
