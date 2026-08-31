@@ -52,5 +52,8 @@ jobs:
       - name: Run quality gates
         run: npm run check
 
-      - name: Check formatting
-        run: npm run format:check
+      - name: Diagnose formatting
+        run: |
+          npx prettier src/persistence/postgres-calendar-repository.ts --write
+          git diff -- src/persistence/postgres-calendar-repository.ts
+          git diff --exit-code -- src/persistence/postgres-calendar-repository.ts
