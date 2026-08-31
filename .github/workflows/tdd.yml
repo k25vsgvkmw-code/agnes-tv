@@ -37,4 +37,4 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm run format:check
+      - run: npx prettier --write src/app/build-live-services.ts && git diff -- src/app/build-live-services.ts && exit 1
