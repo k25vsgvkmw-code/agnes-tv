@@ -9,13 +9,7 @@ import {
 } from './decision-score.js';
 
 export type AttentionState =
-  | 'available'
-  | 'busy'
-  | 'working'
-  | 'driving'
-  | 'sleeping'
-  | 'focused'
-  | 'unknown';
+  'available' | 'busy' | 'working' | 'driving' | 'sleeping' | 'focused' | 'unknown';
 
 export type DecisionOutcome = 'ignore' | 'suggest' | 'prepare' | 'act';
 export type RequestedDecisionOutcome = Exclude<DecisionOutcome, 'ignore'>;
