@@ -34,6 +34,27 @@ Reference documents:
 
 Production verification is defined by `.github/workflows/core-ci.yml` using Node.js 24 and PostgreSQL 18.
 
+## Supermarket v1
+
+Supermarket is a module inside the same AGNES core. Its first vertical slice adds:
+
+- canonical retailers, products, retailer listings, immutable price observations and offers;
+- AlphaMega, Lidl Cyprus and e-Kalathi provider adapters behind the common connector contract;
+- conservative source refresh with per-retailer degraded health rather than bypassing provider controls;
+- Offers-first deterministic ranking and seasonal presentation metadata;
+- one household AGNES basket with unit-price comparison and single-versus-split retailer optimization;
+- a default rule that avoids a second retailer unless the expected net saving is at least EUR 3;
+- Checkout Model A: AGNES keeps the shopping flow through quote/revalidation and hands payment/order confirmation to the retailer when no supported direct checkout API exists;
+- Fastify `/shopping/...` routes and provider-to-checkout automated verification.
+
+Reference documents:
+
+- [Supermarket v1 design](docs/superpowers/specs/2026-08-31-agnes-supermarket-v1-design.md)
+- [Supermarket v1 implementation plan](docs/superpowers/plans/2026-08-31-agnes-supermarket-v1-implementation-plan.md)
+- [Supermarket v1 operations](docs/supermarket-v1-operations.md)
+
+Supermarket does not store retailer payment-card credentials and does not use undocumented/private checkout endpoints.
+
 ## Build order
 
 1. Core architecture and domain boundaries
@@ -45,7 +66,7 @@ Production verification is defined by `.github/workflows/core-ci.yml` using Node
 7. Security, permissions, audit and observability
 8. UI/UX and visual design last
 
-The final UI is intentionally deferred until the Core contracts and first vertical slice are stable and verified.
+The final UI is intentionally deferred until the Core contracts and first vertical slices are stable and verified.
 
 ## Product principle
 
