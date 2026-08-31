@@ -94,13 +94,15 @@ export class PostgresOutboxRepository implements OutboxRepository {
         `with candidates as (
           select event_id
           from outbox_events
-          where publication_state = 'pending' and available_at <= now()
+          where publication_state in ('pending', 'processing') and available_at <= now()
           order by created_at
           for update skip locked
           limit $1
         )
         update outbox_events as outbox
-        set publication_state = 'processing', attempts = outbox.attempts + 1
+        set publication_state = 'processing',
+            attempts = outbox.attempts + 1,
+            available_at = now() + interval '5 minutes'
         from candidates
         where outbox.event_id = candidates.event_id
         returning outbox.*`,
