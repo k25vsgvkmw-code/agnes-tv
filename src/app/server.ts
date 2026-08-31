@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { UnavailableModelGateway } from '../intelligence/unavailable-model-gateway.js';
 import { registerHealthRoutes } from '../transport/health-routes.js';
+import { registerShoppingRoutes } from '../transport/shopping-routes.js';
 import { buildApp } from './build-app.js';
 
 async function main(): Promise<void> {
@@ -16,6 +17,12 @@ async function main(): Promise<void> {
   const app = Fastify({ logger: true });
   app.addHook('onClose', () => services.close());
   await registerHealthRoutes(app);
+  await registerShoppingRoutes(app, {
+    repository: services.shoppingRepository,
+    basketService: services.basketService,
+    checkoutService: services.checkoutService,
+    homeService: services.supermarketHomeService,
+  });
 
   const port = Number.parseInt(process.env.PORT ?? '3000', 10);
   await app.listen({ host: '0.0.0.0', port });
