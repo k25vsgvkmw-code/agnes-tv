@@ -16,7 +16,8 @@ export class OutboxWorker {
         await this.bus.publish(record.event);
         await this.outbox.markPublished(record.event.id);
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'outbox publication failed';
+        const message =
+          error instanceof Error ? error.message : 'outbox publication failed';
         const delayMs = Math.min(
           60 * 60_000,
           2 ** Math.max(0, record.attempts - 1) * 60_000,
