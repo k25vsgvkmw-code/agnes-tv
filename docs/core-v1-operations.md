@@ -40,7 +40,7 @@ All external providers must enter through the Connector framework and registry. 
 
 ## Transactional outbox
 
-Canonical database changes and their domain events are committed atomically. The outbox worker claims pending records, publishes to the domain bus, and marks an event published only after successful publication. Failures are returned to `pending` with an exponential retry timestamp and the last error retained for diagnosis.
+Canonical database changes and their domain events are committed atomically. The outbox worker claims eligible `pending` records and expired `processing` records, assigning a fresh five-minute processing lease so a worker crash cannot strand an event indefinitely. It publishes to the domain bus and marks an event `published` only after successful publication. Failures are returned to `pending` with an exponential retry timestamp and the last error retained for diagnosis.
 
 ## AI fallback
 
@@ -56,7 +56,7 @@ When investigating a failure, verify in order:
 
 1. PostgreSQL health and migration state.
 2. Connector registry health and authentication state.
-3. Pending/processing outbox rows, retry time and last error.
+3. Pending/processing outbox rows, retry time, processing lease and last error.
 4. Domain-event publication and context materialization.
 5. Notification provider receipt before considering delivery successful.
 6. Audit correlation IDs for acknowledged material actions.
