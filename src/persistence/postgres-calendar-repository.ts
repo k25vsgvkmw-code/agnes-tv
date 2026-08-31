@@ -7,12 +7,7 @@ import type {
 } from '../calendar/calendar-event.js';
 import type { CalendarRepository, CalendarUpsertChange } from '../calendar/calendar-repository.js';
 import { AgnesError, ValidationError } from '../kernel/errors.js';
-import type {
-  CalendarEventId,
-  ExternalReferenceId,
-  HouseholdId,
-  PersonId,
-} from '../kernel/ids.js';
+import type { CalendarEventId, ExternalReferenceId, HouseholdId, PersonId } from '../kernel/ids.js';
 
 interface CalendarEventRow {
   id: string;
@@ -184,10 +179,7 @@ export class PostgresCalendarRepository implements CalendarRepository {
       );
       const externalReferenceId = referenceResult.rows[0]?.id;
       if (!externalReferenceId) {
-        throw new AgnesError(
-          'PERSISTENCE_ERROR',
-          'calendar external reference upsert returned no id',
-        );
+        throw new AgnesError('PERSISTENCE_ERROR', 'calendar external reference upsert returned no id');
       }
 
       const existing = await readByExternalReference(tx, externalReferenceId, true);
