@@ -32,9 +32,10 @@ it('commits domain state and outbox record atomically', async () => {
     await outbox.append(tx, event);
   });
 
-  const outboxRows = await pool.query('select event_type from outbox_events where event_id = $1', [
-    event.id,
-  ]);
+  const outboxRows = await pool.query<{ event_type: string }>(
+    'select event_type from outbox_events where event_id = $1',
+    [event.id],
+  );
 
   expect(outboxRows.rows).toHaveLength(1);
   expect(outboxRows.rows[0]?.event_type).toBe('household.created.v1');
