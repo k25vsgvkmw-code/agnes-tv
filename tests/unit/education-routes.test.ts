@@ -23,7 +23,10 @@ class RouteEducationRepository implements EducationRepository {
   readonly resumes = new Map<LearnerId, ResumeState>();
   readonly progresses = new Map<LearnerId, LearnerProgress>();
 
-  getPageState(learnerId: LearnerId, pageId: string): Promise<PageInteractionState | null> {
+  getPageState(
+    learnerId: LearnerId,
+    pageId: string,
+  ): Promise<PageInteractionState | null> {
     return Promise.resolve(this.pages.get(`${learnerId}:${pageId}`) ?? null);
   }
 
@@ -54,7 +57,9 @@ class RouteEducationRepository implements EducationRepository {
   }
 
   getProgress(learnerId: LearnerId): Promise<LearnerProgress> {
-    return Promise.resolve(this.progresses.get(learnerId) ?? createEmptyProgress(learnerId));
+    return Promise.resolve(
+      this.progresses.get(learnerId) ?? createEmptyProgress(learnerId),
+    );
   }
 
   saveProgress(learnerId: LearnerId, progress: LearnerProgress): Promise<void> {
@@ -73,7 +78,10 @@ describe('education routes', () => {
   it('returns Vasilis as grade C and Elenios catalog as grade A', async () => {
     const { app } = await createTestApp();
 
-    const profile = await app.inject({ method: 'GET', url: '/education/learners/vasilis' });
+    const profile = await app.inject({
+      method: 'GET',
+      url: '/education/learners/vasilis',
+    });
     expect(profile.statusCode).toBe(200);
     expect(profile.json()).toMatchObject({ learnerId: 'vasilis', grade: 'C' });
 
@@ -147,7 +155,11 @@ describe('education routes', () => {
     const breakResponse = await app.inject({
       method: 'POST',
       url: '/education/learners/vasilis/break/evaluate',
-      payload: { uninterruptedMinutes: 25, completedActivities: 4, activityInProgress: true },
+      payload: {
+        uninterruptedMinutes: 25,
+        completedActivities: 4,
+        activityInProgress: true,
+      },
     });
     expect(breakResponse.statusCode).toBe(200);
     expect(breakResponse.json()).toEqual({ action: 'defer' });
