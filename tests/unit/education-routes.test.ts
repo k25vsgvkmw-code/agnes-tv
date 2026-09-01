@@ -99,7 +99,47 @@ describe('education routes', () => {
     await app.close();
   });
 
-  it('autosaves page state and returns 409 for a stale version', async () => {
+  it('autosaves and reloads page state and resume position', async () => {
+    const { app } = await createTestApp();
+    const state = {
+      ...createEmptyPageState('vasilis', 'math-c-01-p1'),
+      currentActivityId: 'math-c-01-a1',
+      typedAnswers: { 'math-c-01-a1': '37' },
+    };
+
+    const saved = await app.inject({
+      method: 'PUT',
+      url: '/education/learners/vasilis/pages/math-c-01-p1/state',
+      payload: { expectedVersion: 0, state },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({ version: 1 });
+
+    const pageState = await app.inject({
+      method: 'GET',
+      url: '/education/learners/vasilis/pages/math-c-01-p1/state',
+    });
+    expect(pageState.statusCode).toBe(200);
+    expect(pageState.json()).toMatchObject({
+      version: 1,
+      typedAnswers: { 'math-c-01-a1': '37' },
+    });
+
+    const resume = await app.inject({
+      method: 'GET',
+      url: '/education/learners/vasilis/resume',
+    });
+    expect(resume.statusCode).toBe(200);
+    expect(resume.json()).toMatchObject({
+      resourceId: 'math-c-01',
+      pageId: 'math-c-01-p1',
+      activityId: 'math-c-01-a1',
+    });
+
+    await app.close();
+  });
+
+  it('returns 409 for a stale autosave version', async () => {
     const { app } = await createTestApp();
     const state = createEmptyPageState('vasilis', 'math-c-01-p1');
 
@@ -109,7 +149,6 @@ describe('education routes', () => {
       payload: { expectedVersion: 0, state },
     });
     expect(first.statusCode).toBe(200);
-    expect(first.json()).toMatchObject({ version: 1 });
 
     const stale = await app.inject({
       method: 'PUT',
