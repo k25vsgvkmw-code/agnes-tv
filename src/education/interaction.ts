@@ -28,10 +28,7 @@ export interface PageInteractionState {
   readonly updatedAt: string;
 }
 
-export function createEmptyPageState(
-  learnerId: LearnerId,
-  pageId: string,
-): PageInteractionState {
+export function createEmptyPageState(learnerId: LearnerId, pageId: string): PageInteractionState {
   return {
     learnerId,
     pageId,
