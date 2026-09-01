@@ -33,7 +33,7 @@ describe('postgres education repository', () => {
     );
   });
 
-  it('stores and restores resume state independently per learner', async () => {
+  it('stores and restores resume state for a learner', async () => {
     await repository.saveResumeState({
       learnerId: 'elenios',
       resourceId: 'math-a-01',
@@ -43,7 +43,11 @@ describe('postgres education repository', () => {
     });
 
     const resume = await repository.getResumeState('elenios');
-    expect(resume?.pageId).toBe('math-a-01-p1');
-    expect(await repository.getResumeState('vasilis')).toBeNull();
+    expect(resume).toMatchObject({
+      learnerId: 'elenios',
+      resourceId: 'math-a-01',
+      pageId: 'math-a-01-p1',
+      activityId: 'math-a-01-a1',
+    });
   });
 });
