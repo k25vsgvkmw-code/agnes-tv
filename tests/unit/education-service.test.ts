@@ -12,10 +12,7 @@ import {
   type PageInteractionState,
 } from '../../src/education/interaction.js';
 import type { ResumeState } from '../../src/education/lesson-session.js';
-import {
-  createEmptyProgress,
-  type LearnerProgress,
-} from '../../src/education/progress.js';
+import { createEmptyProgress, type LearnerProgress } from '../../src/education/progress.js';
 import type { LearnerId } from '../../src/education/types.js';
 
 class MemoryEducationRepository implements EducationRepository {
@@ -23,10 +20,7 @@ class MemoryEducationRepository implements EducationRepository {
   readonly resumes = new Map<LearnerId, ResumeState>();
   readonly progresses = new Map<LearnerId, LearnerProgress>();
 
-  getPageState(
-    learnerId: LearnerId,
-    pageId: string,
-  ): Promise<PageInteractionState | null> {
+  getPageState(learnerId: LearnerId, pageId: string): Promise<PageInteractionState | null> {
     return Promise.resolve(this.pages.get(`${learnerId}:${pageId}`) ?? null);
   }
 
@@ -53,9 +47,7 @@ class MemoryEducationRepository implements EducationRepository {
   }
 
   getProgress(learnerId: LearnerId): Promise<LearnerProgress> {
-    return Promise.resolve(
-      this.progresses.get(learnerId) ?? createEmptyProgress(learnerId),
-    );
+    return Promise.resolve(this.progresses.get(learnerId) ?? createEmptyProgress(learnerId));
   }
 
   saveProgress(learnerId: LearnerId, progress: LearnerProgress): Promise<void> {
