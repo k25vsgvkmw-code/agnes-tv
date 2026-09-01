@@ -100,6 +100,18 @@ export function registerEducationRoutes(
     }
   });
 
+  app.get('/education/learners/:learnerId/resume', async (request, reply) => {
+    const parsed = learnerParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return reply.status(400).send({ code: 'VALIDATION_ERROR' });
+    }
+    try {
+      return await service.getResume(parsed.data.learnerId);
+    } catch (error) {
+      return sendEducationError(reply, error);
+    }
+  });
+
   app.get(
     '/education/learners/:learnerId/resources/:resourceId/pages/:pageId',
     (request, reply) => {
@@ -114,6 +126,18 @@ export function registerEducationRoutes(
       }
     },
   );
+
+  app.get('/education/learners/:learnerId/pages/:pageId/state', async (request, reply) => {
+    const parsed = pageStateParamsSchema.safeParse(request.params);
+    if (!parsed.success) {
+      return reply.status(400).send({ code: 'VALIDATION_ERROR' });
+    }
+    try {
+      return await service.getPageState(parsed.data.learnerId, parsed.data.pageId);
+    } catch (error) {
+      return sendEducationError(reply, error);
+    }
+  });
 
   app.put('/education/learners/:learnerId/pages/:pageId/state', async (request, reply) => {
     const params = pageStateParamsSchema.safeParse(request.params);
