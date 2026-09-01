@@ -30,10 +30,7 @@ function toPageState(row: PageStateRow): PageInteractionState {
 export class PostgresEducationRepository implements EducationRepository {
   constructor(private readonly db: Pool) {}
 
-  async getPageState(
-    learnerId: LearnerId,
-    pageId: string,
-  ): Promise<PageInteractionState | null> {
+  async getPageState(learnerId: LearnerId, pageId: string): Promise<PageInteractionState | null> {
     const result = await this.db.query<PageStateRow>(
       `select state, version, updated_at
        from education_page_state
