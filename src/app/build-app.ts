@@ -1,12 +1,14 @@
 import { Pool } from 'pg';
 import { InMemoryContextStore } from '../context/in-memory-context-store.js';
 import { updateContextFromEvent } from '../context/update-context-from-event.js';
+import { EducationService } from '../education/education-service.js';
 import { InMemoryDomainEventBus } from '../events/domain-event-bus.js';
 import { ConnectorRegistry } from '../integrations/connector-registry.js';
 import { FakeCalendarConnector } from '../integrations/calendar/fake-calendar-connector.js';
 import type { ModelGateway } from '../intelligence/model-gateway.js';
 import { SystemClock } from '../kernel/clock.js';
 import { PostgresCalendarRepository } from '../persistence/postgres-calendar-repository.js';
+import { PostgresEducationRepository } from '../persistence/postgres-education-repository.js';
 import { PostgresHouseholdRepository } from '../persistence/postgres-household-repository.js';
 import { PostgresOutboxRepository } from '../persistence/postgres-outbox-repository.js';
 import { DepartureRiskDetector } from '../situations/departure-risk-detector.js';
@@ -23,6 +25,8 @@ export interface AgnesApp {
   readonly calendarRepository: PostgresCalendarRepository;
   readonly householdRepository: PostgresHouseholdRepository;
   readonly outboxRepository: PostgresOutboxRepository;
+  readonly educationRepository: PostgresEducationRepository;
+  readonly educationService: EducationService;
   readonly contextStore: InMemoryContextStore;
   readonly eventBus: InMemoryDomainEventBus;
   readonly outboxWorker: OutboxWorker;
@@ -48,6 +52,8 @@ export async function buildApp(options: BuildAppOptions): Promise<AgnesApp> {
   );
 
   const outboxRepository = new PostgresOutboxRepository(pool);
+  const educationRepository = new PostgresEducationRepository(pool);
+  const educationService = new EducationService(educationRepository);
 
   return {
     modelGateway: options.modelGateway,
@@ -55,6 +61,8 @@ export async function buildApp(options: BuildAppOptions): Promise<AgnesApp> {
     calendarRepository: new PostgresCalendarRepository(pool),
     householdRepository: new PostgresHouseholdRepository(pool),
     outboxRepository,
+    educationRepository,
+    educationService,
     contextStore,
     eventBus,
     outboxWorker: new OutboxWorker(outboxRepository, eventBus),
