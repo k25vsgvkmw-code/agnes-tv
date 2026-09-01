@@ -6,9 +6,15 @@ import {
   type SavePageStateResult,
 } from '../../src/education/education-repository.js';
 import { EducationService } from '../../src/education/education-service.js';
-import { createEmptyPageState, type PageInteractionState } from '../../src/education/interaction.js';
+import {
+  createEmptyPageState,
+  type PageInteractionState,
+} from '../../src/education/interaction.js';
 import type { ResumeState } from '../../src/education/lesson-session.js';
-import { createEmptyProgress, type LearnerProgress } from '../../src/education/progress.js';
+import {
+  createEmptyProgress,
+  type LearnerProgress,
+} from '../../src/education/progress.js';
 import type { LearnerId } from '../../src/education/types.js';
 import { registerEducationRoutes } from '../../src/transport/education-routes.js';
 
@@ -76,9 +82,8 @@ describe('education routes', () => {
       url: '/education/learners/elenios/catalog',
     });
     expect(catalog.statusCode).toBe(200);
-    expect((catalog.json() as Array<{ grade: string }>).every((item) => item.grade === 'A')).toBe(
-      true,
-    );
+    const catalogBody = catalog.json<Array<{ grade: string }>>();
+    expect(catalogBody.every((item) => item.grade === 'A')).toBe(true);
 
     await app.close();
   });
