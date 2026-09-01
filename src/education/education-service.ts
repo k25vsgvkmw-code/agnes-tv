@@ -63,6 +63,20 @@ export class EducationService {
     return page;
   }
 
+  getPageState(learnerId: string, pageId: string): Promise<PageInteractionState | null> {
+    const learner = this.getLearner(learnerId);
+    const resource = seedCatalog.find((candidate) =>
+      candidate.pages.some((page) => page.pageId === pageId),
+    );
+    if (!resource) {
+      throw new NotFoundError(`Unknown education page: ${pageId}`);
+    }
+    if (resource.grade !== learner.grade) {
+      throw new EducationGradeMismatchError();
+    }
+    return this.repository.getPageState(learner.learnerId, pageId);
+  }
+
   getResume(learnerId: string): Promise<ResumeState | null> {
     const learner = this.getLearner(learnerId);
     return this.repository.getResumeState(learner.learnerId);
