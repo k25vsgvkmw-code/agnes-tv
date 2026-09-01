@@ -16,10 +16,7 @@ export class EducationVersionConflictError extends Error {
 
 export interface EducationRepository {
   getPageState(learnerId: LearnerId, pageId: string): Promise<PageInteractionState | null>;
-  savePageState(
-    state: PageInteractionState,
-    expectedVersion: number,
-  ): Promise<SavePageStateResult>;
+  savePageState(state: PageInteractionState, expectedVersion: number): Promise<SavePageStateResult>;
   getResumeState(learnerId: LearnerId): Promise<ResumeState | null>;
   saveResumeState(state: ResumeState): Promise<void>;
   getProgress(learnerId: LearnerId): Promise<LearnerProgress>;
