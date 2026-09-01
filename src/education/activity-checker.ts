@@ -23,10 +23,7 @@ function equals(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-export function checkActivity(
-  activity: ActivityDefinition,
-  answer: unknown,
-): ActivityCheckResult {
+export function checkActivity(activity: ActivityDefinition, answer: unknown): ActivityCheckResult {
   if (activity.validationMode === 'manual') {
     return { status: 'manual' };
   }
@@ -34,8 +31,7 @@ export function checkActivity(
     return { status: 'guided' };
   }
 
-  const actual =
-    activity.validationMode === 'rule-based' ? normalizeRuleValue(answer) : answer;
+  const actual = activity.validationMode === 'rule-based' ? normalizeRuleValue(answer) : answer;
   const expected =
     activity.validationMode === 'rule-based'
       ? normalizeRuleValue(activity.expected)
