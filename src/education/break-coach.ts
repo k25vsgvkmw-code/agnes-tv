@@ -29,10 +29,7 @@ const suggestions: readonly BreakSuggestion[] = [
   'breathing',
 ];
 
-export function evaluateBreak(
-  session: BreakSessionInput,
-  policy: BreakPolicy,
-): BreakEvaluation {
+export function evaluateBreak(session: BreakSessionInput, policy: BreakPolicy): BreakEvaluation {
   const isDue =
     session.uninterruptedMinutes >= policy.minutesThreshold ||
     session.completedActivities >= policy.activityThreshold;
@@ -44,6 +41,7 @@ export function evaluateBreak(
     return { action: 'defer' };
   }
 
-  const suggestion = suggestions[session.completedActivities % suggestions.length] ?? 'water';
+  const suggestion =
+    suggestions[session.completedActivities % suggestions.length] ?? 'water';
   return { action: 'suggest', suggestion, breakMinutes: policy.breakMinutes };
 }
