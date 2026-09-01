@@ -46,11 +46,7 @@ export class EducationService {
     return getCatalogForGrade(learner.grade);
   }
 
-  async getPage(
-    learnerId: string,
-    resourceId: string,
-    pageId: string,
-  ): Promise<CurriculumPage> {
+  getPage(learnerId: string, resourceId: string, pageId: string): CurriculumPage {
     const learner = this.getLearner(learnerId);
     const resource = seedCatalog.find((candidate) => candidate.resourceId === resourceId);
     if (!resource) {
