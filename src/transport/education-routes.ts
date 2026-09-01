@@ -5,7 +5,6 @@ import {
   EducationGradeMismatchError,
   type EducationService,
 } from '../education/education-service.js';
-import type { PageInteractionState } from '../education/interaction.js';
 import { NotFoundError, ValidationError } from '../kernel/errors.js';
 
 const learnerParamsSchema = z.object({ learnerId: z.string().min(1) });
@@ -127,7 +126,7 @@ export function registerEducationRoutes(
       return await service.savePageState(
         params.data.learnerId,
         params.data.pageId,
-        payload.data.state as PageInteractionState,
+        payload.data.state,
         payload.data.expectedVersion,
       );
     } catch (error) {
