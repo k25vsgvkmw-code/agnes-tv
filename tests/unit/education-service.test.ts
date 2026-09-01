@@ -17,14 +17,11 @@ class MemoryEducationRepository implements EducationRepository {
   readonly resumes = new Map<LearnerId, ResumeState>();
   readonly progresses = new Map<LearnerId, LearnerProgress>();
 
-  async getPageState(
-    learnerId: LearnerId,
-    pageId: string,
-  ): Promise<PageInteractionState | null> {
-    return this.pages.get(`${learnerId}:${pageId}`) ?? null;
+  getPageState(learnerId: LearnerId, pageId: string): Promise<PageInteractionState | null> {
+    return Promise.resolve(this.pages.get(`${learnerId}:${pageId}`) ?? null);
   }
 
-  async savePageState(
+  savePageState(
     state: PageInteractionState,
     expectedVersion: number,
   ): Promise<SavePageStateResult> {
@@ -34,31 +31,33 @@ class MemoryEducationRepository implements EducationRepository {
       updatedAt: '2026-09-01T10:00:00.000Z',
     };
     this.pages.set(`${state.learnerId}:${state.pageId}`, saved);
-    return { state: saved };
+    return Promise.resolve({ state: saved });
   }
 
-  async getResumeState(learnerId: LearnerId): Promise<ResumeState | null> {
-    return this.resumes.get(learnerId) ?? null;
+  getResumeState(learnerId: LearnerId): Promise<ResumeState | null> {
+    return Promise.resolve(this.resumes.get(learnerId) ?? null);
   }
 
-  async saveResumeState(state: ResumeState): Promise<void> {
+  saveResumeState(state: ResumeState): Promise<void> {
     this.resumes.set(state.learnerId, state);
+    return Promise.resolve();
   }
 
-  async getProgress(learnerId: LearnerId): Promise<LearnerProgress> {
-    return this.progresses.get(learnerId) ?? createEmptyProgress(learnerId);
+  getProgress(learnerId: LearnerId): Promise<LearnerProgress> {
+    return Promise.resolve(this.progresses.get(learnerId) ?? createEmptyProgress(learnerId));
   }
 
-  async saveProgress(learnerId: LearnerId, progress: LearnerProgress): Promise<void> {
+  saveProgress(learnerId: LearnerId, progress: LearnerProgress): Promise<void> {
     this.progresses.set(learnerId, progress);
+    return Promise.resolve();
   }
 }
 
 describe('education service', () => {
-  it('keeps Γ΄ resources away from Elenios', async () => {
+  it('keeps Γ΄ resources away from Elenios', () => {
     const service = new EducationService(new MemoryEducationRepository());
 
-    await expect(service.getPage('elenios', 'math-c-01', 'math-c-01-p1')).rejects.toBeInstanceOf(
+    expect(() => service.getPage('elenios', 'math-c-01', 'math-c-01-p1')).toThrow(
       EducationGradeMismatchError,
     );
   });
