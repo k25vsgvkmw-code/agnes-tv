@@ -43,8 +43,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply core migration
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f src/persistence/migrations/001_core.sql
+      - name: Apply migrations
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f src/persistence/migrations/001_core.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f src/persistence/migrations/002_education.sql
 
       - name: Lint
         run: npm run lint
