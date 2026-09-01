@@ -41,7 +41,6 @@ export function evaluateBreak(session: BreakSessionInput, policy: BreakPolicy): 
     return { action: 'defer' };
   }
 
-  const suggestion =
-    suggestions[session.completedActivities % suggestions.length] ?? 'water';
+  const suggestion = suggestions[session.completedActivities % suggestions.length] ?? 'water';
   return { action: 'suggest', suggestion, breakMinutes: policy.breakMinutes };
 }
