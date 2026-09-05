@@ -10,8 +10,7 @@ describe('AGNES web routes', () => {
   it('serves the Family OS shell as HTML', async () => {
     const app = Fastify();
     await registerAgnesWebRoutes(app, {
-      snapshotFactory: () =>
-        createFallbackFamilyOsSnapshot(new Date('2026-09-05T06:58:00.000Z')),
+      snapshotFactory: () => createFallbackFamilyOsSnapshot(new Date('2026-09-05T06:58:00.000Z')),
     });
 
     const response = await app.inject({ method: 'GET', url: '/' });
