@@ -1,3 +1,4 @@
+/* global document, fetch */
 import { rankDestinations } from './ranking.js';
 const state={view:'home',tripType:'',directOnly:false,search:''};
 const view=document.querySelector('#view');
