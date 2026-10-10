@@ -2,6 +2,7 @@ package com.agnes.family
 
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -197,6 +198,13 @@ private fun ChildHome(
     var stars by remember { mutableIntStateOf(prefs.stars) }
     var showParentPin by remember { mutableStateOf(false) }
     var parentUnlocked by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = !showParentPin && !parentUnlocked) {
+        when (childBackAction(screen)) {
+            ChildBackAction.RETURN_HOME -> screen = "home"
+            ChildBackAction.REQUEST_PARENT_PIN -> showParentPin = true
+        }
+    }
 
     when (screen) {
         "games" -> GamesScreen(onBack = { screen = "home" })
