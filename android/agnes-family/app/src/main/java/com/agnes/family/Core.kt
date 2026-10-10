@@ -42,6 +42,11 @@ fun evaluatePin(
     }
 }
 
+enum class ChildBackAction { RETURN_HOME, REQUEST_PARENT_PIN }
+
+fun childBackAction(screen: String): ChildBackAction =
+    if (screen == "games") ChildBackAction.RETURN_HOME else ChildBackAction.REQUEST_PARENT_PIN
+
 class MissionLedger(
     completedIds: Set<String> = emptySet(),
     initialStars: Int = 0,
