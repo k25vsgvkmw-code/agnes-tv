@@ -53,4 +53,10 @@ class CoreTest {
         assertTrue(PinVault.verify("2468", record))
         assertFalse(PinVault.verify("0000", record))
     }
+
+    @Test
+    fun childBackNeverExitsDirectly() {
+        assertEquals(ChildBackAction.RETURN_HOME, childBackAction("games"))
+        assertEquals(ChildBackAction.REQUEST_PARENT_PIN, childBackAction("home"))
+    }
 }
