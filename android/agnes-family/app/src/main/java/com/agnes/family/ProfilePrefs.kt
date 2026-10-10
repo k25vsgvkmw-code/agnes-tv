@@ -42,7 +42,12 @@ class ProfilePrefs(context: Context) {
     fun checkParentPin(pin: String, nowMs: Long = System.currentTimeMillis()): PinResult {
         val record = pinRecord ?: return PinResult.WRONG
         val state = PinState(failedAttempts, lockedUntilMs)
-        val check = evaluatePin(state, pin, nowMs) { PinVault.verify(it, record) }
+        val check = evaluatePin(
+            state = state,
+            pin = pin,
+            nowMs = nowMs,
+            verifier = { candidate -> PinVault.verify(candidate, record) },
+        )
         failedAttempts = check.nextState.failedAttempts
         lockedUntilMs = check.nextState.lockedUntilMs
         return check.result
