@@ -1,7 +1,8 @@
-/* global document, window, history, queueMicrotask */
+/* global document, window, history, queueMicrotask, localStorage */
 import { JOURNEYS, DEPARTURE_PORTS } from './journeys-data.js';
 import { GLOBAL_EXPANSION_JOURNEYS } from './journeys-global-expansion.js';
 import { WORLD_CATALOG_PACK_2 } from './journeys-world-pack-2.js';
+import { CATALOG } from './catalog.js';
 import { rankJourneysForMonth } from './seasonality.js';
 import {
   createJourneyState,
@@ -9,7 +10,6 @@ import {
   parseJourneyUrl,
   serializeJourneyUrl,
 } from './journey-state.js';
-import { handleJourneyAgnesMessage } from './agnes-journey.js';
 import {
   renderGlobalHeader,
   renderExploreHome,
@@ -20,14 +20,42 @@ import {
   renderJourneyDetail,
 } from './cinematic-render.js';
 import { renderCruiseLanding, renderCruiseDetail } from './cruise-render.js';
+import { renderRailLanding, renderRailDetail } from './rail-render.js';
+import { renderRoadLanding, renderRoadDetail } from './road-render.js';
+import { renderAirLanding, renderAirDetail } from './air-render.js';
+import { buildSearchIndex, getSearchFacets, searchJourneys } from './search-index.js';
+import { renderSearchPage } from './search-render.js';
+import { renderSavedPage, renderComparePage } from './compare-render.js';
+import {
+  loadSavedState,
+  saveJourney,
+  removeSavedJourney,
+  toggleCompareJourney,
+} from './saved-journeys.js';
+import { planWithAgnes } from './agnes-planner-v2.js';
 
 const ALL_JOURNEYS = [...JOURNEYS, ...GLOBAL_EXPANSION_JOURNEYS, ...WORLD_CATALOG_PACK_2];
+const APP_CATALOG = {
+  ...CATALOG,
+  journeys: ALL_JOURNEYS,
+};
+const SEARCH_INDEX = buildSearchIndex(APP_CATALOG);
+const SEARCH_FACETS = getSearchFacets(SEARCH_INDEX);
 const getJourneyById = (id) => ALL_JOURNEYS.find((journey) => journey.id === id) ?? null;
 
 const header = document.querySelector('#site-header');
 const view = document.querySelector('#view');
 let state = parseJourneyUrl(window.location.search, new Date());
 let notice = '';
+
+function savedState() {
+  return loadSavedState(localStorage);
+}
+
+function stateForRender() {
+  const saved = savedState();
+  return { ...state, saved: saved.saved, compare: saved.compare };
+}
 
 function normalizeState(next) {
   if (next.journeyId && !getJourneyById(next.journeyId)) {
@@ -54,24 +82,54 @@ function pushState(patch, { replace = false } = {}) {
   render();
 }
 
+function searchResults() {
+  return searchJourneys(SEARCH_INDEX, state.query, {
+    month: state.month,
+    mode: state.mode,
+    region: state.region,
+    country: state.country,
+    originId: state.originId,
+    feeling: state.feeling,
+    style: state.railStyle || state.cruiseStyle || state.roadStyle,
+    durationDays: state.durationDays,
+  });
+}
+
+function renderModePage(renderState) {
+  const ranked = rankJourneysForMonth(ALL_JOURNEYS, state.month);
+  if (state.mode === 'rail') return renderRailLanding(ranked, renderState);
+  if (state.mode === 'road') return renderRoadLanding(ranked, renderState);
+  if (state.mode === 'air') return renderAirLanding(ranked, renderState);
+  if (state.mode === 'sea') return renderCruiseLanding(ranked, renderState, DEPARTURE_PORTS);
+  return renderModeCollection(ranked, renderState);
+}
+
+function renderJourneyPage(journey, renderState) {
+  if (journey.type === 'cruise') return renderCruiseDetail(journey, renderState);
+  if (journey.mode === 'rail') return renderRailDetail(journey, renderState);
+  if (journey.mode === 'road') return renderRoadDetail(journey, renderState);
+  if (journey.mode === 'air') return renderAirDetail(journey, renderState);
+  return renderJourneyDetail(journey, renderState);
+}
+
 function pageHtml() {
+  const renderState = stateForRender();
+  if (state.view === 'search') return renderSearchPage(searchResults(), renderState, SEARCH_FACETS);
+  if (state.view === 'saved') return renderSavedPage(ALL_JOURNEYS, renderState);
+  if (state.view === 'compare') return renderComparePage(ALL_JOURNEYS, renderState);
   if (state.view === 'cruises') {
-    return renderCruiseLanding(ALL_JOURNEYS, state, DEPARTURE_PORTS);
+    return renderCruiseLanding(ALL_JOURNEYS, renderState, DEPARTURE_PORTS);
   }
-  if (state.view === 'mode') {
-    return renderModeCollection(rankJourneysForMonth(ALL_JOURNEYS, state.month), state);
-  }
-  if (state.view === 'destinations') return renderDestinations(ALL_JOURNEYS, state);
-  if (state.view === 'experiences') return renderExperiences(ALL_JOURNEYS, state);
-  if (state.view === 'about') return renderAbout(state);
+  if (state.view === 'mode') return renderModePage(renderState);
+  if (state.view === 'destinations') return renderDestinations(ALL_JOURNEYS, renderState);
+  if (state.view === 'experiences') return renderExperiences(ALL_JOURNEYS, renderState);
+  if (state.view === 'about') return renderAbout(renderState);
   if (state.view === 'journey') {
     const journey = getJourneyById(state.journeyId);
-    if (!journey) return renderExploreHome(ALL_JOURNEYS, state);
-    return journey.type === 'cruise'
-      ? renderCruiseDetail(journey, state)
-      : renderJourneyDetail(journey, state);
+    if (!journey) return renderExploreHome(ALL_JOURNEYS, renderState);
+    return renderJourneyPage(journey, renderState);
   }
-  return renderExploreHome(ALL_JOURNEYS, state);
+  return renderExploreHome(ALL_JOURNEYS, renderState);
 }
 
 function applyImageFallbacks() {
@@ -89,7 +147,7 @@ function applyImageFallbacks() {
 
 function render() {
   state = normalizeState(state);
-  header.innerHTML = renderGlobalHeader(state);
+  header.innerHTML = renderGlobalHeader(stateForRender());
   const banner = notice ? `<div class="world-notice" role="status">${notice}</div>` : '';
   notice = '';
   view.innerHTML = `${banner}${pageHtml()}`;
@@ -113,21 +171,46 @@ function appendAgnes(message, reply, patch) {
 function runAgnes(message) {
   const cleaned = String(message ?? '').trim();
   if (!cleaned) return;
-  const journey = state.journeyId ? getJourneyById(state.journeyId) : null;
-  const result = handleJourneyAgnesMessage(cleaned, {
-    journey,
-    journeys: ALL_JOURNEYS,
-    state,
-  });
+  const result = planWithAgnes(cleaned, { catalog: ALL_JOURNEYS, state });
   appendAgnes(cleaned, result.reply, result.statePatch);
+  if (result.matches?.length && !result.statePatch.view) {
+    state = applyJourneyStatePatch(state, { view: 'search', query: '' });
+  }
   const url = serializeJourneyUrl(state) || window.location.pathname;
   history.pushState({}, '', url);
+  render();
+}
+
+function updateSaved(id, action) {
+  if (!id) return;
+  if (action === 'save') {
+    const current = savedState();
+    if (current.saved.includes(id)) removeSavedJourney(id, localStorage);
+    else saveJourney(id, localStorage);
+    notice = current.saved.includes(id) ? 'Removed from Saved.' : 'Saved for later.';
+  } else {
+    toggleCompareJourney(id, localStorage);
+    notice = 'Compare shortlist updated.';
+  }
   render();
 }
 
 document.addEventListener('click', (event) => {
   const button = event.target.closest('button, [data-journey-id]');
   if (!button) return;
+
+  if (button.matches('[data-save-journey]')) {
+    event.preventDefault();
+    event.stopPropagation();
+    updateSaved(button.dataset.saveJourney, 'save');
+    return;
+  }
+  if (button.matches('[data-compare-journey]')) {
+    event.preventDefault();
+    event.stopPropagation();
+    updateSaved(button.dataset.compareJourney, 'compare');
+    return;
+  }
 
   if (button.matches('[data-nav-view]')) {
     const target = button.dataset.navView;
@@ -146,6 +229,10 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  if (button.matches('[data-month-jump]')) {
+    pushState({ month: Number(button.dataset.monthJump), view: 'explore' });
+    return;
+  }
   if (button.matches('[data-mode]')) {
     pushState({ view: 'mode', mode: button.dataset.mode, journeyId: '' });
     return;
@@ -194,9 +281,7 @@ document.addEventListener('click', (event) => {
     document.querySelector('#agnes [data-agnes-input]')?.focus();
     return;
   }
-  if (button.matches('[data-agnes-action]')) {
-    runAgnes(button.dataset.agnesAction);
-  }
+  if (button.matches('[data-agnes-action]')) runAgnes(button.dataset.agnesAction);
 });
 
 document.addEventListener('change', (event) => {
@@ -208,16 +293,57 @@ document.addEventListener('change', (event) => {
       departurePort: element.value,
       journeyId: '',
     });
+    return;
   }
   if (element.matches('[data-month-select]')) {
     pushState({ month: Number(element.value) });
+    return;
   }
   if (element.matches('[data-region-select]')) {
     pushState({ region: element.value });
+    return;
+  }
+  if (element.matches('[data-rail-style]')) {
+    pushState({ railStyle: element.value });
+    return;
+  }
+  if (element.matches('[data-road-style]')) {
+    pushState({ roadStyle: element.value });
+    return;
+  }
+  if (element.matches('[data-camper]')) {
+    state = { ...state, camper: element.checked };
+    render();
+    return;
+  }
+  if (element.matches('[data-origin-input]')) {
+    pushState({ originId: element.value.trim() });
+    return;
+  }
+  if (element.matches('[data-duration-days]')) {
+    state = { ...state, durationDays: Number(element.value) || null };
+    render();
+    return;
+  }
+  if (element.closest('[data-search-filter]')) {
+    const filters = element.closest('[data-search-filter]');
+    pushState({
+      view: 'search',
+      mode: filters.querySelector('[name="mode"]')?.value ?? state.mode,
+      region: filters.querySelector('[name="region"]')?.value ?? state.region,
+      feeling: filters.querySelector('[name="feeling"]')?.value ?? state.feeling,
+    });
   }
 });
 
 document.addEventListener('submit', (event) => {
+  const searchForm = event.target.closest('[data-global-search-form]');
+  if (searchForm) {
+    event.preventDefault();
+    const query = searchForm.querySelector('[data-global-search-input]')?.value?.trim() ?? '';
+    pushState({ view: 'search', query, journeyId: '' });
+    return;
+  }
   const form = event.target.closest('[data-agnes-form]');
   if (!form) return;
   event.preventDefault();
