@@ -1,4 +1,5 @@
 import { filterJourneys } from './journeys-data.js';
+import { matchesJourneyRegion } from './journey-region.js';
 import { getSeasonalCollections } from './seasonality.js';
 
 const MONTHS = [
@@ -98,9 +99,8 @@ export function renderExploreHome(journeys, state) {
 export function renderModeCollection(journeys, state) {
   const list = filterJourneys(journeys, {
     mode: state.mode,
-    region: state.region || undefined,
     feeling: state.feeling || undefined,
-  });
+  }).filter((journey) => matchesJourneyRegion(journey.region, state.region));
   const copy = {
     air: 'Fly somewhere unforgettable.',
     sea: 'Let the sea become the route.',
@@ -113,7 +113,12 @@ export function renderModeCollection(journeys, state) {
 export function renderDestinations(journeys, state) {
   const regions = ['Greece', 'Europe', 'Asia', 'Africa', 'Americas', 'Oceania'];
   return `<main class="agnes-world-page collection-page"><section class="collection-hero"><p>DESTINATIONS</p><h1>Choose a part of the world. AGNES will shape the journey.</h1></section>${regions
-    .map((region) => rail(region, journeys.filter((journey) => journey.region === region)))
+    .map((region) =>
+      rail(
+        region,
+        journeys.filter((journey) => matchesJourneyRegion(journey.region, region)),
+      ),
+    )
     .join('')}${renderAgnesWorldDock(state)}</main>`;
 }
 
