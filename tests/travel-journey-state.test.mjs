@@ -31,4 +31,19 @@ describe('AGNES World state', () => {
     expect(bad).toMatchObject({ view: 'mode', mode: 'sea', month: 7 });
     expect(serializeJourneyUrl({ ...bad, departurePort: 'limassol' })).toContain('port=limassol');
   });
+
+  it('does not serialize a stale journey id after navigation leaves journey view', () => {
+    const state = {
+      ...createJourneyState(fixed),
+      view: 'cruises',
+      mode: 'sea',
+      departurePort: 'limassol',
+      journeyId: 'zagori-metsovo-meteora',
+    };
+
+    const url = serializeJourneyUrl(state);
+    expect(url).toContain('view=cruises');
+    expect(url).toContain('port=limassol');
+    expect(url).not.toContain('journey=');
+  });
 });
