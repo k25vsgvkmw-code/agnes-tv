@@ -1,0 +1,49 @@
+.agnes-world-hero-media,
+.journey-card[data-journey-id="norway-fjords-rail"] .journey-card-media,
+.journey-card[data-journey-id="japan-islands-yokohama"] .journey-card-media,
+.journey-card[data-journey-id="morocco-atlas-sahara"] .journey-card-media,
+.journey-card[data-journey-id="spain-grand-rail"] .journey-card-media,
+.journey-card[data-journey-id="caribbean-from-miami"] .journey-card-media {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.agnes-world-hero-media {
+  background-image: url('https://images.unsplash.com/photo-1638208561774-6e02a8e17cc1?auto=format&fit=crop&fm=jpg&q=82&w=2400');
+}
+
+.agnes-world-hero-media img,
+.journey-card[data-journey-id="norway-fjords-rail"] .journey-card-media img,
+.journey-card[data-journey-id="japan-islands-yokohama"] .journey-card-media img,
+.journey-card[data-journey-id="morocco-atlas-sahara"] .journey-card-media img,
+.journey-card[data-journey-id="spain-grand-rail"] .journey-card-media img,
+.journey-card[data-journey-id="caribbean-from-miami"] .journey-card-media img {
+  opacity: 0;
+}
+
+.journey-card[data-journey-id="norway-fjords-rail"] .journey-card-media {
+  background-image: url('https://images.unsplash.com/photo-1443926818681-717d074a57af?auto=format&fit=crop&fm=jpg&q=80&w=1600');
+}
+
+.journey-card[data-journey-id="japan-islands-yokohama"] .journey-card-media {
+  background-image: url('https://images.unsplash.com/photo-1774498449105-ca0bc5865a70?auto=format&fit=crop&fm=jpg&q=80&w=1600');
+}
+
+.journey-card[data-journey-id="morocco-atlas-sahara"] .journey-card-media {
+  background-image: url('https://images.unsplash.com/photo-1489573280374-2e193c63726c?auto=format&fit=crop&fm=jpg&q=80&w=1600');
+}
+
+.journey-card[data-journey-id="spain-grand-rail"] .journey-card-media {
+  background-image: url('https://images.unsplash.com/photo-1666545530852-9c7ab6fcecfc?auto=format&fit=crop&fm=jpg&q=80&w=1600');
+}
+
+.journey-card[data-journey-id="caribbean-from-miami"] .journey-card-media {
+  background-image: url('https://images.unsplash.com/photo-1778868001877-3b8e6391e5ea?auto=format&fit=crop&fm=jpg&q=80&w=1600');
+}
+
+@media (max-width: 900px) {
+  .agnes-world-hero-media {
+    background-position: 64% center;
+  }
+}
