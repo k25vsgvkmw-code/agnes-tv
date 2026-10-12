@@ -38,6 +38,30 @@ describe('cinematic world renderers', () => {
     expect(html).not.toContain('AGNES Live');
   });
 
+  it('shows twelve choices in each main seasonal collection when content is available', () => {
+    const sample = Array.from({ length: 14 }, (_, index) => ({
+      id: `sample-${index}`,
+      mode: ['air', 'sea', 'rail', 'road'][index % 4],
+      type: 'journey',
+      title: `Journey ${index}`,
+      subtitle: 'Seasonal journey',
+      region: 'Europe',
+      duration: '7 days',
+      editorialPriority: 100 - index,
+      bestMonths: [10],
+      shoulderMonths: [],
+      availableMonths: [10],
+      yearRound: false,
+      feelings: ['seasonal'],
+      hero: { image: '' },
+    }));
+    const html = renderExploreHome(sample, state);
+    const rightNow = html.split('<h2>Right Now · October</h2>')[1].split('</section>')[0];
+    const featured = html.split('<h2>Featured journeys</h2>')[1].split('</section>')[0];
+    expect(rightNow.match(/class="journey-card"/g) ?? []).toHaveLength(12);
+    expect(featured.match(/class="journey-card"/g) ?? []).toHaveLength(12);
+  });
+
   it('renders emotional-to-operational journey detail', () => {
     const html = renderJourneyDetail(getJourneyById('zagori-metsovo-meteora'), state);
     expect(html.match(/data-signature-moment=/g) ?? []).toHaveLength(3);
