@@ -1,6 +1,7 @@
 /* global document, window, history, queueMicrotask */
 import { JOURNEYS, DEPARTURE_PORTS } from './journeys-data.js';
 import { GLOBAL_EXPANSION_JOURNEYS } from './journeys-global-expansion.js';
+import { WORLD_CATALOG_PACK_2 } from './journeys-world-pack-2.js';
 import { rankJourneysForMonth } from './seasonality.js';
 import {
   createJourneyState,
@@ -20,7 +21,7 @@ import {
 } from './cinematic-render.js';
 import { renderCruiseLanding, renderCruiseDetail } from './cruise-render.js';
 
-const ALL_JOURNEYS = [...JOURNEYS, ...GLOBAL_EXPANSION_JOURNEYS];
+const ALL_JOURNEYS = [...JOURNEYS, ...GLOBAL_EXPANSION_JOURNEYS, ...WORLD_CATALOG_PACK_2];
 const getJourneyById = (id) => ALL_JOURNEYS.find((journey) => journey.id === id) ?? null;
 
 const header = document.querySelector('#site-header');
