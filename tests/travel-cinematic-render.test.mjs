@@ -10,12 +10,12 @@ import {
 const state = createJourneyState(new Date('2026-10-12T12:00:00Z'));
 
 describe('cinematic world renderers', () => {
-  it('renders global Explore without legacy dashboard copy and keeps AGNES available', () => {
+  it('renders seasonal V2 Explore without legacy dashboard copy and keeps AGNES available', () => {
     const html = renderExploreHome(JOURNEYS, state);
     for (const text of [
       'AGNES WORLD',
-      'See the world differently.',
-      'By air. By sea. By rail. By road.',
+      'October',
+      'Travel when the world is at its best.',
       'Right Now · October',
       'Featured journeys',
       'Europe',
@@ -30,6 +30,8 @@ describe('cinematic world renderers', () => {
     for (const mode of ['air', 'sea', 'rail', 'road']) {
       expect(html).toContain(`data-mode="${mode}"`);
     }
+    expect(html).toContain('data-global-search-form');
+    expect(html).toContain('data-month-jump="10"');
     expect(html).toContain('class="agnes-dock"');
     expect(html).toContain('data-agnes-input');
     expect(html).not.toContain('93 προορισμοί από Λάρνακα');
