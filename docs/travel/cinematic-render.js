@@ -70,7 +70,7 @@ export function renderExploreHome(journeys, state) {
   const seasonal = getSeasonalCollections(journeys, state.month);
   const featured = [...journeys]
     .sort((a, b) => (b.editorialPriority ?? 0) - (a.editorialPriority ?? 0))
-    .slice(0, 8);
+    .slice(0, 12);
   const regions = ['Europe', 'Greece', 'Asia', 'Africa', 'Americas', 'Oceania'];
   return `<main class="agnes-world-page agnes-editorial-home" data-view="explore">
  ${renderMonthlyRail(state)}
@@ -83,7 +83,7 @@ export function renderExploreHome(journeys, state) {
  ]
    .map(([mode, label]) => `<button class="mode-tile mode-${mode}" data-mode="${mode}"><span>${label}</span></button>`)
    .join('')}</div></section>
- ${rail(`Right Now · ${MONTHS[state.month - 1]}`, seasonal.rightNow.slice(0, 8), {
+ ${rail(`Right Now · ${MONTHS[state.month - 1]}`, seasonal.rightNow.slice(0, 12), {
    kicker: 'WHERE THE WORLD IS AT ITS BEST',
    seasonLabel: 'IN SEASON',
  })}
@@ -131,7 +131,7 @@ export function renderExperiences(journeys, state) {
         ? rail(state.feeling, filterJourneys(journeys, { feeling: state.feeling }))
         : rail(
             'Selected by feeling',
-            journeys.filter((journey) => journey.feelings.length).slice(0, 10),
+            journeys.filter((journey) => journey.feelings.length).slice(0, 12),
           )
     }${renderAgnesWorldDock(state)}</main>`;
 }
