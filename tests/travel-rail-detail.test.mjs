@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createJourneyState } from '../docs/travel/journey-state.js';
 import { getJourneyById } from '../docs/travel/journeys-data.js';
-import { renderJourneyDetail } from '../docs/travel/cinematic-render.js';
+import { renderRailDetail } from '../docs/travel/rail-render.js';
 
 const state = createJourneyState(new Date('2026-10-12T12:00:00Z'));
 
 describe('AGNES rail journey detail', () => {
   it('renders a rail-first editorial story before practical planning', () => {
-    const journey = getJourneyById('norway-fjords-rail');
-    const html = renderJourneyDetail(journey, state);
+    const journey = getJourneyById('switzerland-grand-rail');
+    const html = renderRailDetail(journey, state);
 
     expect(html).toContain('journey-detail is-rail');
     expect(html).toContain('RAIL JOURNEY');
