@@ -29,7 +29,9 @@ describe('AGNES World V2 saved journeys', () => {
 
   it('limits compare shortlist to three journeys', () => {
     const storage = memoryStorage();
-    for (const id of ['one', 'two', 'three', 'four']) toggleCompareJourney(id, storage);
+    for (const id of ['one', 'two', 'three', 'four']) {
+      toggleCompareJourney(id, storage);
+    }
     expect(loadSavedState(storage).compare).toEqual(['two', 'three', 'four']);
   });
 
@@ -37,7 +39,11 @@ describe('AGNES World V2 saved journeys', () => {
     const corrupt = memoryStorage({ [SAVED_STORAGE_KEY]: '{broken' });
     expect(loadSavedState(corrupt)).toEqual({ version: 2, saved: [], compare: [] });
     const old = memoryStorage({
-      [SAVED_STORAGE_KEY]: JSON.stringify({ version: 1, saved: ['legacy'], compare: [] }),
+      [SAVED_STORAGE_KEY]: JSON.stringify({
+        version: 1,
+        saved: ['legacy'],
+        compare: [],
+      }),
     });
     expect(loadSavedState(old)).toEqual({ version: 2, saved: [], compare: [] });
   });
@@ -45,8 +51,24 @@ describe('AGNES World V2 saved journeys', () => {
   it('renders a truthful saved and compare view', () => {
     const html = renderSavedPage(
       [
-        { id: 'one', title: 'One', subtitle: 'A', region: 'Europe', mode: 'rail', duration: '5 days', hero: {} },
-        { id: 'two', title: 'Two', subtitle: 'B', region: 'Asia', mode: 'air', duration: '7 days', hero: {} },
+        {
+          id: 'one',
+          title: 'One',
+          subtitle: 'A',
+          region: 'Europe',
+          mode: 'rail',
+          duration: '5 days',
+          hero: {},
+        },
+        {
+          id: 'two',
+          title: 'Two',
+          subtitle: 'B',
+          region: 'Asia',
+          mode: 'air',
+          duration: '7 days',
+          hero: {},
+        },
       ],
       { saved: ['one', 'two'], compare: ['one', 'two'], agnesHistory: [] },
     );
