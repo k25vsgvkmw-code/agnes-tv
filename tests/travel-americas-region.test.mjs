@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { filterJourneys } from '../docs/travel/journeys-data.js';
 import { renderDestinations } from '../docs/travel/cinematic-render.js';
+import { matchesJourneyRegion } from '../docs/travel/journey-region.js';
 import { createJourneyState } from '../docs/travel/journey-state.js';
 
 const sample = [
@@ -28,10 +28,9 @@ const sample = [
 
 describe('Americas region aggregation', () => {
   it('treats North and South America as the Americas collection', () => {
-    expect(filterJourneys(sample, { region: 'Americas' }).map((journey) => journey.id)).toEqual([
-      'north',
-      'south',
-    ]);
+    expect(matchesJourneyRegion('North America', 'Americas')).toBe(true);
+    expect(matchesJourneyRegion('South America', 'Americas')).toBe(true);
+    expect(matchesJourneyRegion('Europe', 'Americas')).toBe(false);
   });
 
   it('renders both American subregions under the Americas destination rail', () => {
