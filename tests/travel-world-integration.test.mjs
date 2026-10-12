@@ -40,10 +40,11 @@ describe('AGNES World app integration', () => {
     }
   });
 
-  it('loads the global shell and V2 cinematic stylesheets', () => {
+  it('loads the global shell and seasonal editorial stylesheets', () => {
     expect(index).toContain('<title>AGNES World</title>');
     expect(index).toContain('cinematic.css');
     expect(index).toContain('v2.css');
-    expect(index).toContain('#07090d');
+    expect(index).toContain('seasonal-editorial.css');
+    expect(index).toContain('#f7f4ef');
   });
 });
