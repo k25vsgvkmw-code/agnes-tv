@@ -58,6 +58,31 @@ describe('cinematic road trip renderers', () => {
     expect(html).toContain('data-agnes-send');
   });
 
+  it('renders only the latest exchange so AGNES visibly answers without flooding the dock', () => {
+    const state = createTripState();
+    state.agnesHistory = [
+      { role: 'user', text: 'old question' },
+      { role: 'agnes', text: 'old reply' },
+      { role: 'user', text: 'latest question' },
+      { role: 'agnes', text: 'latest reply' },
+    ];
+    const html = renderAgnesDock(ZAGORI_TRIP, state);
+
+    expect(html).not.toContain('old question');
+    expect(html).not.toContain('old reply');
+    expect(html).toContain('latest question');
+    expect(html).toContain('latest reply');
+  });
+
+  it('shows a visible itinerary adaptation when rainy-day mode is active', () => {
+    const state = createTripState();
+    state.weatherMode = 'rain';
+    const html = renderRoadTripDetail(ZAGORI_TRIP, state);
+
+    expect(html).toContain('Rain plan ενεργό');
+    expect(html).toContain('κρατάμε ευέλικτα τα viewpoints');
+  });
+
   it('escapes free-text AGNES history before rendering', () => {
     const state = createTripState();
     state.agnesHistory = [{ role: 'user', text: '<script>alert("x")</script>' }];
