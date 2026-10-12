@@ -62,6 +62,55 @@
   background: #292620;
 }
 
+.rt-photo-credits {
+  grid-column: 1 / -1;
+  padding-top: 14px;
+  color: #cfc7b8;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+}
+
+.rt-photo-credits summary {
+  width: fit-content;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #e8dfcf;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.rt-photo-credits ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 22px;
+  padding: 14px 0 0;
+  margin: 0;
+  list-style: none;
+}
+
+.rt-photo-credits li {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.rt-photo-credits li strong {
+  color: #f6efe2;
+}
+
+.rt-photo-credits li span,
+.rt-photo-credits li small {
+  overflow-wrap: anywhere;
+  color: #aaa190;
+}
+
+.rt-photo-credits a {
+  color: #e5bd70;
+  text-underline-offset: 2px;
+}
+
 @media (max-width: 640px) {
   .rt-itinerary-adaptation {
     display: grid;
@@ -73,5 +122,9 @@
 
   .rt-agnes-message {
     font-size: 10px;
+  }
+
+  .rt-photo-credits ul {
+    grid-template-columns: 1fr;
   }
 }
