@@ -1,5 +1,6 @@
 /* global document, window, history, queueMicrotask */
-import { JOURNEYS, DEPARTURE_PORTS, getJourneyById } from './journeys-data.js';
+import { JOURNEYS, DEPARTURE_PORTS } from './journeys-data.js';
+import { GLOBAL_EXPANSION_JOURNEYS } from './journeys-global-expansion.js';
 import { rankJourneysForMonth } from './seasonality.js';
 import {
   createJourneyState,
@@ -18,6 +19,9 @@ import {
   renderJourneyDetail,
 } from './cinematic-render.js';
 import { renderCruiseLanding, renderCruiseDetail } from './cruise-render.js';
+
+const ALL_JOURNEYS = [...JOURNEYS, ...GLOBAL_EXPANSION_JOURNEYS];
+const getJourneyById = (id) => ALL_JOURNEYS.find((journey) => journey.id === id) ?? null;
 
 const header = document.querySelector('#site-header');
 const view = document.querySelector('#view');
@@ -51,22 +55,22 @@ function pushState(patch, { replace = false } = {}) {
 
 function pageHtml() {
   if (state.view === 'cruises') {
-    return renderCruiseLanding(JOURNEYS, state, DEPARTURE_PORTS);
+    return renderCruiseLanding(ALL_JOURNEYS, state, DEPARTURE_PORTS);
   }
   if (state.view === 'mode') {
-    return renderModeCollection(rankJourneysForMonth(JOURNEYS, state.month), state);
+    return renderModeCollection(rankJourneysForMonth(ALL_JOURNEYS, state.month), state);
   }
-  if (state.view === 'destinations') return renderDestinations(JOURNEYS, state);
-  if (state.view === 'experiences') return renderExperiences(JOURNEYS, state);
+  if (state.view === 'destinations') return renderDestinations(ALL_JOURNEYS, state);
+  if (state.view === 'experiences') return renderExperiences(ALL_JOURNEYS, state);
   if (state.view === 'about') return renderAbout(state);
   if (state.view === 'journey') {
     const journey = getJourneyById(state.journeyId);
-    if (!journey) return renderExploreHome(JOURNEYS, state);
+    if (!journey) return renderExploreHome(ALL_JOURNEYS, state);
     return journey.type === 'cruise'
       ? renderCruiseDetail(journey, state)
       : renderJourneyDetail(journey, state);
   }
-  return renderExploreHome(JOURNEYS, state);
+  return renderExploreHome(ALL_JOURNEYS, state);
 }
 
 function applyImageFallbacks() {
@@ -109,7 +113,11 @@ function runAgnes(message) {
   const cleaned = String(message ?? '').trim();
   if (!cleaned) return;
   const journey = state.journeyId ? getJourneyById(state.journeyId) : null;
-  const result = handleJourneyAgnesMessage(cleaned, { journey, journeys: JOURNEYS, state });
+  const result = handleJourneyAgnesMessage(cleaned, {
+    journey,
+    journeys: ALL_JOURNEYS,
+    state,
+  });
   appendAgnes(cleaned, result.reply, result.statePatch);
   const url = serializeJourneyUrl(state) || window.location.pathname;
   history.pushState({}, '', url);
