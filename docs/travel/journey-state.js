@@ -1,3 +1,5 @@
+/* global URLSearchParams */
+
 const VIEWS = new Set(['explore', 'destinations', 'mode', 'cruises', 'journey', 'experiences', 'about']);
 const MODES = new Set(['', 'air', 'sea', 'rail', 'road']);
 const LAYERS = new Set([null, 'route', 'day-plan', 'transport', 'dates', 'cabins', 'agnes', 'inquiry']);
@@ -77,7 +79,7 @@ export function serializeJourneyUrl(state) {
   if (state.region) params.set('region', state.region);
   if (state.feeling) params.set('feeling', state.feeling);
   if (state.departurePort) params.set('port', state.departurePort);
-  if (state.journeyId) params.set('journey', state.journeyId);
+  if (state.view === 'journey' && state.journeyId) params.set('journey', state.journeyId);
   const query = params.toString();
   return query ? `?${query}` : '';
 }
