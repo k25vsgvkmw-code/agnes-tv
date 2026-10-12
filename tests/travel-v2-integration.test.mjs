@@ -40,11 +40,7 @@ describe('AGNES World V2 integrated experience', () => {
   });
 
   it('keeps search cinematic and reachable', () => {
-    const html = renderSearchPage(
-      [journey],
-      { ...state, query: 'autumn' },
-      { modes: ['rail'] },
-    );
+    const html = renderSearchPage([journey], { ...state, query: 'autumn' }, { modes: ['rail'] });
     expect(html).toContain('AGNES WORLD SEARCH');
     expect(html).toContain('Autumn Rail');
   });
