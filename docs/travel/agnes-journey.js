@@ -40,7 +40,7 @@ function result(reply, statePatch = {}, focusTarget = 'agnes') {
   return { reply, statePatch, focusTarget };
 }
 
-export function handleJourneyAgnesMessage(message, { journey, state }) {
+export function handleJourneyAgnesMessage(message, { journey }) {
   const text = normalize(message);
 
   if (/cruise|κρουαζ/.test(text) && /limassol|λεμεσ/.test(text)) {
