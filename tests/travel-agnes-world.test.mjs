@@ -9,9 +9,14 @@ describe('AGNES World deterministic intents', () => {
   it.each([
     ['Show cruises from Limassol', { view: 'cruises', mode: 'sea', departurePort: 'limassol' }],
     ['I want mountains by train', { view: 'mode', mode: 'rail', feeling: 'mountains' }],
-    ['I want sea and islands in October', { view: 'mode', mode: 'sea', month: 10, feeling: 'islands' }],
+    [
+      'I want sea and islands in October',
+      { view: 'mode', mode: 'sea', month: 10, feeling: 'islands' },
+    ],
   ])('maps %s safely', (message, patch) => {
-    expect(handleJourneyAgnesMessage(message, { journey: null, journeys: JOURNEYS, state }).statePatch).toEqual(patch);
+    expect(
+      handleJourneyAgnesMessage(message, { journey: null, journeys: JOURNEYS, state }).statePatch,
+    ).toEqual(patch);
   });
 
   it('returns bounded capabilities without mutating state', () => {
