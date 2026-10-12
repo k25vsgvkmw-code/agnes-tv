@@ -18,12 +18,21 @@ describe('AGNES World V2 provider gateway', () => {
   it('returns editorial fallback when no adapter supports the request', async () => {
     const gateway = createProviderGateway({});
     const result = await gateway.searchLiveOptions('cruises', { from: 'limassol' });
-    expect(result).toMatchObject({ status: 'fallback', live: false, provider: null, results: [] });
+    expect(result).toMatchObject({
+      status: 'fallback',
+      live: false,
+      provider: null,
+      results: [],
+    });
   });
 
   it('fails closed when a provider throws', async () => {
     const gateway = createProviderGateway({
-      broken: { searchRail: async () => { throw new Error('provider down'); } },
+      broken: {
+        searchRail: async () => {
+          throw new Error('provider down');
+        },
+      },
     });
     const result = await gateway.searchLiveOptions('rail', { from: 'zurich' });
     expect(result.status).toBe('fallback');
