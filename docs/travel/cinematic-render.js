@@ -1,20 +1,11 @@
 import { filterJourneys } from './journeys-data.js';
 import { matchesJourneyRegion } from './journey-region.js';
 import { getSeasonalCollections } from './seasonality.js';
+import { renderJourneyMap } from './map-render.js';
 
 const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 const escapeHtml = (value) =>
@@ -37,6 +28,7 @@ export function renderGlobalHeader(state) {
     ['travel-by', 'Travel by'],
     ['experiences', 'Experiences'],
     ['cruises', 'Cruises'],
+    ['saved', 'Saved'],
     ['about', 'About AGNES'],
   ];
   return `<header class="agnes-world-header"><button class="agnes-brand" data-nav-view="explore">AGNES</button><nav aria-label="Primary">${nav
@@ -48,7 +40,7 @@ export function renderGlobalHeader(state) {
 }
 
 export function renderJourneyCard(journey, { seasonLabel = '' } = {}) {
-  return `<article class="journey-card" data-journey-id="${escapeHtml(journey.id)}" tabindex="0">${media(journey.hero?.image, journey.title, 'journey-card-media')}<div class="journey-card-scrim"></div><div class="journey-card-copy"><p>${escapeHtml(seasonLabel || journey.region)} · ${escapeHtml(journey.mode.toUpperCase())}</p><h3>${escapeHtml(journey.title)}</h3><span>${escapeHtml(journey.subtitle)}</span><small>${escapeHtml(journey.duration)}</small></div></article>`;
+  return `<article class="journey-card" data-journey-id="${escapeHtml(journey.id)}" tabindex="0">${media(journey.hero?.image, journey.title, 'journey-card-media')}<div class="journey-card-scrim"></div><div class="journey-card-actions"><button type="button" data-save-journey="${escapeHtml(journey.id)}" aria-label="Save ${escapeHtml(journey.title)}">♡</button><button type="button" data-compare-journey="${escapeHtml(journey.id)}" aria-label="Compare ${escapeHtml(journey.title)}">⇄</button></div><div class="journey-card-copy"><p>${escapeHtml(seasonLabel || journey.region)} · ${escapeHtml(journey.mode.toUpperCase())}</p><h3>${escapeHtml(journey.title)}</h3><span>${escapeHtml(journey.subtitle)}</span><small>${escapeHtml(journey.duration)}</small></div></article>`;
 }
 
 const rail = (title, items, options = {}) =>
@@ -67,14 +59,22 @@ export function renderAgnesWorldDock(state) {
   return `<aside class="agnes-dock" id="agnes"><div class="agnes-dock-head"><span>A</span><div><strong>AGNES</strong><small>Travel co-pilot</small></div></div><div class="agnes-history" aria-live="polite">${history}</div><div class="agnes-actions"><button data-agnes-action="Show cruises from Limassol">Cruises from Limassol</button><button data-agnes-action="I want mountains by train">Mountains by train</button><button data-agnes-action="I want sea and islands in October">Sea & islands in October</button></div><form data-agnes-form><input data-agnes-input placeholder="Tell AGNES how you want to travel…"><button aria-label="Send to AGNES">↑</button></form></aside>`;
 }
 
+function renderMonthlyRail(state) {
+  return `<aside class="month-rail" aria-label="Explore by month">${MONTHS.map(
+    (month, index) =>
+      `<button type="button" data-month-jump="${index + 1}" class="${state.month === index + 1 ? 'is-active' : ''}">${month.slice(0, 3)}</button>`,
+  ).join('')}</aside>`;
+}
+
 export function renderExploreHome(journeys, state) {
   const seasonal = getSeasonalCollections(journeys, state.month);
   const featured = [...journeys]
     .sort((a, b) => (b.editorialPriority ?? 0) - (a.editorialPriority ?? 0))
     .slice(0, 8);
   const regions = ['Europe', 'Greece', 'Asia', 'Africa', 'Americas', 'Oceania'];
-  return `<main class="agnes-world-page" data-view="explore">
- <section class="agnes-world-hero">${media(featured[0]?.hero?.image, 'AGNES World', 'agnes-world-hero-media')}<div class="hero-scrim"></div><div class="hero-copy"><p>AGNES WORLD</p><h1>See the world differently.</h1><h2>By air. By sea. By rail. By road.</h2><div class="hero-actions"><button data-agnes-open>Tell AGNES how you want to travel</button><button data-scroll-explore>Explore journeys</button></div></div></section>
+  return `<main class="agnes-world-page agnes-editorial-home" data-view="explore">
+ ${renderMonthlyRail(state)}
+ <section class="agnes-world-hero">${media(featured[0]?.hero?.image, 'AGNES World', 'agnes-world-hero-media')}<div class="hero-scrim"></div><div class="hero-copy"><p>AGNES WORLD · DISCOVER THE WORLD</p><h1>${MONTHS[state.month - 1]}</h1><h2>Travel when the world is at its best.</h2><form data-global-search-form class="hero-search"><label><span class="sr-only">Search destinations and journeys</span><input data-global-search-input name="q" placeholder="Search destinations, rail, cruises, road trips…"></label><button type="submit">Search</button></form><div class="hero-actions"><button data-agnes-open>Tell AGNES how you want to travel</button><button data-scroll-explore>Explore journeys</button></div></div></section>
  <section class="travel-by" id="explore"><div class="collection-heading"><p>HOW DO YOU WANT TO MOVE?</p><h2>Travel by</h2></div><div class="mode-grid">${[
    ['air', 'FLY'],
    ['sea', 'SAIL'],
@@ -141,7 +141,7 @@ export function renderAbout(state) {
 }
 
 function renderMoments(journey) {
-  return `<section class="signature-moments">${journey.signatureMoments
+  return `<section class="signature-moments">${(journey.signatureMoments ?? [])
     .map(
       (moment) =>
         `<article data-signature-moment="${escapeHtml(moment.id)}">${media(moment.image, moment.title, 'signature-media')}<div class="signature-scrim"></div><div><p>${escapeHtml(moment.label)}</p><h2>${escapeHtml(moment.title)}</h2><span>${escapeHtml(moment.copy)}</span></div></article>`,
@@ -149,17 +149,12 @@ function renderMoments(journey) {
     .join('')}</section>`;
 }
 
-function renderRoute(journey) {
-  return `<section class="journey-section journey-route" data-journey-section="route"><div class="section-heading"><p>THE ROUTE</p><h2>Move through the story.</h2></div><div class="route-line">${journey.route.stops
-    .map(
-      (stop, index) =>
-        `<div><span>${index + 1}</span><strong>${escapeHtml(stop.name)}</strong></div>`,
-    )
-    .join('')}</div><button data-open-layer="route">View route details</button></section>`;
+function renderRoute(journey, state) {
+  return `<section class="journey-section journey-route" data-journey-section="route"><div class="section-heading"><p>THE ROUTE</p><h2>Move through the story.</h2></div>${renderJourneyMap(journey, { currentStopId: state.selectedChapter })}<button data-open-layer="route">View route details</button></section>`;
 }
 
 function renderChapters(journey) {
-  return `<section class="journey-section journey-chapters" data-journey-section="chapters"><div class="section-heading"><p>THE JOURNEY</p><h2>Chapter by chapter.</h2></div>${journey.chapters
+  return `<section class="journey-section journey-chapters" data-journey-section="chapters"><div class="section-heading"><p>THE JOURNEY</p><h2>Chapter by chapter.</h2></div>${(journey.chapters ?? [])
     .map(
       (chapter) =>
         `<article class="journey-chapter" data-chapter-id="${escapeHtml(chapter.id)}">${media(chapter.image, chapter.title, 'chapter-media')}<div class="chapter-scrim"></div><div class="chapter-copy"><p>${escapeHtml(chapter.dayLabel)}</p><h3>${escapeHtml(chapter.title)}</h3><span>${escapeHtml(chapter.location)}</span><p>${escapeHtml(chapter.narrative)}</p><button data-open-layer="day-plan" data-chapter="${escapeHtml(chapter.id)}">View day plan</button><aside><strong>AGNES</strong><span>${escapeHtml(chapter.agnes)}</span></aside></div></article>`,
@@ -168,16 +163,16 @@ function renderChapters(journey) {
 }
 
 export function renderInquirySummary(journey) {
-  return `<section class="journey-section inquiry-summary" data-journey-section="inquiry"><div><p>YOUR JOURNEY</p><h2>Ready to make it real?</h2><span>${escapeHtml(journey.pricing.disclaimer)}</span></div><button data-open-layer="inquiry">Plan with AGNES</button></section>`;
+  return `<section class="journey-section inquiry-summary" data-journey-section="inquiry"><div><p>YOUR JOURNEY</p><h2>Ready to make it real?</h2><span>${escapeHtml(journey.pricing?.disclaimer ?? 'Editorial journey. Live pricing and availability require a connected provider.')}</span></div><button data-open-layer="inquiry">Plan with AGNES</button></section>`;
 }
 
 export function renderOperationalLayer(journey, state) {
   if (!state.detailLayer) return '';
-  const chapter =
-    journey.chapters.find((item) => item.id === state.selectedChapter) ?? journey.chapters[0];
-  return `<div class="operational-backdrop" data-detail-layer="${escapeHtml(state.detailLayer)}"><aside class="operational-layer" role="dialog" aria-modal="true" aria-labelledby="operational-layer-title"><button data-detail-close aria-label="Close details">×</button><p>PRACTICAL PLAN</p><h2 id="operational-layer-title">${escapeHtml(chapter?.title ?? journey.title)}</h2><dl><dt>Timing</dt><dd>${escapeHtml(chapter?.operational?.timing)}</dd><dt>Transit</dt><dd>${escapeHtml(chapter?.operational?.transit)}</dd><dt>Note</dt><dd>${escapeHtml(chapter?.operational?.note)}</dd></dl><p class="indicative-note">Indicative editorial guidance. Final details depend on selected dates and providers.</p></aside></div>`;
+  const chapters = journey.chapters ?? [];
+  const chapter = chapters.find((item) => item.id === state.selectedChapter) ?? chapters[0];
+  return `<div class="operational-backdrop" data-detail-layer="${escapeHtml(state.detailLayer)}"><aside class="operational-layer" role="dialog" aria-modal="true" aria-labelledby="operational-layer-title"><button data-detail-close aria-label="Close details">×</button><p>PRACTICAL PLAN</p><h2 id="operational-layer-title">${escapeHtml(chapter?.title ?? journey.title)}</h2><dl><dt>Timing</dt><dd>${escapeHtml(chapter?.operational?.timing ?? 'Set after dates are chosen')}</dd><dt>Transit</dt><dd>${escapeHtml(chapter?.operational?.transit ?? 'Final routing depends on selected dates')}</dd><dt>Note</dt><dd>${escapeHtml(chapter?.operational?.note ?? 'AGNES will refine this with your preferences.')}</dd></dl><p class="indicative-note">Indicative editorial guidance. Final details depend on selected dates and providers.</p></aside></div>`;
 }
 
 export function renderJourneyDetail(journey, state, { extra = '' } = {}) {
-  return `<main class="agnes-world-page journey-detail" data-journey-id="${escapeHtml(journey.id)}"><section class="journey-hero" data-journey-section="hero">${media(journey.hero.image, journey.title, 'journey-hero-media')}<div class="hero-scrim"></div><div class="journey-hero-copy"><p>${escapeHtml(journey.hero.eyebrow)}</p><h1>${escapeHtml(journey.title)}</h1><h2>${escapeHtml(journey.subtitle)}</h2><div><span>${escapeHtml(journey.duration)}</span><span>${escapeHtml(journey.region)}</span><span>${escapeHtml(journey.mode.toUpperCase())}</span></div><button data-open-layer="day-plan">See the practical plan</button></div></section>${renderMoments(journey)}${renderRoute(journey)}${renderChapters(journey)}${extra}<section class="journey-section agnes-inline" data-journey-section="agnes"><p>AGNES</p><h2>Make this journey yours.</h2><button data-agnes-open>Adapt with AGNES</button></section>${renderInquirySummary(journey)}${renderOperationalLayer(journey, state)}${renderAgnesWorldDock(state)}</main>`;
+  return `<main class="agnes-world-page journey-detail" data-journey-id="${escapeHtml(journey.id)}"><section class="journey-hero" data-journey-section="hero">${media(journey.hero?.image, journey.title, 'journey-hero-media')}<div class="hero-scrim"></div><div class="journey-hero-copy"><p>${escapeHtml(journey.hero?.eyebrow ?? journey.mode.toUpperCase())}</p><h1>${escapeHtml(journey.title)}</h1><h2>${escapeHtml(journey.subtitle)}</h2><div><span>${escapeHtml(journey.duration)}</span><span>${escapeHtml(journey.region)}</span><span>${escapeHtml(journey.mode.toUpperCase())}</span></div><div class="journey-hero-actions"><button data-save-journey="${escapeHtml(journey.id)}">Save journey</button><button data-compare-journey="${escapeHtml(journey.id)}">Compare</button><button data-open-layer="day-plan">See the practical plan</button></div></div></section>${renderMoments(journey)}${renderRoute(journey, state)}${renderChapters(journey)}${extra}<section class="journey-section agnes-inline" data-journey-section="agnes"><p>AGNES</p><h2>Make this journey yours.</h2><button data-agnes-open>Adapt with AGNES</button></section>${renderInquirySummary(journey)}${renderOperationalLayer(journey, state)}${renderAgnesWorldDock(state)}</main>`;
 }
