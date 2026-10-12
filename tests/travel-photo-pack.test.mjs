@@ -8,10 +8,12 @@ const credits = JSON.parse(
 );
 
 describe('AGNES World photo pack', () => {
-  it('uses real destination photography for the seasonal hero and key journey cards', () => {
+  it('uses real destination photography for the seasonal hero, travel modes and key journey cards', () => {
     expect(css).toContain('.agnes-world-hero-media');
+    expect(css).toContain('.mode-tile.mode-rail');
+    expect(css).toContain('.mode-tile.mode-road');
+    expect(css).toContain('.mode-tile.mode-sea');
     expect(css).toContain('[data-journey-id="norway-fjords-rail"]');
-    expect(css).toContain('[data-journey-id="japan-islands-yokohama"]');
     expect(css).toContain('[data-journey-id="morocco-atlas-sahara"]');
     expect(css).toContain('images.unsplash.com');
     expect(css).toContain('opacity: 0;');
@@ -19,12 +21,13 @@ describe('AGNES World photo pack', () => {
 
   it('records provenance for every production photo source', () => {
     expect(Array.isArray(credits)).toBe(true);
-    expect(credits.length).toBeGreaterThanOrEqual(5);
+    expect(credits.length).toBeGreaterThanOrEqual(6);
     for (const photo of credits) {
       expect(photo).toHaveProperty('id');
       expect(photo).toHaveProperty('photographer');
       expect(photo).toHaveProperty('sourceUrl');
       expect(photo).toHaveProperty('license', 'Unsplash License');
+      expect(photo).toHaveProperty('usedFor');
     }
   });
 });
