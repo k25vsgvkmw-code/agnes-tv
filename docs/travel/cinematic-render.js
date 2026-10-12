@@ -55,6 +55,17 @@ const rail = (title, items, options = {}) =>
     .map((journey) => renderJourneyCard(journey, { seasonLabel: options.seasonLabel }))
     .join('')}</div></section>`;
 
+export function renderAgnesWorldDock(state) {
+  const history = (state.agnesHistory ?? [])
+    .slice(-2)
+    .map(
+      (entry) =>
+        `<div class="agnes-message is-${entry.role === 'agnes' ? 'agnes' : 'user'}"><strong>${entry.role === 'agnes' ? 'AGNES' : 'YOU'}</strong><span>${escapeHtml(entry.text)}</span></div>`,
+    )
+    .join('');
+  return `<aside class="agnes-dock" id="agnes"><div class="agnes-dock-head"><span>A</span><div><strong>AGNES</strong><small>Travel co-pilot</small></div></div><div class="agnes-history" aria-live="polite">${history}</div><div class="agnes-actions"><button data-agnes-action="Show cruises from Limassol">Cruises from Limassol</button><button data-agnes-action="I want mountains by train">Mountains by train</button><button data-agnes-action="I want sea and islands in October">Sea & islands in October</button></div><form data-agnes-form><input data-agnes-input placeholder="Tell AGNES how you want to travel…"><button aria-label="Send to AGNES">↑</button></form></aside>`;
+}
+
 export function renderExploreHome(journeys, state) {
   const seasonal = getSeasonalCollections(journeys, state.month);
   const featured = [...journeys]
@@ -80,6 +91,7 @@ export function renderExploreHome(journeys, state) {
    .map((region) => `<button data-region="${region}">${region}</button>`)
    .join('')}</div></section>
  <section class="agnes-prompt-band"><div><p>PLAN WITH AGNES</p><h2>Tell me how you want the journey to feel.</h2></div><button data-agnes-open>Ask AGNES →</button></section>
+ ${renderAgnesWorldDock(state)}
  </main>`;
 }
 
@@ -95,14 +107,14 @@ export function renderModeCollection(journeys, state) {
     rail: 'Watch the world change through the window.',
     road: 'The road is part of the story.',
   };
-  return `<main class="agnes-world-page collection-page"><section class="collection-hero"><p>TRAVEL BY ${escapeHtml(state.mode.toUpperCase())}</p><h1>${copy[state.mode] ?? 'Travel differently.'}</h1></section>${rail(`${list.length} curated journeys`, list)}</main>`;
+  return `<main class="agnes-world-page collection-page"><section class="collection-hero"><p>TRAVEL BY ${escapeHtml(state.mode.toUpperCase())}</p><h1>${copy[state.mode] ?? 'Travel differently.'}</h1></section>${rail(`${list.length} curated journeys`, list)}${renderAgnesWorldDock(state)}</main>`;
 }
 
-export function renderDestinations(journeys) {
+export function renderDestinations(journeys, state) {
   const regions = ['Greece', 'Europe', 'Asia', 'Africa', 'Americas', 'Oceania'];
   return `<main class="agnes-world-page collection-page"><section class="collection-hero"><p>DESTINATIONS</p><h1>Choose a part of the world. AGNES will shape the journey.</h1></section>${regions
     .map((region) => rail(region, journeys.filter((journey) => journey.region === region)))
-    .join('')}</main>`;
+    .join('')}${renderAgnesWorldDock(state)}</main>`;
 }
 
 export function renderExperiences(journeys, state) {
@@ -116,11 +128,11 @@ export function renderExperiences(journeys, state) {
             'Selected by feeling',
             journeys.filter((journey) => journey.feelings.length).slice(0, 10),
           )
-    }</main>`;
+    }${renderAgnesWorldDock(state)}</main>`;
 }
 
-export function renderAbout() {
-  return `<main class="agnes-world-page about-page"><section class="collection-hero"><p>ABOUT AGNES</p><h1>A travel co-pilot for people who want more than a list of places.</h1><p>AGNES begins with the feeling and the way you want to move, then reveals the practical plan only when you need it.</p></section></main>`;
+export function renderAbout(state) {
+  return `<main class="agnes-world-page about-page"><section class="collection-hero"><p>ABOUT AGNES</p><h1>A travel co-pilot for people who want more than a list of places.</h1><p>AGNES begins with the feeling and the way you want to move, then reveals the practical plan only when you need it.</p></section>${renderAgnesWorldDock(state)}</main>`;
 }
 
 function renderMoments(journey) {
@@ -152,17 +164,6 @@ function renderChapters(journey) {
 
 export function renderInquirySummary(journey) {
   return `<section class="journey-section inquiry-summary" data-journey-section="inquiry"><div><p>YOUR JOURNEY</p><h2>Ready to make it real?</h2><span>${escapeHtml(journey.pricing.disclaimer)}</span></div><button data-open-layer="inquiry">Plan with AGNES</button></section>`;
-}
-
-export function renderAgnesWorldDock(state) {
-  const history = (state.agnesHistory ?? [])
-    .slice(-2)
-    .map(
-      (entry) =>
-        `<div class="agnes-message is-${entry.role === 'agnes' ? 'agnes' : 'user'}"><strong>${entry.role === 'agnes' ? 'AGNES' : 'YOU'}</strong><span>${escapeHtml(entry.text)}</span></div>`,
-    )
-    .join('');
-  return `<aside class="agnes-dock" id="agnes"><div class="agnes-dock-head"><span>A</span><div><strong>AGNES</strong><small>Travel co-pilot</small></div></div><div class="agnes-history" aria-live="polite">${history}</div><div class="agnes-actions"><button data-agnes-action="Show cruises from Limassol">Cruises from Limassol</button><button data-agnes-action="I want mountains by train">Mountains by train</button><button data-agnes-action="I want sea and islands in October">Sea & islands in October</button></div><form data-agnes-form><input data-agnes-input placeholder="Tell AGNES how you want to travel…"><button aria-label="Send to AGNES">↑</button></form></aside>`;
 }
 
 export function renderOperationalLayer(journey, state) {
