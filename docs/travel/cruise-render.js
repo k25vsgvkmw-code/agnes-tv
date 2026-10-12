@@ -1,4 +1,5 @@
 import { filterJourneys } from './journeys-data.js';
+import { matchesJourneyRegion } from './journey-region.js';
 import { classifyJourneySeason, getSeasonalCollections } from './seasonality.js';
 import {
   renderAgnesWorldDock,
@@ -33,7 +34,7 @@ export function filterCruises(journeys, state) {
     mode: 'sea',
     type: 'cruise',
     departurePort: state.departurePort || undefined,
-  }).filter((journey) => (state.region ? journey.region === state.region : true));
+  }).filter((journey) => matchesJourneyRegion(journey.region, state.region));
 }
 
 export function renderDeparturePortRail(ports, state) {
