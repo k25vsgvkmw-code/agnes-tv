@@ -23,7 +23,20 @@ describe('cinematic world renderers', () => {
     ]) {
       expect(html).toContain(text);
     }
-    for (const month of ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ']) {
+    for (const month of [
+      'Ιαν',
+      'Φεβ',
+      'Μαρ',
+      'Απρ',
+      'Μάι',
+      'Ιουν',
+      'Ιουλ',
+      'Αυγ',
+      'Σεπ',
+      'Οκτ',
+      'Νοε',
+      'Δεκ',
+    ]) {
       expect(html).toContain(month);
     }
     expect(html).toContain('class="seasonal-mosaic"');
