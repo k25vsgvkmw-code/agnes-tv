@@ -49,6 +49,19 @@ describe('cinematic road trip renderers', () => {
     expect(html).toContain('ΚΛΕΙΣΕ ΤΟ ROAD TRIP');
   });
 
+  it('renders visible creator, license and Wikimedia attribution for local photography', () => {
+    const html = renderRoadTripDetail(ZAGORI_TRIP, createTripState());
+
+    expect(html).toContain('data-photo-credits');
+    expect(html).toContain('Aneza Palaiou');
+    expect(html).toContain('Apostolos Palaskas');
+    expect(html).toContain('CC BY-SA 4.0');
+    expect(html).toContain('CC BY-SA 3.0');
+    expect(html).toContain('Wikimedia Commons');
+    expect(html).toContain('https://creativecommons.org/licenses/by-sa/4.0/');
+    expect(html).toContain('https://creativecommons.org/licenses/by-sa/3.0/');
+  });
+
   it('labels the assistant as AGNES without implying a live model', () => {
     const html = renderAgnesDock(ZAGORI_TRIP, createTripState());
 
@@ -80,7 +93,7 @@ describe('cinematic road trip renderers', () => {
     const html = renderRoadTripDetail(ZAGORI_TRIP, state);
 
     expect(html).toContain('Rain plan ενεργό');
-    expect(html).toContain('κρατάμε ευέλικτα τα viewpoints');
+    expect(html).toContain('κρατά ευέλικτα τα viewpoints');
   });
 
   it('escapes free-text AGNES history before rendering', () => {
