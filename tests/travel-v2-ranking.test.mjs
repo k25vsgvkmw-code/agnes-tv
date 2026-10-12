@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { RANKING_WEIGHTS, classifySeason, rankJourneys, scoreJourney } from '../docs/travel/ranking-v2.js';
+import {
+  RANKING_WEIGHTS,
+  classifySeason,
+  rankJourneys,
+  scoreJourney,
+} from '../docs/travel/ranking-v2.js';
 
 const base = {
   id: 'base',
@@ -31,13 +36,41 @@ describe('AGNES World V2 ranking', () => {
   });
 
   it('weights cruise departure port and rail origin station relevance', () => {
-    const cruiseA = { ...base, id: 'cruise-a', mode: 'sea', type: 'cruise', originIds: ['port-limassol'] };
-    const cruiseB = { ...cruiseA, id: 'cruise-b', originIds: ['port-piraeus'], editorialPriority: 99 };
-    expect(rankJourneys([cruiseB, cruiseA], { mode: 'sea', originId: 'port-limassol', month: 10 })[0].id).toBe('cruise-a');
+    const cruiseA = {
+      ...base,
+      id: 'cruise-a',
+      mode: 'sea',
+      type: 'cruise',
+      originIds: ['port-limassol'],
+    };
+    const cruiseB = {
+      ...cruiseA,
+      id: 'cruise-b',
+      originIds: ['port-piraeus'],
+      editorialPriority: 99,
+    };
+    expect(
+      rankJourneys([cruiseB, cruiseA], { mode: 'sea', originId: 'port-limassol', month: 10 })[0]
+        .id,
+    ).toBe('cruise-a');
 
-    const railA = { ...base, id: 'rail-a', mode: 'rail', type: 'rail-journey', originIds: ['station-tokyo'] };
-    const railB = { ...railA, id: 'rail-b', originIds: ['station-zurich'], editorialPriority: 99 };
-    expect(rankJourneys([railB, railA], { mode: 'rail', originId: 'station-tokyo', month: 10 })[0].id).toBe('rail-a');
+    const railA = {
+      ...base,
+      id: 'rail-a',
+      mode: 'rail',
+      type: 'rail-journey',
+      originIds: ['station-tokyo'],
+    };
+    const railB = {
+      ...railA,
+      id: 'rail-b',
+      originIds: ['station-zurich'],
+      editorialPriority: 99,
+    };
+    expect(
+      rankJourneys([railB, railA], { mode: 'rail', originId: 'station-tokyo', month: 10 })[0]
+        .id,
+    ).toBe('rail-a');
   });
 
   it('does not invent location relevance when origin is absent', () => {
