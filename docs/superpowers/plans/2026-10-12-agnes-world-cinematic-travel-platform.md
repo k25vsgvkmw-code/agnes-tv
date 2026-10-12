@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the current Greece-first travel dashboard with the approved global AGNES World cinematic experience, supporting Air, Sea, Rail and Road journeys, month-aware discovery, departure-port-first cruises, reusable journey detail, and deterministic AGNES personalisation.
+**Goal:** Replace the current Greece-first travel dashboard with the approved global AGNES World cinematic experience, supporting Air, Sea, Rail and Road journeys, month-aware discovery, departure-port-first cruises, complete global navigation, reusable journey detail, and deterministic AGNES personalisation.
 
 **Architecture:** Keep the existing static GitHub Pages deployment and browser-native ES modules under `docs/travel`. Introduce a generic journey data/state/render pipeline, keep cruise behavior as a specialised layer over the same journey model, and migrate the visible product away from road-trip-only modules without deleting them until regression coverage proves the generic system is stable.
 
@@ -15,6 +15,7 @@
 - Preserve the existing static GitHub Pages architecture under `docs/travel`; do not introduce React, Vue, another SPA framework, or a new build pipeline.
 - The visible product must use the approved deep black / midnight navy, warm cream, restrained gold, editorial-serif cinematic system; do not fall back to a bright OTA/dashboard aesthetic.
 - The global promise is `See the world differently. By air. By sea. By rail. By road.`
+- Primary navigation is Explore, Destinations, Travel by, Experiences, Cruises, About AGNES, Plan with AGNES.
 - Journey discovery must support `air`, `sea`, `rail`, and `road` entry points.
 - Journey detail must remain story-first: Hero → exactly 3 Signature Moments → Route → cinematic chapters → operational detail → AGNES → inquiry summary.
 - Month-aware ranking is deterministic and based on curated local metadata, not live weather or availability.
@@ -31,7 +32,7 @@
 
 1. **December → January season boundary:** `coming-next` must wrap correctly across the year; pinned in Task 2 seasonality tests.
 2. **Invalid or stale URL state:** unknown views, modes, ports, months, and journey IDs must normalise to a safe Explore state; pinned in Task 3 state tests and Task 8 integration tests.
-3. **Departure port with zero cruise matches:** cruise discovery must show a curated fallback/empty-state explanation rather than a blank grid; pinned in Task 5 renderer tests.
+3. **Departure port / contextual filter with zero matches:** discovery must show a curated fallback/empty-state explanation rather than a blank grid; pinned in Task 5 renderer tests.
 4. **Missing or failed media:** title, narrative and CTA must remain readable and usable; pinned in Task 5/6 renderer tests and Task 7 media tests.
 5. **Unsupported AGNES input:** state must remain unchanged and the reply must describe bounded supported capabilities without implying live booking/AI; pinned in Task 4 tests.
 
@@ -41,11 +42,11 @@
 
 ### Create
 
-- `docs/travel/journeys-data.js` — canonical global curated journey collection and lookup/filter helpers.
+- `docs/travel/journeys-data.js` — canonical global curated journey collection, departure hubs and filter helpers.
 - `docs/travel/seasonality.js` — month classification, ranking, and `Right Now` / `Coming Next` helpers.
 - `docs/travel/journey-state.js` — validated application state plus URL parse/serialize helpers.
 - `docs/travel/agnes-journey.js` — deterministic global AGNES intents and safe fallback behavior.
-- `docs/travel/cinematic-render.js` — global shell, Explore, collections, generic journey detail, operational layer and AGNES dock renderers.
+- `docs/travel/cinematic-render.js` — global shell, Explore, Destinations, Experiences, About, mode collections, generic journey detail, operational layer and AGNES dock renderers.
 - `docs/travel/cruise-render.js` — cruise search/filter UI, departure-port rail, cruise-specific detail fragments.
 - `docs/travel/cinematic.css` — single dark cinematic design system used by every new visible screen.
 - `docs/travel/assets/world/credits.json` — provenance/license metadata for locally shipped world imagery.
@@ -65,12 +66,12 @@
 - `docs/travel/app.js` — replace dashboard-first mounting with URL/state-driven AGNES World orchestration.
 - `docs/travel/index.html` — global AGNES shell/meta/navigation hooks and `cinematic.css` inclusion.
 - `docs/travel/styles.css` — keep only compatibility/base rules required by legacy components during migration; visible AGNES World styling lives in `cinematic.css`.
-- `tests/travel-app-regression.test.mjs` — update regression expectations from legacy top-level dashboard views to the new world architecture while retaining legacy ranking utility coverage.
+- `tests/travel-app-regression.test.mjs` — update regression expectations from legacy dashboard views to the new world architecture while retaining legacy ranking utility coverage.
 
 ### Retain during migration
 
-- `trip-data.js`, `trip-state.js`, `agnes-trip.js`, `road-trip-render.js`, `road-trip-polish.css` — keep temporarily so their verified behavior is available as a reference/compatibility path; remove only in a later cleanup after the generic system ships.
-- `ranking.js` and `data-1.json` … `data-4.json` — keep as legacy utility data unless the new Explore flow no longer needs them; do not silently reinterpret their availability fields as live inventory.
+- `trip-data.js`, `trip-state.js`, `agnes-trip.js`, `road-trip-render.js`, `road-trip-polish.css` — keep temporarily as a verified reference/compatibility path; remove only in a later cleanup after the generic system ships.
+- `ranking.js` and `data-1.json` … `data-4.json` — keep as legacy utility data unless the new Explore flow no longer needs them; do not reinterpret their availability fields as live inventory.
 
 ---
 
@@ -82,26 +83,27 @@
 
 **Interfaces:**
 - Produces `JOURNEYS`, `DEPARTURE_PORTS`, `getJourneyById(id)`, `filterJourneys(journeys, filters)`.
-- `filterJourneys` accepts `{ mode?, region?, feeling?, type?, departurePort? }` and returns a new array without mutating `JOURNEYS`.
-- Every journey has: `id`, `type`, `mode`, `title`, `subtitle`, `country`, `region`, `duration`, `hero`, `bestMonths`, `shoulderMonths`, `eventMonths`, `avoidMonths`, `yearRound`, `signatureMoments`, `route`, `chapters`, `pricing`, `agnesRules`, `media`.
-- Cruise journeys additionally expose `cruise.departurePort`, `cruise.returnPort`, `cruise.portsOfCall`, `cruise.ship`, `cruise.cabinClasses`, `cruise.sampleDepartures`.
+- `filterJourneys` accepts `{ mode?, region?, feeling?, type?, departurePort?, duration?, transportStyle? }` and returns a new array without mutating `JOURNEYS`.
+- Every journey has: `id`, `type`, `mode`, `title`, `subtitle`, `country`, `region`, `duration`, `feelings`, `transportStyle`, `hero`, `bestMonths`, `shoulderMonths`, `eventMonths`, `avoidMonths`, `yearRound`, `signatureMoments`, `route`, `chapters`, `pricing`, `agnesRules`, `media`.
+- Cruise journeys additionally expose `cruise.departurePort`, `cruise.returnPort`, `cruise.portsOfCall`, `cruise.destinationRegion`, `cruise.style`, `cruise.ship`, `cruise.cabinClasses`, `cruise.sampleDepartures`.
 
-- [ ] **Step 1: Write failing schema and seed tests**
+- [ ] **Step 1: Write failing schema, seed and filter tests**
 
-Assert:
+Assert unique IDs, all four modes, exactly three signature moments, representative launch IDs across Road/Rail/Sea/Air, `greek-islands-limassol.cruise.departurePort === 'limassol'`, unknown ID returns `null`, and the full departure hub metadata list from the spec is present.
+
+Also pin contextual filters:
 
 ```js
-expect(new Set(JOURNEYS.map((journey) => journey.id)).size).toBe(JOURNEYS.length);
-expect(new Set(JOURNEYS.map((journey) => journey.mode))).toEqual(
-  new Set(['air', 'sea', 'rail', 'road']),
-);
-expect(JOURNEYS.every((journey) => journey.signatureMoments.length === 3)).toBe(true);
-expect(getJourneyById('zagori-metsovo-meteora')).toBeTruthy();
-expect(getJourneyById('greek-islands-limassol')?.cruise?.departurePort).toBe('limassol');
-expect(getJourneyById('missing')).toBeNull();
+expect(filterJourneys(JOURNEYS, { mode: 'rail', transportStyle: 'scenic' }).every(
+  (journey) => journey.mode === 'rail' && journey.transportStyle.includes('scenic'),
+)).toBe(true);
+expect(filterJourneys(JOURNEYS, { mode: 'road', type: 'caravan-road-trip' }).every(
+  (journey) => journey.type === 'caravan-road-trip',
+)).toBe(true);
+expect(filterJourneys(JOURNEYS, { departurePort: 'limassol' }).every(
+  (journey) => journey.cruise?.departurePort === 'limassol',
+)).toBe(true);
 ```
-
-Also pin representative seed IDs across Road, Rail, Sea and Air from the spec, plus the full departure hub metadata list required by the cruise selector.
 
 - [ ] **Step 2: Run the focused test and verify failure**
 
@@ -111,7 +113,7 @@ Expected: FAIL because `journeys-data.js` does not exist.
 
 - [ ] **Step 3: Implement `journeys-data.js`**
 
-Create the reusable journey objects. Reuse the existing Zagori editorial content through a data migration/adapter, not by importing renderer state. Seed enough content for the launch collections to visibly cover all four modes and multiple world regions. Demo pricing/date fields, where present, must carry an explicit `indicative: true` or equivalent disclaimer field.
+Create the reusable journey objects. Reuse the existing Zagori editorial content through a data migration/adapter, not renderer state. Seed enough content for all launch collections to visibly cover all four modes and multiple world regions. Demo pricing/date fields, where present, carry an explicit `indicative: true` or equivalent disclaimer field.
 
 - [ ] **Step 4: Run the focused test and verify pass**
 
@@ -143,17 +145,7 @@ git commit -m "feat(travel): add AGNES World journey catalog"
 
 - [ ] **Step 1: Write failing all-month and year-boundary tests**
 
-Test at least one journey for every month and explicitly pin:
-
-```js
-expect(classifyJourneySeason(summerCruise, 7)).toBe('in-season');
-expect(classifyJourneySeason(summerCruise, 5)).toBe('coming-next');
-expect(classifyJourneySeason(yearRoundJourney, 10)).toBe('year-round');
-expect(classifyJourneySeason(januaryJourney, 12)).toBe('coming-next');
-expect(() => classifyJourneySeason(januaryJourney, 13)).toThrow(RangeError);
-```
-
-Assert ranking order is `in-season` → `coming-next` → `year-round` → `off-season` and stable by editorial priority/title inside the same class.
+Exercise all 12 months and explicitly pin summer in-season, shoulder/coming-next, year-round, December→January wrapping, invalid month rejection, and ranking order `in-season` → `coming-next` → `year-round` → `off-season` with stable editorial priority/title ordering inside a class.
 
 - [ ] **Step 2: Run and verify failure**
 
@@ -191,16 +183,20 @@ git commit -m "feat(travel): add monthly journey seasonality"
 - Produces `applyJourneyStatePatch(state, patch)` with immutable whitelisted updates.
 - Produces `parseJourneyUrl(search, now = new Date())`.
 - Produces `serializeJourneyUrl(state)`.
-- State shape includes:
+- State shape:
 
 ```js
 {
-  view: 'explore' | 'destinations' | 'mode' | 'cruises' | 'journey',
+  view: 'explore' | 'destinations' | 'experiences' | 'about' | 'mode' | 'cruises' | 'journey',
   mode: '' | 'air' | 'sea' | 'rail' | 'road',
   month: 1..12,
   region: '',
   feeling: '',
+  duration: '',
+  transportStyle: '',
   departurePort: '',
+  cruiseDestination: '',
+  cruiseStyle: '',
   journeyId: '',
   detailLayer: null | 'route' | 'day-plan' | 'transport' | 'dates' | 'cabins' | 'agnes' | 'inquiry',
   selectedChapter: '',
@@ -210,22 +206,7 @@ git commit -m "feat(travel): add monthly journey seasonality"
 
 - [ ] **Step 1: Write failing state and URL tests**
 
-Pin default October behavior with an injected date, round-trip serialization, `?view=cruises&port=limassol`, `?mode=sea`, `?journey=greek-islands-limassol`, and invalid state normalisation.
-
-```js
-const state = createJourneyState(new Date('2026-10-12T12:00:00Z'));
-expect(state.month).toBe(10);
-expect(parseJourneyUrl('?view=cruises&port=limassol', fixedDate)).toMatchObject({
-  view: 'cruises',
-  departurePort: 'limassol',
-});
-expect(parseJourneyUrl('?view=nope&month=99', fixedDate)).toMatchObject({
-  view: 'explore',
-  month: 10,
-});
-```
-
-Assert invalid patches cannot corrupt a prior valid mode/month/view.
+Pin default October behavior with injected date, round-trip serialization, `?view=cruises&port=limassol`, `?mode=sea`, `?view=experiences&feeling=romantic`, `?journey=greek-islands-limassol`, and invalid view/month/mode normalisation back to Explore/current month. Assert invalid patches cannot corrupt prior valid state.
 
 - [ ] **Step 2: Run and verify failure**
 
@@ -259,24 +240,20 @@ git commit -m "feat(travel): add AGNES World state and URL routing"
 - Create: `tests/travel-agnes-world.test.mjs`
 
 **Interfaces:**
-- Consumes current journey/catalog/state.
-- Produces `handleJourneyAgnesMessage(message, context) -> { reply, statePatch, focusTarget }`.
-- `context` contains `{ journey, journeys, state }`.
-- Supported first-release intents include: mode discovery, cruises from a departure port, month/season request, rail + mountains, sea + islands, shorter trip, less driving, romantic, family, better stays, rain plan.
+- Produces `handleJourneyAgnesMessage(message, context) -> { reply, statePatch, focusTarget }` with `context = { journey, journeys, state }`.
+- Supported first-release intents: mode discovery, cruises from a departure port, month/season request, rail + mountains, sea + islands, shorter trip, less driving, romantic, family, better stays, rain plan.
 
 - [ ] **Step 1: Write failing intent tests**
 
-Pin these examples:
+Pin:
 
-```js
-'Show cruises from Limassol' -> { view: 'cruises', mode: 'sea', departurePort: 'limassol' }
-'I want mountains by train' -> { view: 'mode', mode: 'rail', feeling: 'mountains' }
-'I want sea and islands in October' -> { view: 'mode', mode: 'sea', month: 10, feeling: 'islands' }
+```text
+Show cruises from Limassol -> cruises / sea / limassol
+I want mountains by train -> mode=rail / feeling=mountains
+I want sea and islands in October -> mode=sea / month=10 / feeling=islands
 ```
 
-Retain the existing journey-personalisation intents for 4-day, less-driving, romantic, family, better-stay and rain requests when a compatible journey is open.
-
-Add an unsupported mixed-language input test proving `statePatch` is `{}`, source state is unchanged, and reply contains a bounded list of supported actions without `live`, `confirmed`, `I booked`, or equivalent claims.
+Retain 4-day, less-driving, romantic, family, better-stay and rain intents when a compatible journey is open. Add unsupported mixed-language input proving `{}` patch, unchanged source state, bounded supported-capabilities reply, and no `live`, `confirmed`, `I booked`, or equivalent claims.
 
 - [ ] **Step 2: Run and verify failure**
 
@@ -286,7 +263,7 @@ Expected: FAIL.
 
 - [ ] **Step 3: Implement `agnes-journey.js`**
 
-Reuse the robust accent/apostrophe normalisation pattern from `agnes-trip.js`. Match only explicit deterministic intent families; do not add network calls.
+Reuse accent/apostrophe normalisation from `agnes-trip.js`. Match only explicit deterministic intent families; do not add network calls.
 
 - [ ] **Step 4: Run and verify pass**
 
@@ -303,7 +280,7 @@ git commit -m "feat(travel): generalize AGNES journey intents"
 
 ---
 
-### Task 5: Render Global Explore and Departure-First Cruises
+### Task 5: Render Global Navigation, Collections and Departure-First Cruises
 
 **Files:**
 - Create: `docs/travel/cinematic-render.js`
@@ -312,57 +289,41 @@ git commit -m "feat(travel): generalize AGNES journey intents"
 - Create: `tests/travel-cruise-render.test.mjs`
 
 **Interfaces:**
-- `cinematic-render.js` produces `renderGlobalHeader(state)`, `renderExploreHome(journeys, state)`, `renderModeCollection(journeys, state)`, `renderJourneyCard(journey, options)`, `renderAgnesWorldDock(state)`.
+- `cinematic-render.js` produces `renderGlobalHeader(state)`, `renderExploreHome(journeys, state)`, `renderDestinationsIndex(journeys, state)`, `renderExperienceCollection(journeys, state)`, `renderModeCollection(journeys, state)`, `renderAboutAgnes()`, `renderJourneyCard(journey, options)`, `renderAgnesWorldDock(state)`.
 - `cruise-render.js` produces `filterCruises(journeys, state)`, `renderCruiseLanding(journeys, state)`, `renderDeparturePortRail(ports, state)`, `renderCruiseCard(journey, state)`.
 - Renderers return HTML strings only and do not mutate `document`.
 
-- [ ] **Step 1: Write failing Explore renderer tests**
+- [ ] **Step 1: Write failing global renderer tests**
 
-Assert `renderExploreHome` contains:
+Assert global header exposes Explore, Destinations, Travel by, Experiences, Cruises, About AGNES, Plan with AGNES. Assert Explore contains `AGNES WORLD`, `See the world differently.`, `By air. By sea. By rail. By road.`, four mode hooks, `Right Now` with injected month, Featured journeys, Europe/Greece/Asia/Africa/Americas/Oceania, and AGNES prompt entry. Assert no `AGNES Live` and no legacy `93 προορισμοί από Λάρνακα` hero copy.
 
-- `AGNES WORLD`;
-- `See the world differently.`;
-- `By air. By sea. By rail. By road.`;
-- four mode entry hooks: `data-mode="air|sea|rail|road"`;
-- `Right Now` plus the injected month label;
-- Featured journeys;
-- regions Europe, Greece, Asia, Africa, Americas, Oceania;
-- AGNES prompt entry;
-- no `AGNES Live` and no legacy `93 προορισμοί από Λάρνακα` hero copy.
+Assert Destinations groups curated journeys by region, Experiences can render at least Romantic/Wild/Slow/Family/Luxury/Hidden/Seasonal, and About AGNES describes the product without claiming a live assistant backend.
 
-- [ ] **Step 2: Write failing cruise renderer tests**
+- [ ] **Step 2: Write failing contextual mode-filter tests**
 
-Assert:
+For Road render month/region/duration plus Road vs Caravan controls. For Rail render month/region/duration plus Scenic/Sleeper/City-to-city. Global discovery supports mode/month/region/feeling. A zero-match filtered collection must contain `data-empty-collection` and reset action.
 
-```js
-expect(html.indexOf('data-cruise-filter="departure-port"')).toBeLessThan(
-  html.indexOf('data-cruise-filter="month"'),
-);
-expect(html).toContain('data-departure-port="limassol"');
-expect(html).toContain('In Season Now');
-expect(html).toContain('Coming Next');
-expect(html).toContain('Year-Round');
-```
+- [ ] **Step 3: Write failing cruise renderer tests**
 
-For a synthetic unmatched port, assert a non-empty `data-empty-cruise-state` plus a reset/other-port action instead of an empty grid.
+Assert `departure-port` filter appears before month, Limassol is a departure hook, cruise filters include departure port/month/destination region/style/duration, and collections include In Season Now / Coming Next / Year-Round. For a synthetic unmatched port, assert non-empty `data-empty-cruise-state` plus reset/other-port action.
 
-- [ ] **Step 3: Run renderer tests and verify failure**
+- [ ] **Step 4: Run renderer tests and verify failure**
 
 Run: `npx vitest run tests/travel-cinematic-render.test.mjs tests/travel-cruise-render.test.mjs`
 
 Expected: FAIL.
 
-- [ ] **Step 4: Implement the Explore and cruise discovery renderers**
+- [ ] **Step 5: Implement discovery renderers**
 
-Use `seasonality.js` for collection ordering. Cruise cards must say `From Limassol`/other port where relevant but must not claim live availability. Every media wrapper includes a stable fallback hook.
+Use `seasonality.js` for monthly ordering and `filterJourneys` for contextual filters. Cruise cards may say `From Limassol`/other port but never claim live availability. Every media wrapper gets a stable fallback hook.
 
-- [ ] **Step 5: Run tests and verify pass**
+- [ ] **Step 6: Run tests and verify pass**
 
 Run: `npx vitest run tests/travel-cinematic-render.test.mjs tests/travel-cruise-render.test.mjs`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add docs/travel/cinematic-render.js docs/travel/cruise-render.js tests/travel-cinematic-render.test.mjs tests/travel-cruise-render.test.mjs
@@ -387,11 +348,11 @@ git commit -m "feat(travel): render AGNES World discovery and cruises"
 
 - [ ] **Step 1: Add failing generic journey-detail tests**
 
-Assert section order: hero < signature moments < route < chapters < AGNES < inquiry. Assert exactly three signature moment elements. Assert departure and return chapters when the journey contract marks them applicable. Assert missing hero media preserves title/copy and emits `data-image-fallback="true"`.
+Assert section order hero < signature moments < route < chapters < AGNES < inquiry, exactly three signature moments, departure and return when applicable, mode-specific transport summary for Air/Rail/Road/Sea, and missing hero media fallback with title/copy intact.
 
 - [ ] **Step 2: Add failing cruise-detail tests**
 
-For `greek-islands-limassol`, assert hero metadata includes `From Limassol`, route/ports, ship overview, optional cabin/sample departure fragments marked demo/indicative, `Plan with AGNES` or `Request availability`, and **does not** contain `Pay now`, `Best price guarantee`, `24/7 support`, or `confirmed availability`.
+For `greek-islands-limassol`, assert `From Limassol`, route/ports, ship overview, optional cabin/sample departure fragments marked demo/indicative, `Plan with AGNES` or `Request availability`, and absence of `Pay now`, `Best price guarantee`, `24/7 support`, `free cancellation`, or `confirmed availability`.
 
 - [ ] **Step 3: Run and verify failure**
 
@@ -427,12 +388,12 @@ git commit -m "feat(travel): add reusable cinematic journey detail"
 - Create: `tests/travel-world-assets.test.mjs`
 
 **Interfaces:**
-- Every `media.*` path rendered in the launch collection is a relative local file or an intentional empty fallback.
-- Every local editorial image has an entry in `credits.json` with `{ creator, license, sourceUrl, sourceLabel, useNote }`.
+- Every rendered non-empty `media.*` path is a relative local file under `assets/world/` or retained `assets/zagori/`.
+- Every local editorial image has provenance metadata `{ creator, license, sourceUrl, sourceLabel, useNote }`.
 
 - [ ] **Step 1: Write failing asset/provenance tests**
 
-Collect every rendered non-empty media path from `JOURNEYS`; assert it is local under `assets/world/` or the retained `assets/zagori/`, exists on disk, is non-trivial in size, and has matching provenance metadata. Allow explicitly generated/internal imagery to use a source label such as `AGNES generated editorial asset` with a provenance note rather than a Creative Commons claim.
+Collect all non-empty media references, assert local existence/non-trivial size and matching provenance. Explicitly generated/internal imagery may use `AGNES generated editorial asset` plus provenance note rather than a Creative Commons claim.
 
 - [ ] **Step 2: Run and verify failure**
 
@@ -442,11 +403,11 @@ Expected: FAIL until launch imagery exists.
 
 - [ ] **Step 3: Curate/download and store representative media**
 
-Acquire destination-specific editorial imagery from sources with clear permitted reuse, store local derivatives, and preserve exact source/license metadata. Do not use an image as evidence for a specific commercial cabin/hotel/ship unless the data is verified as that exact product.
+Use destination-specific editorial imagery with clear permitted reuse, local derivatives, and exact source/license metadata. Do not use imagery as evidence for a specific commercial cabin/hotel/ship unless verified as that exact product.
 
 - [ ] **Step 4: Update journey media references and credits**
 
-Keep the launch asset set intentionally limited: one strong hero plus reused/appropriate scene media per journey is sufficient; do not bloat the repository with an exhaustive catalog.
+Keep launch media intentionally limited: strong hero + reusable appropriate scene media per journey; avoid an exhaustive asset catalog.
 
 - [ ] **Step 5: Run and verify pass**
 
@@ -473,17 +434,14 @@ git commit -m "feat(travel): add licensed AGNES World media"
 
 **Interfaces:**
 - `app.js` owns current state, URL synchronisation, DOM mounting and event wiring only.
-- Pure ranking/state/render/AGNES logic stays in modules from Tasks 1–6.
-- `popstate` reconstructs from `window.location.search`.
-- Navigation clicks use `history.pushState` and rerender without server routes.
+- Pure ranking/state/render/AGNES logic stays in Tasks 1–6 modules.
+- `popstate` reconstructs from `window.location.search`; navigation uses `history.pushState` without server routes.
 
 - [ ] **Step 1: Write failing app integration tests**
 
-Source-level and pure integration checks must pin imports for `journeys-data.js`, `seasonality.js`, `journey-state.js`, `agnes-journey.js`, `cinematic-render.js`, `cruise-render.js`; URL handling for `?view=cruises&port=limassol` and `?journey=...`; journey/mode/port event hooks; and image fallback wiring.
+Pin imports for all new modules; URL handling for Explore, Destinations, Experiences, About, `?view=cruises&port=limassol`, mode collections and `?journey=...`; journey/mode/region/feeling/port/filter event hooks; operational-layer close/back; AGNES form/actions; image fallback wiring.
 
-Add an unknown journey-id test at the orchestration helper level: it must render/return Explore with a clear `Journey not found`/equivalent message, not throw.
-
-Update old regression assertions so they no longer require the legacy dashboard views to be visible. Keep `travel-ranking.test.mjs` unchanged to prove the retained ranking utility still works.
+Add unknown journey ID orchestration test: return Explore with clear not-found message, not throw. Update old app regression assertions so they do not require legacy dashboard views; keep `travel-ranking.test.mjs` unchanged.
 
 - [ ] **Step 2: Run and verify failure**
 
@@ -491,13 +449,13 @@ Run: `npx vitest run tests/travel-world-integration.test.mjs tests/travel-app-re
 
 Expected: FAIL until `app.js` is migrated.
 
-- [ ] **Step 3: Rewrite `app.js` as the orchestration layer**
+- [ ] **Step 3: Rewrite `app.js` as orchestration layer**
 
-Remove the legacy home/dashboard as the default visible experience. Initial mount uses parsed URL state + browser month. Wire global nav, mode entries, journey cards, cruise filters/ports, operational layers, AGNES actions/form, back/close actions, and `popstate`.
+Remove legacy dashboard as default visible experience. Initial mount uses parsed URL state + browser month. Wire full global nav, Travel by menu, experience collections, mode/contextual filters, cruise ports/filters, journey cards, operational layers, AGNES, back/close actions and `popstate`.
 
 - [ ] **Step 4: Update `index.html`**
 
-Use English/global brand metadata, replace the hard-coded legacy button nav with a minimal shell that the cinematic renderer can own, include `cinematic.css`, retain the module entry point, and set the theme color to the dark AGNES foundation.
+Use global AGNES metadata, replace hard-coded legacy nav with a minimal shell the cinematic renderer owns, include `cinematic.css`, retain module entry point, and use dark theme color.
 
 - [ ] **Step 5: Run integration tests and verify pass**
 
@@ -522,23 +480,14 @@ git commit -m "feat(travel): integrate AGNES World navigation"
 - Create: `tests/travel-cinematic-styles.test.mjs`
 
 **Interfaces:**
-- `cinematic.css` owns all `.agnes-world-*`, `.journey-*`, `.cruise-*`, `.agnes-dock-*`, and operational-layer styling.
-- `styles.css` may retain compatibility styles but must not override the visible AGNES World dark tokens.
+- `cinematic.css` owns all `.agnes-world-*`, `.journey-*`, `.cruise-*`, `.agnes-dock-*`, collection/filter and operational-layer styling.
+- `styles.css` may retain compatibility styles but cannot override visible AGNES World dark tokens.
 
 - [ ] **Step 1: Write failing design-system tests**
 
-Assert CSS contains tokens/selectors for dark foundation, cream/gold accents, editorial display typography, full-bleed hero, cinematic card overlays, journey chapters, cruise landing, departure rail, AGNES dock, operational layer, visible `:focus-visible`, mobile safe-area padding and image fallbacks.
+Assert dark foundation, cream/gold accents, editorial display typography, full-bleed hero, cinematic overlays, global navigation, mode/region/experience collections, contextual filter controls, journey chapters, cruise departure rail, AGNES dock, operational layer, visible `:focus-visible`, mobile safe-area padding and image fallbacks.
 
-Assert:
-
-```js
-expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)/);
-expect(css).toMatch(/@media\s*\(max-width:\s*900px\)/);
-expect(css).toMatch(/@media\s*\(max-width:\s*640px\)/);
-expect(css).toContain('env(safe-area-inset-bottom)');
-```
-
-Add a guard that the world shell is not styled with the old `#eef5ff` / blue-purple dashboard background.
+Assert reduced-motion and `900px`/`640px` breakpoints, `env(safe-area-inset-bottom)`, and guard that the world shell does not use the old `#eef5ff` / blue-purple dashboard background.
 
 - [ ] **Step 2: Run and verify failure**
 
@@ -548,13 +497,13 @@ Expected: FAIL because `cinematic.css` does not exist.
 
 - [ ] **Step 3: Implement `cinematic.css`**
 
-Use a unified token layer. Desktop is immersive and wide; mobile uses normal document flow, horizontal collection rails where useful, full-screen/sheet operational detail, and a dock that never covers the final CTA. Reduced-motion disables snap/animated transitions and smooth-scroll assumptions.
+Use one token layer. Desktop is immersive/wide; mobile uses normal document flow, horizontal collection rails where useful, full-screen/sheet operational detail, and AGNES dock spacing that never covers final CTA. Reduced-motion disables snap/animated transitions and smooth-scroll assumptions.
 
 - [ ] **Step 4: Reduce conflicting legacy base styles**
 
-Keep `styles.css` loaded only for compatibility needed by retained legacy utilities. Remove/global-scope rules that force bright backgrounds/header chrome onto AGNES World.
+Keep `styles.css` only for compatibility required by retained utilities. Remove/global-scope rules that force bright backgrounds/header chrome onto AGNES World.
 
-- [ ] **Step 5: Run style tests and focused render tests**
+- [ ] **Step 5: Run style and render tests**
 
 Run: `npx vitest run tests/travel-cinematic-styles.test.mjs tests/travel-cinematic-render.test.mjs tests/travel-cruise-render.test.mjs`
 
@@ -578,9 +527,7 @@ git commit -m "feat(travel): apply AGNES World cinematic design system"
 **Interfaces:**
 - Delivers a branch that passes repository checks and can be merged to `main` for the already-enabled GitHub Pages deployment.
 
-- [ ] **Step 1: Run the complete Travel-focused suite**
-
-Run:
+- [ ] **Step 1: Run complete Travel-focused suite**
 
 ```bash
 npx vitest run tests/travel-journeys-data.test.mjs tests/travel-seasonality.test.mjs tests/travel-journey-state.test.mjs tests/travel-agnes-world.test.mjs tests/travel-cinematic-render.test.mjs tests/travel-cruise-render.test.mjs tests/travel-world-assets.test.mjs tests/travel-world-integration.test.mjs tests/travel-cinematic-styles.test.mjs tests/travel-ranking.test.mjs
@@ -598,53 +545,51 @@ Run: `npm run format:check`
 
 Expected: PASS.
 
-- [ ] **Step 3: Browser QA the deployed-static artifact locally or through the branch preview method available**
+- [ ] **Step 3: Browser QA desktop, tablet and narrow mobile**
 
-Verify these scenarios at desktop, tablet and narrow mobile widths:
-
-1. Explore loads as AGNES World and shows the four travel modes.
-2. `Right Now` matches the browser month and changes with injected/test state.
-3. Cruises opens with `Departing from` first and Limassol can be selected.
-4. A cruise journey opens from card → cinematic detail → route/chapters → operational layer → AGNES → inquiry.
-5. Road, Rail and Air journeys open through the same generic detail architecture.
-6. Back/forward browser navigation reconstructs URL state.
-7. Missing-image fallback remains readable.
-8. Keyboard focus reaches nav, filters, cards, detail close and AGNES controls.
-9. Reduced-motion mode has no mandatory animated/scroll-snap interaction.
-10. No page has accidental horizontal body overflow and AGNES dock does not cover the final inquiry CTA.
+Verify:
+1. Explore loads as AGNES World and shows all four travel modes.
+2. Right Now follows current month.
+3. Destinations, Experiences and About AGNES are complete, dark cinematic screens rather than placeholders.
+4. Road filters expose month/region/duration/road-vs-caravan; Rail exposes month/region/duration/scenic-sleeper-city; empty results recover cleanly.
+5. Cruises opens with Departing from first; Limassol selection works; month/destination/style/duration filters work.
+6. Cruise card → cinematic detail → route/chapters → operational layer → AGNES → inquiry works.
+7. Road/Rail/Air use the same generic detail architecture.
+8. Browser back/forward reconstructs URL state.
+9. Missing-image fallback is readable.
+10. Keyboard reaches nav, filters, cards, overlay close and AGNES.
+11. Reduced-motion has no mandatory animated/snap interaction.
+12. No accidental horizontal body overflow and AGNES dock never covers final inquiry CTA.
 
 - [ ] **Step 4: Run truthfulness copy audit**
-
-Search the visible Travel code for prohibited unsupported claims:
 
 ```bash
 rg -n "AGNES Live|best price guarantee|24/7 support|free cancellation|confirmed availability|Pay now" docs/travel
 ```
 
-Expected: no production-visible unsupported claim; test fixtures may contain negative assertions only.
+Expected: no production-visible unsupported claim; negative test fixtures are allowed.
 
 - [ ] **Step 5: Compare branch scope**
 
-Review `main...feature/agnes-world-redesign` and confirm changes are limited to the approved design spec, implementation plan, Travel frontend, Travel tests, and required media. No unrelated Core changes.
+Review `main...feature/agnes-world-redesign`: changes are limited to approved spec/plan, Travel frontend/tests and required media; no unrelated Core changes.
 
-- [ ] **Step 6: Commit any verification-only fixes**
+- [ ] **Step 6: Commit verification-only fixes if required**
 
 ```bash
 git add docs/travel tests
-# only if fixes were required
 git commit -m "fix(travel): complete AGNES World verification"
 ```
 
-Expected: clean working tree / branch after final verification.
+Only commit if fixes were required.
 
 ---
 
 ## Completion Definition
 
-The implementation is complete only when the user can open one coherent AGNES product and move through this complete flow without encountering the old dashboard aesthetic:
+Complete means one coherent AGNES product, never the old dashboard aesthetic:
 
-**Explore the world → choose Air / Sea / Rail / Road or a seasonal collection → open a curated journey → experience three signature moments and the route → reveal practical detail only when wanted → ask AGNES for deterministic personalisation → reach a truthful inquiry/planning action.**
+**Explore the world → choose Air / Sea / Rail / Road, Destinations, Experiences or seasonal collection → apply mode-appropriate filters → open a curated journey → experience three signature moments and route → reveal practical detail only when wanted → ask AGNES for deterministic personalisation → reach a truthful inquiry/planning action.**
 
-For cruises, the equivalent entry flow is:
+Cruises specifically:
 
-**Cruises → Departing from → Month/season → curated matching journeys → cinematic cruise detail → route/ship/operational detail → AGNES → inquiry.**
+**Cruises → Departing from → Month / destination / style / duration → seasonally ranked journeys → cinematic cruise detail → route / ship / operational detail → AGNES → inquiry.**
