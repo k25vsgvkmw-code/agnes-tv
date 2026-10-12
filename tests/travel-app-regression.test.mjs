@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { URL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const appUrl = new URL('../docs/travel/app.js', import.meta.url);
@@ -19,7 +20,7 @@ describe('Travel app road-trip integration', () => {
     expect(appSource).toContain("from './agnes-trip.js'");
     expect(appSource).toContain("from './road-trip-render.js'");
     expect(appSource).toContain('function mountRoadTrip(');
-    expect(appSource).toContain("data-road-trip-id=\"zagori-autumn\"");
+    expect(appSource).toContain('data-road-trip-id="zagori-autumn"');
   });
 
   it('wires style, day and AGNES controls through trip state', () => {
