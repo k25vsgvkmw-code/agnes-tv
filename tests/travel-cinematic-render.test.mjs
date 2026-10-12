@@ -10,35 +10,47 @@ import {
 const state = createJourneyState(new Date('2026-10-12T12:00:00Z'));
 
 describe('cinematic world renderers', () => {
-  it('renders seasonal V2 Explore without legacy dashboard copy and keeps AGNES available', () => {
+  it('renders the approved autumn editorial homepage reference', () => {
     const html = renderExploreHome(JOURNEYS, state);
     for (const text of [
-      'AGNES WORLD',
-      'October',
-      'Travel when the world is at its best.',
-      'Right Now · October',
-      'Featured journeys',
-      'Europe',
-      'Greece',
-      'Asia',
-      'Africa',
-      'Americas',
-      'Oceania',
+      'ΑΝΑΚΑΛΥΨΕ ΤΟΝ ΚΟΣΜΟ',
+      'Φθινόπωρο',
+      'Ζήσε την ομορφιά της εποχής.',
+      'Καταρράκτες',
+      'Άλπεις',
+      'Road Trips',
+      'Προτεινόμενα ταξίδια',
     ]) {
       expect(html).toContain(text);
     }
-    for (const mode of ['air', 'sea', 'rail', 'road']) {
-      expect(html).toContain(`data-mode="${mode}"`);
+    for (const month of [
+      'Ιαν',
+      'Φεβ',
+      'Μαρ',
+      'Απρ',
+      'Μάι',
+      'Ιουν',
+      'Ιουλ',
+      'Αυγ',
+      'Σεπ',
+      'Οκτ',
+      'Νοε',
+      'Δεκ',
+    ]) {
+      expect(html).toContain(month);
     }
+    expect(html).toContain('class="seasonal-mosaic"');
+    expect(html).toContain('class="seasonal-card seasonal-card-hero"');
+    expect(html).toContain('class="seasonal-card seasonal-card-tall"');
     expect(html).toContain('data-global-search-form');
     expect(html).toContain('data-month-jump="10"');
     expect(html).toContain('class="agnes-dock"');
-    expect(html).toContain('data-agnes-input');
-    expect(html).not.toContain('93 προορισμοί από Λάρνακα');
+    expect(html).not.toContain('Right Now · October');
+    expect(html).not.toContain('Featured journeys');
     expect(html).not.toContain('AGNES Live');
   });
 
-  it('shows twelve choices in each main seasonal collection when content is available', () => {
+  it('shows a dense editorial mosaic plus recommended journeys', () => {
     const sample = Array.from({ length: 14 }, (_, index) => ({
       id: `sample-${index}`,
       mode: ['air', 'sea', 'rail', 'road'][index % 4],
@@ -53,13 +65,12 @@ describe('cinematic world renderers', () => {
       availableMonths: [10],
       yearRound: false,
       feelings: ['seasonal'],
-      hero: { image: '' },
+      hero: { image: 'assets/zagori/vikos-overlook.jpg' },
+      pricing: { indicative: true, label: 'Plan with AGNES' },
     }));
     const html = renderExploreHome(sample, state);
-    const rightNow = html.split('<h2>Right Now · October</h2>')[1].split('</section>')[0];
-    const featured = html.split('<h2>Featured journeys</h2>')[1].split('</section>')[0];
-    expect(rightNow.match(/class="journey-card"/g) ?? []).toHaveLength(12);
-    expect(featured.match(/class="journey-card"/g) ?? []).toHaveLength(12);
+    expect(html.match(/class="seasonal-card /g) ?? []).toHaveLength(10);
+    expect(html.match(/class="recommended-card"/g) ?? []).toHaveLength(5);
   });
 
   it('renders emotional-to-operational journey detail', () => {

@@ -1,0 +1,413 @@
+.agnes-editorial-home {
+  min-height: 100vh;
+  padding: 88px 24px 120px;
+  background: #f5f2ec;
+  color: #15120f;
+}
+
+.agnes-editorial-home .month-rail {
+  width: 96px;
+  padding: 104px 12px 24px;
+  background: rgba(251, 249, 245, 0.94);
+  border-right: 1px solid rgba(30, 24, 18, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.agnes-editorial-home .month-rail::before {
+  content: 'Agnes\A Travel';
+  top: 28px;
+  font-size: 20px;
+  line-height: .88;
+  letter-spacing: -.02em;
+}
+
+.agnes-editorial-home .month-rail button {
+  min-height: 36px;
+  color: #867e76;
+  font-size: 12px;
+}
+
+.agnes-editorial-home .month-rail button.is-active {
+  background: #ad4c27;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(173, 76, 39, .22);
+}
+
+.editorial-season-shell {
+  max-width: 1520px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.editorial-intro {
+  position: sticky;
+  top: 92px;
+  padding: 24px 8px 0 0;
+}
+
+.editorial-kicker,
+.recommended-heading > p {
+  margin: 0;
+  color: #8f7768;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .28em;
+}
+
+.editorial-intro h1 {
+  margin: 16px 0 10px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(54px, 5.3vw, 90px);
+  line-height: .92;
+  letter-spacing: -.055em;
+  font-weight: 500;
+}
+
+.editorial-subtitle {
+  max-width: 260px;
+  margin: 0;
+  color: #6f675f;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.editorial-rule {
+  display: block;
+  width: 56px;
+  height: 2px;
+  margin: 22px 0;
+  background: #ad4c27;
+}
+
+.editorial-search {
+  display: flex;
+  width: 100%;
+  max-width: 300px;
+  padding: 5px;
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(25,20,16,.08);
+  border-radius: 999px;
+  box-shadow: 0 10px 28px rgba(55,37,24,.06);
+  backdrop-filter: blur(14px);
+}
+
+.editorial-search label { flex: 1; }
+.editorial-search input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 9px 12px;
+  color: #1a1714;
+}
+.editorial-search button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: #191613;
+  color: #fff;
+  cursor: pointer;
+}
+
+.seasonal-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.seasonal-filters button {
+  border: 1px solid rgba(35,28,22,.08);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,.64);
+  color: #6c6259;
+  font-size: 11px;
+  cursor: pointer;
+}
+.seasonal-filters button.is-active {
+  background: #171411;
+  color: #fff;
+}
+
+.seasonal-mosaic {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: 132px;
+  gap: 12px;
+}
+
+.seasonal-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 180px;
+  border-radius: 18px;
+  background: #d7d0c7;
+  box-shadow: 0 16px 38px rgba(48,33,22,.11);
+  cursor: pointer;
+  isolation: isolate;
+}
+.seasonal-card-hero { grid-column: 5 / -1; grid-row: 1 / span 3; }
+.seasonal-card-tall { grid-column: 1 / 5; grid-row: 1 / span 4; }
+.seasonal-card-wide { grid-column: 5 / 10; grid-row: 4 / span 2; }
+.seasonal-card-narrow:nth-of-type(4) { grid-column: 10 / 13; grid-row: 4 / span 2; }
+.seasonal-card-narrow:nth-of-type(5) { grid-column: 10 / 13; grid-row: 6 / span 2; }
+.seasonal-card-small:nth-of-type(6) { grid-column: 1 / 4; grid-row: 5 / span 2; }
+.seasonal-card-small:nth-of-type(7) { grid-column: 4 / 7; grid-row: 6 / span 2; }
+.seasonal-card-small:nth-of-type(8) { grid-column: 7 / 10; grid-row: 6 / span 2; }
+.seasonal-card-small:nth-of-type(9) { grid-column: 1 / 4; grid-row: 7 / span 2; }
+.seasonal-card-small:nth-of-type(10) { grid-column: 4 / 7; grid-row: 8 / span 2; }
+
+.seasonal-card-media,
+.seasonal-card-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.seasonal-card-media img {
+  object-fit: cover;
+  filter: saturate(1.02) contrast(1.03);
+  transition: transform .45s ease;
+}
+.seasonal-card:hover .seasonal-card-media img { transform: scale(1.035); }
+.seasonal-card-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(0deg, rgba(8,10,12,.74) 0%, rgba(8,10,12,.15) 52%, rgba(8,10,12,.03) 76%);
+}
+.seasonal-card-tag {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  left: 14px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(18,18,18,.46);
+  color: #fff;
+  font-size: 9px;
+  letter-spacing: .08em;
+  backdrop-filter: blur(10px);
+}
+.seasonal-card-copy {
+  position: absolute;
+  z-index: 2;
+  left: 18px;
+  right: 52px;
+  bottom: 16px;
+  color: #fff;
+}
+.seasonal-card-copy > p {
+  margin: 0 0 5px;
+  color: rgba(255,255,255,.72);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.seasonal-card-copy h3 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(22px, 2.2vw, 36px);
+  line-height: 1;
+  font-weight: 500;
+}
+.seasonal-card-copy > span {
+  display: block;
+  margin-top: 7px;
+  color: rgba(255,255,255,.86);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.seasonal-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 9px;
+  color: rgba(255,255,255,.72);
+}
+.seasonal-card-arrow {
+  position: absolute;
+  z-index: 2;
+  right: 14px;
+  bottom: 14px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.88);
+  color: #1b1714;
+}
+
+.recommended-journeys {
+  max-width: 1520px;
+  margin: 58px auto 0;
+}
+.recommended-heading {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 8px 20px;
+  margin-bottom: 18px;
+}
+.recommended-heading > p { grid-column: 1 / -1; }
+.recommended-heading h2 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(36px, 4vw, 58px);
+  font-weight: 500;
+}
+.recommended-heading button {
+  border: 0;
+  background: transparent;
+  color: #ad4c27;
+  cursor: pointer;
+}
+.recommended-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.recommended-card {
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(255,255,255,.8);
+  box-shadow: 0 12px 32px rgba(54,37,24,.08);
+  cursor: pointer;
+}
+.recommended-card-media {
+  height: 185px;
+  overflow: hidden;
+}
+.recommended-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.recommended-card-copy { padding: 14px; }
+.recommended-card-copy > span {
+  color: #ad4c27;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+.recommended-card-copy h3 {
+  margin: 6px 0 5px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 23px;
+  font-weight: 500;
+}
+.recommended-card-copy p {
+  min-height: 36px;
+  margin: 0;
+  color: #746b63;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.recommended-card-copy div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  color: #665d55;
+}
+
+.agnes-editorial-home .agnes-prompt-band {
+  max-width: 1520px;
+  width: auto;
+  margin: 42px auto 0;
+  background: rgba(255,255,255,.66);
+  border: 1px solid rgba(35,28,22,.07);
+  box-shadow: none;
+  backdrop-filter: blur(14px);
+}
+
+@media (max-width: 1100px) {
+  .agnes-editorial-home { padding: 82px 14px 100px; }
+  .editorial-season-shell { grid-template-columns: 1fr; }
+  .editorial-intro { position: static; padding: 18px 4px 6px; }
+  .editorial-subtitle { max-width: none; }
+  .seasonal-mosaic { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 220px; }
+  .seasonal-card,
+  .seasonal-card-hero,
+  .seasonal-card-tall,
+  .seasonal-card-wide,
+  .seasonal-card-narrow,
+  .seasonal-card-small { grid-column: auto !important; grid-row: auto !important; }
+  .seasonal-card-hero { grid-column: 1 / -1 !important; min-height: 460px; }
+  .seasonal-card-tall { min-height: 360px; }
+  .recommended-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .agnes-world-header nav { display: none; }
+  .agnes-editorial-home { padding: 70px 10px 88px; }
+  .agnes-editorial-home .month-rail {
+    position: sticky;
+    top: 58px;
+    width: auto;
+    height: auto;
+    padding: 7px 8px;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid rgba(35,28,22,.08);
+  }
+  .agnes-editorial-home .month-rail::before { display: none; }
+  .agnes-editorial-home .month-rail button { min-width: 50px; }
+  .editorial-intro h1 { font-size: clamp(50px, 17vw, 74px); }
+  .editorial-search { max-width: none; }
+  .seasonal-mosaic { grid-template-columns: 1fr; grid-auto-rows: auto; gap: 10px; }
+  .seasonal-card,
+  .seasonal-card-hero,
+  .seasonal-card-tall,
+  .seasonal-card-wide,
+  .seasonal-card-narrow,
+  .seasonal-card-small {
+    grid-column: 1 !important;
+    min-height: 390px;
+  }
+  .seasonal-card-hero { min-height: 510px; }
+  .seasonal-card-copy h3 { font-size: 34px; }
+  .recommended-heading { grid-template-columns: 1fr; }
+  .recommended-grid { grid-template-columns: 1fr; }
+  .recommended-card-media { height: 280px; }
+  .agnes-editorial-home .agnes-dock {
+    left: auto;
+    right: 12px;
+    bottom: 12px;
+    width: 58px;
+    height: 58px;
+    min-height: 58px;
+    padding: 0;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+  .agnes-editorial-home .agnes-dock .agnes-dock-head {
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .agnes-editorial-home .agnes-dock .agnes-dock-head > div,
+  .agnes-editorial-home .agnes-dock .agnes-history,
+  .agnes-editorial-home .agnes-dock .agnes-actions,
+  .agnes-editorial-home .agnes-dock form { display: none; }
+  .agnes-editorial-home .agnes-dock.is-expanded {
+    width: min(420px, calc(100% - 24px));
+    height: auto;
+    min-height: 0;
+    padding: 14px;
+    border-radius: 20px;
+  }
+  .agnes-editorial-home .agnes-dock.is-expanded .agnes-dock-head > div,
+  .agnes-editorial-home .agnes-dock.is-expanded .agnes-history,
+  .agnes-editorial-home .agnes-dock.is-expanded .agnes-actions,
+  .agnes-editorial-home .agnes-dock.is-expanded form { display: flex; }
+}

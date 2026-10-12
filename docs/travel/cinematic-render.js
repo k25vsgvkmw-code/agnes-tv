@@ -4,10 +4,7 @@ import { getSeasonalCollections } from './seasonality.js';
 import { renderJourneyMap } from './map-render.js';
 import { resolveTravelImage } from './journey-photo-resolver.js';
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+const MONTHS_GREEK = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -63,38 +60,86 @@ export function renderAgnesWorldDock(state) {
 }
 
 function renderMonthlyRail(state) {
-  return `<aside class="month-rail" aria-label="Explore by month">${MONTHS.map(
+  return `<aside class="month-rail" aria-label="Explore by month">${MONTHS_GREEK.map(
     (month, index) =>
-      `<button type="button" data-month-jump="${index + 1}" class="${state.month === index + 1 ? 'is-active' : ''}">${month.slice(0, 3)}</button>`,
+      `<button type="button" data-month-jump="${index + 1}" class="${state.month === index + 1 ? 'is-active' : ''}">${month}</button>`,
   ).join('')}</aside>`;
+}
+
+function seasonCopy(month) {
+  if ([12, 1, 2].includes(month)) return ['Χειμώνας', 'Ζήσε τη σιωπή, το χιόνι και το βόρειο φως.'];
+  if ([3, 4, 5].includes(month)) return ['Άνοιξη', 'Ζήσε τον κόσμο όταν ξυπνά ξανά.'];
+  if ([6, 7, 8].includes(month)) return ['Καλοκαίρι', 'Ζήσε το φως, τη θάλασσα και τις μεγάλες μέρες.'];
+  return ['Φθινόπωρο', 'Ζήσε την ομορφιά της εποχής.'];
+}
+
+function uniqueJourneys(items) {
+  const seen = new Set();
+  return items.filter((journey) => {
+    if (!journey?.id || seen.has(journey.id)) return false;
+    seen.add(journey.id);
+    return true;
+  });
+}
+
+function seasonalTag(journey) {
+  if (journey.mode === 'rail') return 'Άλπεις';
+  if (journey.mode === 'road') return 'Road Trip';
+  if (journey.mode === 'sea') return 'Θάλασσα';
+  return 'Απόδραση';
+}
+
+function journeyPriceLabel(journey) {
+  const amount = journey.pricing?.from ?? journey.pricing?.amount;
+  const currency = journey.pricing?.currency ?? '€';
+  return amount ? `Από ${escapeHtml(currency)}${escapeHtml(amount)}` : 'Σχεδίασέ το με AGNES';
+}
+
+function renderSeasonalCard(journey, variant = '') {
+  return `<article class="seasonal-card ${variant}" data-journey-id="${escapeHtml(journey.id)}" tabindex="0">${media(journey.hero?.image, journey.title, 'seasonal-card-media')}<div class="seasonal-card-scrim"></div><span class="seasonal-card-tag">${escapeHtml(seasonalTag(journey))}</span><div class="seasonal-card-copy"><p>${escapeHtml(journey.country || journey.region)}</p><h3>${escapeHtml(journey.title)}</h3><span>${escapeHtml(journey.subtitle)}</span><div class="seasonal-card-meta"><small>${escapeHtml(journey.duration)}</small><small>${journeyPriceLabel(journey)}</small></div></div><span class="seasonal-card-arrow" aria-hidden="true">↗</span></article>`;
+}
+
+function renderRecommendedCard(journey) {
+  return `<article class="recommended-card" data-journey-id="${escapeHtml(journey.id)}" tabindex="0">${media(journey.hero?.image, journey.title, 'recommended-card-media')}<div class="recommended-card-copy"><span>${escapeHtml(seasonalTag(journey))}</span><h3>${escapeHtml(journey.title)}</h3><p>${escapeHtml(journey.subtitle)}</p><div><small>${escapeHtml(journey.duration)}</small><small>${journeyPriceLabel(journey)}</small></div></div></article>`;
 }
 
 export function renderExploreHome(journeys, state) {
   const seasonal = getSeasonalCollections(journeys, state.month);
-  const featured = [...journeys]
-    .sort((a, b) => (b.editorialPriority ?? 0) - (a.editorialPriority ?? 0))
-    .slice(0, 12);
-  const regions = ['Europe', 'Greece', 'Asia', 'Africa', 'Americas', 'Oceania'];
+  const featured = [...journeys].sort(
+    (a, b) => (b.editorialPriority ?? 0) - (a.editorialPriority ?? 0),
+  );
+  const pool = uniqueJourneys([...seasonal.rightNow, ...featured, ...journeys]);
+  const mosaic = pool.slice(0, 10);
+  const recommended = uniqueJourneys([...featured, ...pool]).slice(0, 5);
+  const [seasonTitle, seasonSubtitle] = seasonCopy(state.month);
+  const variants = [
+    'seasonal-card-hero',
+    'seasonal-card-tall',
+    'seasonal-card-wide',
+    'seasonal-card-narrow',
+    'seasonal-card-narrow',
+    'seasonal-card-small',
+    'seasonal-card-small',
+    'seasonal-card-small',
+    'seasonal-card-small',
+    'seasonal-card-small',
+  ];
+
   return `<main class="agnes-world-page agnes-editorial-home" data-view="explore">
  ${renderMonthlyRail(state)}
- <section class="agnes-world-hero">${media(featured[0]?.hero?.image, 'AGNES World', 'agnes-world-hero-media')}<div class="hero-scrim"></div><div class="hero-copy"><p>AGNES WORLD · DISCOVER THE WORLD</p><h1>${MONTHS[state.month - 1]}</h1><h2>Travel when the world is at its best.</h2><form data-global-search-form class="hero-search"><label><span class="sr-only">Search destinations and journeys</span><input data-global-search-input name="q" placeholder="Search destinations, rail, cruises, road trips…"></label><button type="submit">Search</button></form><div class="hero-actions"><button data-agnes-open>Tell AGNES how you want to travel</button><button data-scroll-explore>Explore journeys</button></div></div></section>
- <section class="travel-by" id="explore"><div class="collection-heading"><p>HOW DO YOU WANT TO MOVE?</p><h2>Travel by</h2></div><div class="mode-grid">${[
-   ['air', 'FLY'],
-   ['sea', 'SAIL'],
-   ['rail', 'RIDE THE RAILS'],
-   ['road', 'HIT THE ROAD'],
- ]
-   .map(([mode, label]) => `<button class="mode-tile mode-${mode}" data-mode="${mode}"><span>${label}</span></button>`)
-   .join('')}</div></section>
- ${rail(`Right Now · ${MONTHS[state.month - 1]}`, seasonal.rightNow.slice(0, 12), {
-   kicker: 'WHERE THE WORLD IS AT ITS BEST',
-   seasonLabel: 'IN SEASON',
- })}
- ${rail('Featured journeys', featured, { kicker: 'AGNES PICKS' })}
- <section class="region-collection"><div class="collection-heading"><p>EXPLORE BY REGION</p><h2>The world, edited.</h2></div><div class="region-grid">${regions
-   .map((region) => `<button data-region="${region}">${region}</button>`)
-   .join('')}</div></section>
- <section class="agnes-prompt-band"><div><p>PLAN WITH AGNES</p><h2>Tell me how you want the journey to feel.</h2></div><button data-agnes-open>Ask AGNES →</button></section>
+ <section class="editorial-season-shell" id="explore">
+   <div class="editorial-intro">
+     <p class="editorial-kicker">ΑΝΑΚΑΛΥΨΕ ΤΟΝ ΚΟΣΜΟ</p>
+     <h1>${seasonTitle}</h1>
+     <p class="editorial-subtitle">${seasonSubtitle}</p>
+     <span class="editorial-rule"></span>
+     <form data-global-search-form class="editorial-search"><label><span class="sr-only">Search destinations and journeys</span><input data-global-search-input name="q" placeholder="Αναζήτησε προορισμό…"></label><button type="submit" aria-label="Search">⌕</button></form>
+     <div class="seasonal-filters" aria-label="Seasonal filters"><button type="button" class="is-active">Όλα</button><button type="button">Καταρράκτες</button><button type="button">Άλπεις</button><button type="button">Βόρειο Σέλας</button><button type="button" data-mode="road">Road Trips</button></div>
+   </div>
+   <div class="seasonal-mosaic">${mosaic.map((journey, index) => renderSeasonalCard(journey, variants[index] ?? 'seasonal-card-small')).join('')}</div>
+ </section>
+ <section class="recommended-journeys"><div class="recommended-heading"><p>ΕΠΙΛΟΓΕΣ AGNES</p><h2>Προτεινόμενα ταξίδια</h2><button type="button" data-nav-view="destinations">Όλα τα ταξίδια →</button></div><div class="recommended-grid">${recommended.map(renderRecommendedCard).join('')}</div></section>
+ <section class="agnes-prompt-band"><div><p>PLAN WITH AGNES</p><h2>Πες μου πώς θέλεις να νιώθει το ταξίδι.</h2></div><button data-agnes-open>Ρώτησε την AGNES →</button></section>
  ${renderAgnesWorldDock(state)}
  </main>`;
 }
