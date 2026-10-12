@@ -1,4 +1,4 @@
-/* Approved homepage shell: visually matches the locked reference first. */
+/* Exact approved homepage reference: preserve the locked composition first. */
 .approved-reference-home {
   position: relative;
   min-height: 100vh;
@@ -18,27 +18,61 @@
   display: block;
   width: 100%;
   height: auto;
+  min-height: 56vw;
+  object-fit: contain;
+  background: #f7f4ef;
+}
+
+.approved-reference-stage > img.is-missing {
+  visibility: hidden;
+}
+
+.approved-reference-hotspots-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 .approved-reference-hotspot {
   position: absolute;
   border: 0;
+  padding: 0;
   background: transparent;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .approved-reference-hotspot:focus-visible {
   outline: 3px solid #ad4c27;
   outline-offset: 2px;
+  border-radius: 18px;
 }
 
+body:has(.approved-reference-home) .agnes-world-header,
 .approved-reference-home .agnes-dock {
   display: none !important;
 }
 
+body:has(.approved-reference-home) .agnes-world-shell,
+body:has(.approved-reference-home) #view {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: #f7f4ef;
+}
+
 @media (max-width: 900px) {
+  .approved-reference-home {
+    overflow-x: auto;
+  }
+
   .approved-reference-stage {
-    min-width: 1000px;
-    transform-origin: top left;
+    width: 1000px;
+    max-width: none;
+  }
+
+  .approved-reference-stage > img {
+    min-height: 563px;
   }
 }
