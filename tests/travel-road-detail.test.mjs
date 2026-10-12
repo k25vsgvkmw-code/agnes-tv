@@ -9,6 +9,9 @@ describe('AGNES road journey detail', () => {
   it('renders a road-first editorial story before practical planning', () => {
     const journey = getJourneyById('iceland-ring-road');
     const html = renderRoadDetail(journey, state);
+    const roadAheadIndex = html.indexOf('THE ROAD AHEAD');
+    const routeIndex = html.indexOf('THE ROUTE');
+    const inquiryIndex = html.indexOf('YOUR JOURNEY');
 
     expect(html).toContain('journey-detail is-road');
     expect(html).toContain('ROAD JOURNEY');
@@ -16,12 +19,8 @@ describe('AGNES road journey detail', () => {
     expect(html).toContain('BEST STOPS');
     expect(html).toContain('WHY THIS JOURNEY NOW');
     expect(html).toContain('DRIVING RHYTHM');
-    expect(html.indexOf('THE ROAD AHEAD')).toBeLessThan(
-      html.indexOf('THE ROUTE'),
-    );
-    expect(html.indexOf('THE ROUTE')).toBeLessThan(
-      html.indexOf('YOUR JOURNEY'),
-    );
+    expect(roadAheadIndex).toBeLessThan(routeIndex);
+    expect(routeIndex).toBeLessThan(inquiryIndex);
     expect(html).not.toContain('Book now');
     expect(html).not.toContain('Select vehicle');
   });
