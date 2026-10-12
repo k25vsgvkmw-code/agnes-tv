@@ -9,12 +9,48 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
+function licenseUrlFor(license) {
+  const urls = {
+    'CC BY-SA 4.0': 'https://creativecommons.org/licenses/by-sa/4.0/',
+    'CC BY-SA 3.0': 'https://creativecommons.org/licenses/by-sa/3.0/',
+  };
+  return urls[String(license ?? '').trim()] ?? '';
+}
+
 function mediaMarkup(image, alt, className = '') {
   if (!image) {
     return `<div class="rt-media rt-media-fallback ${className}" data-image-fallback="true" aria-label="${escapeHtml(alt)}"></div>`;
   }
 
   return `<div class="rt-media ${className}" data-image-fallback="false"><img src="${escapeHtml(image)}" alt="${escapeHtml(alt)}" loading="lazy" data-road-trip-image></div>`;
+}
+
+function renderPhotoCredits(mediaCredits = {}) {
+  const entries = Object.entries(mediaCredits).filter(
+    ([, credit]) => credit?.creator && credit?.license && credit?.sourceUrl,
+  );
+  if (!entries.length) return '';
+
+  const items = entries
+    .map(([filename, credit]) => {
+      const licenseUrl = licenseUrlFor(credit.license);
+      const license = licenseUrl
+        ? `<a href="${escapeHtml(licenseUrl)}" target="_blank" rel="noreferrer noopener">${escapeHtml(credit.license)}</a>`
+        : `<span>${escapeHtml(credit.license)}</span>`;
+      const useNote = credit.useNote ? `<small>${escapeHtml(credit.useNote)}</small>` : '';
+
+      return `<li>
+        <strong>${escapeHtml(credit.creator)}</strong>
+        <span>${escapeHtml(filename)} · ${license} · <a href="${escapeHtml(credit.sourceUrl)}" target="_blank" rel="noreferrer noopener">${escapeHtml(credit.sourceLabel || 'Wikimedia Commons')}</a></span>
+        ${useNote}
+      </li>`;
+    })
+    .join('');
+
+  return `<details class="rt-photo-credits" data-photo-credits>
+    <summary>Photo credits &amp; licenses</summary>
+    <ul>${items}</ul>
+  </details>`;
 }
 
 function renderFact(fact, state) {
@@ -143,7 +179,7 @@ function renderItineraryDay(day, state) {
 
 function renderItineraryAdaptation(state) {
   if (state.weatherMode === 'rain') {
-    return `<div class="rt-itinerary-adaptation is-rain"><strong>Rain plan ενεργό</strong><span>Η AGNES κρατάμε ευέλικτα τα viewpoints και μετακινεί τις φωτογραφικές στάσεις στο καλύτερο διαθέσιμο παράθυρο.</span></div>`;
+    return `<div class="rt-itinerary-adaptation is-rain"><strong>Rain plan ενεργό</strong><span>Η AGNES κρατά ευέλικτα τα viewpoints και μετακινεί τις φωτογραφικές στάσεις στο καλύτερο διαθέσιμο παράθυρο.</span></div>`;
   }
   if (state.audience === 'family') {
     return `<div class="rt-itinerary-adaptation"><strong>Family mode</strong><span>Πιο ήπιος ρυθμός, λιγότερες συνεχόμενες στάσεις και πρακτικότερη ροή ημέρας.</span></div>`;
@@ -178,11 +214,13 @@ export function renderBookingSummary(trip, state) {
     )
     .join('');
   const audience = state.audience === 'family' ? 'Family version' : 'Couple version';
+  const photoCredits = renderPhotoCredits(trip.mediaCredits);
 
   return `<section class="rt-section rt-booking" data-road-trip-section="booking" id="booking">
     <div class="rt-booking-copy"><p class="rt-kicker">ΤΟ ΤΑΞΙΔΙ ΣΟΥ</p><h2>Έτοιμο να γίνει πραγματικό.</h2><p>${escapeHtml(audience)} · ${escapeHtml(trip.booking.disclaimer)}</p></div>
     <ul class="rt-booking-list">${items}</ul>
     <div class="rt-booking-total"><span>${escapeHtml(trip.booking.priceLabel)}</span><button type="button" class="rt-primary" data-booking-cta>${escapeHtml(trip.booking.cta)} →</button></div>
+    ${photoCredits}
   </section>`;
 }
 
