@@ -1,0 +1,44 @@
+{
+  "papingo-autumn.jpg": {
+    "creator": "Aneza Palaiou",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:%CE%A0%CE%B1%CF%80%CE%B9%CE%B3%CE%BA%CE%BF_%CE%96%CE%B1%CE%B3%CF%8C%CF%81%CE%B9.jpg",
+    "sourceLabel": "Wikimedia Commons",
+    "useNote": "Local 1280px derivative used editorially with attribution; share-alike terms apply."
+  },
+  "vikos-gorge.jpg": {
+    "creator": "Apostolos Palaskas",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:VikosGorge.jpg",
+    "sourceLabel": "Wikimedia Commons",
+    "useNote": "Local 1280px derivative used editorially with attribution; share-alike terms apply."
+  },
+  "metsovo-autumn.jpg": {
+    "creator": "DimitrisP67 (Dimitrios Patsis)",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Metsovo_Greece.jpg",
+    "sourceLabel": "Wikimedia Commons",
+    "useNote": "Local 1280px derivative used editorially with attribution; share-alike terms apply."
+  },
+  "meteora-morning.jpg": {
+    "creator": "Dennis David Auger",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Meteora_in_the_early_morning_hours.jpg",
+    "sourceLabel": "Wikimedia Commons",
+    "useNote": "Local 1280px derivative used editorially with attribution; share-alike terms apply."
+  },
+  "meteora-sunset.jpg": {
+    "creator": "Dimitris9444",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Meteora_Sunset.jpg",
+    "sourceLabel": "Wikimedia Commons",
+    "useNote": "Local original used editorially with attribution; share-alike terms apply."
+  },
+  "ioannina-autumn.jpg": {
+    "creator": "Philos2000",
+    "license": "CC BY-SA 3.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lake-Ioannina.jpg",
+    "sourceLabel": "Wikimedia Commons",
+    "useNote": "Local Wikimedia derivative used editorially with attribution; share-alike terms apply."
+  }
+}
