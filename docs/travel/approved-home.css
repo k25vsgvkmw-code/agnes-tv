@@ -1,0 +1,44 @@
+/* Approved homepage shell: visually matches the locked reference first. */
+.approved-reference-home {
+  position: relative;
+  min-height: 100vh;
+  background: #f7f4ef;
+  overflow-x: hidden;
+}
+
+.approved-reference-stage {
+  width: 100%;
+  max-width: 1672px;
+  margin: 0 auto;
+  position: relative;
+  background: #f7f4ef;
+}
+
+.approved-reference-stage > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.approved-reference-hotspot {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.approved-reference-hotspot:focus-visible {
+  outline: 3px solid #ad4c27;
+  outline-offset: 2px;
+}
+
+.approved-reference-home .agnes-dock {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .approved-reference-stage {
+    min-width: 1000px;
+    transform-origin: top left;
+  }
+}
