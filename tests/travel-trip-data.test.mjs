@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ZAGORI_TRIP, getRoadTripById } from '../docs/travel/trip-data.js';
 
-const collectImages = (trip) => [
-  trip.hero.image,
-  ...trip.signatureMoments.map((item) => item.image),
-  ...trip.itinerary.flatMap((day) => [day.image, day.stay?.image].filter(Boolean)),
-].filter(Boolean);
+const collectImages = (trip) =>
+  [
+    trip.hero.image,
+    ...trip.signatureMoments.map((item) => item.image),
+    ...trip.itinerary.flatMap((day) => [day.image, day.stay?.image].filter(Boolean)),
+  ].filter(Boolean);
 
 describe('Zagori flagship road trip data', () => {
   it('exposes the approved trip identity and chapter structure', () => {
