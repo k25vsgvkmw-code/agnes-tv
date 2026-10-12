@@ -1,9 +1,9 @@
-const credit = ({ creator, license, sourceUrl }) => ({
+const credit = ({ creator, license, sourceUrl, useNote }) => ({
   creator,
   license,
   sourceUrl,
   sourceLabel: 'Wikimedia Commons',
-  useNote: 'Local editorial copy used with attribution; share-alike terms apply.',
+  useNote,
 });
 
 export const ZAGORI_TRIP = {
@@ -329,32 +329,38 @@ export const ZAGORI_TRIP = {
       license: 'CC BY-SA 4.0',
       sourceUrl:
         'https://commons.wikimedia.org/wiki/File:%CE%A0%CE%B1%CF%80%CE%B9%CE%B3%CE%BA%CE%BF_%CE%96%CE%B1%CE%B3%CF%8C%CF%81%CE%B9.jpg',
+      useNote: 'Local 1280px derivative used editorially with attribution; share-alike terms apply.',
     }),
     'vikos-gorge.jpg': credit({
       creator: 'Apostolos Palaskas',
       license: 'CC BY-SA 4.0',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:VikosGorge.jpg',
+      useNote: 'Local 1280px derivative used editorially with attribution; share-alike terms apply.',
     }),
     'metsovo-autumn.jpg': credit({
       creator: 'DimitrisP67 (Dimitrios Patsis)',
       license: 'CC BY-SA 4.0',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:Metsovo_Greece.jpg',
+      useNote: 'Local 1280px derivative used editorially with attribution; share-alike terms apply.',
     }),
     'meteora-morning.jpg': credit({
       creator: 'Dennis David Auger',
       license: 'CC BY-SA 4.0',
       sourceUrl:
         'https://commons.wikimedia.org/wiki/File:Meteora_in_the_early_morning_hours.jpg',
+      useNote: 'Local 1280px derivative used editorially with attribution; share-alike terms apply.',
     }),
     'meteora-sunset.jpg': credit({
       creator: 'Dimitris9444',
       license: 'CC BY-SA 4.0',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:Meteora_Sunset.jpg',
+      useNote: 'Local original used editorially with attribution; share-alike terms apply.',
     }),
     'ioannina-autumn.jpg': credit({
       creator: 'Philos2000',
       license: 'CC BY-SA 3.0',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:Lake-Ioannina.jpg',
+      useNote: 'Local Wikimedia derivative used editorially with attribution; share-alike terms apply.',
     }),
   },
 };
