@@ -9,18 +9,17 @@ describe('AGNES rail journey detail', () => {
   it('renders a rail-first editorial story before practical planning', () => {
     const journey = getJourneyById('switzerland-grand-rail');
     const html = renderRailDetail(journey, state);
+    const viewIndex = html.indexOf('THE VIEW FROM THE WINDOW');
+    const routeIndex = html.indexOf('THE ROUTE');
+    const inquiryIndex = html.indexOf('YOUR JOURNEY');
 
     expect(html).toContain('journey-detail is-rail');
     expect(html).toContain('RAIL JOURNEY');
     expect(html).toContain('THE VIEW FROM THE WINDOW');
     expect(html).toContain('WHY THIS JOURNEY NOW');
     expect(html).toContain('Slow travel, edited by AGNES.');
-    expect(html.indexOf('THE VIEW FROM THE WINDOW')).toBeLessThan(
-      html.indexOf('THE ROUTE'),
-    );
-    expect(html.indexOf('THE ROUTE')).toBeLessThan(
-      html.indexOf('YOUR JOURNEY'),
-    );
+    expect(viewIndex).toBeLessThan(routeIndex);
+    expect(routeIndex).toBeLessThan(inquiryIndex);
     expect(html).not.toContain('Book now');
     expect(html).not.toContain('Select cabin');
   });
