@@ -27,7 +27,11 @@ describe('journey seasonality', () => {
     const ranked = rankJourneysForMonth(JOURNEYS, 10);
     const classes = ranked.map((journey) => classifyJourneySeason(journey, 10));
     const order = { 'in-season': 0, 'coming-next': 1, 'year-round': 2, 'off-season': 3 };
-    expect(classes.every((value, index) => index === 0 || order[value] >= order[classes[index - 1]])).toBe(true);
+    expect(
+      classes.every(
+        (value, index) => index === 0 || order[value] >= order[classes[index - 1]],
+      ),
+    ).toBe(true);
     expect(getSeasonalCollections(JOURNEYS, 10).rightNow.length).toBeGreaterThan(0);
   });
 });
