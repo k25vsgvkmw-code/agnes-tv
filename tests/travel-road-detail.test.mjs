@@ -16,8 +16,12 @@ describe('AGNES road journey detail', () => {
     expect(html).toContain('BEST STOPS');
     expect(html).toContain('WHY THIS JOURNEY NOW');
     expect(html).toContain('DRIVING RHYTHM');
-    expect(html.indexOf('THE ROAD AHEAD')).toBeLessThan(html.indexOf('THE ROUTE'));
-    expect(html.indexOf('THE ROUTE')).toBeLessThan(html.indexOf('YOUR JOURNEY'));
+    expect(html.indexOf('THE ROAD AHEAD')).toBeLessThan(
+      html.indexOf('THE ROUTE'),
+    );
+    expect(html.indexOf('THE ROUTE')).toBeLessThan(
+      html.indexOf('YOUR JOURNEY'),
+    );
     expect(html).not.toContain('Book now');
     expect(html).not.toContain('Select vehicle');
   });
