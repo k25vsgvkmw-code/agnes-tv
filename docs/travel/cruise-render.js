@@ -1,6 +1,10 @@
 import { filterJourneys } from './journeys-data.js';
 import { classifyJourneySeason, getSeasonalCollections } from './seasonality.js';
-import { renderJourneyCard, renderJourneyDetail } from './cinematic-render.js';
+import {
+  renderAgnesWorldDock,
+  renderJourneyCard,
+  renderJourneyDetail,
+} from './cinematic-render.js';
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -77,7 +81,7 @@ export function renderCruiseLanding(journeys, state, ports = []) {
     'Year-Round',
     seasonal.yearRound,
     'FLEXIBLE',
-  )}${!state.departurePort && filtered.length === 0 ? section('Curated cruises', cruises, 'AGNES PICKS') : ''}</main>`;
+  )}${!state.departurePort && filtered.length === 0 ? section('Curated cruises', cruises, 'AGNES PICKS') : ''}${renderAgnesWorldDock(state)}</main>`;
 }
 
 export function renderCruiseDetail(journey, state) {
