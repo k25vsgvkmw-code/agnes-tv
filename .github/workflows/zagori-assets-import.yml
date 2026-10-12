@@ -28,7 +28,7 @@ jobs:
           curl -L --fail --retry 3 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Metsovo_Greece.jpg/1280px-Metsovo_Greece.jpg' -o docs/travel/assets/zagori/metsovo-autumn.jpg
           curl -L --fail --retry 3 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Meteora_in_the_early_morning_hours.jpg/1280px-Meteora_in_the_early_morning_hours.jpg' -o docs/travel/assets/zagori/meteora-morning.jpg
           curl -L --fail --retry 3 'https://upload.wikimedia.org/wikipedia/commons/4/42/Meteora_Sunset.jpg' -o docs/travel/assets/zagori/meteora-sunset.jpg
-          curl -L --fail --retry 3 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/LAKE_OF_IOANNINA.jpg/1024px-LAKE_OF_IOANNINA.jpg' -o docs/travel/assets/zagori/ioannina-autumn.jpg
+          curl -L --fail --retry 3 'https://commons.wikimedia.org/wiki/Special:Redirect/file/Lake-Ioannina.jpg?width=1280' -o docs/travel/assets/zagori/ioannina-autumn.jpg
           test "$(find docs/travel/assets/zagori -name '*.jpg' -size +20k | wc -l)" -eq 6
       - name: Commit imported assets
         shell: bash
