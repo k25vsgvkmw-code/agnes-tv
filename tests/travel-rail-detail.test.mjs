@@ -18,7 +18,9 @@ describe('AGNES rail journey detail', () => {
     expect(html.indexOf('THE VIEW FROM THE WINDOW')).toBeLessThan(
       html.indexOf('THE ROUTE'),
     );
-    expect(html.indexOf('THE ROUTE')).toBeLessThan(html.indexOf('YOUR JOURNEY'));
+    expect(html.indexOf('THE ROUTE')).toBeLessThan(
+      html.indexOf('YOUR JOURNEY'),
+    );
     expect(html).not.toContain('Book now');
     expect(html).not.toContain('Select cabin');
   });
