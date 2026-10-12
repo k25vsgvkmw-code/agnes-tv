@@ -19,7 +19,9 @@ describe('Zagori flagship road trip data', () => {
     expect(ZAGORI_TRIP.itinerary[0].kind).toBe('departure');
     expect(ZAGORI_TRIP.itinerary.at(-1).kind).toBe('return');
     expect(ZAGORI_TRIP.itinerary).toHaveLength(7);
-    expect(new Set(ZAGORI_TRIP.itinerary.map((day) => day.id)).size).toBe(ZAGORI_TRIP.itinerary.length);
+    expect(new Set(ZAGORI_TRIP.itinerary.map((day) => day.id)).size).toBe(
+      ZAGORI_TRIP.itinerary.length,
+    );
   });
 
   it('contains the content required by the cinematic detail page', () => {
@@ -27,11 +29,20 @@ describe('Zagori flagship road trip data', () => {
     expect(ZAGORI_TRIP.hero.title).toContain('ΖΑΓΟΡΟΧΩΡΙΑ');
     expect(ZAGORI_TRIP.hero.story).toBeTruthy();
     expect(ZAGORI_TRIP.facts.length).toBeGreaterThanOrEqual(5);
-    expect(ZAGORI_TRIP.styles.map((item) => item.id)).toEqual(['classic', 'suv', 'boutique', 'nature']);
+    expect(ZAGORI_TRIP.styles.map((item) => item.id)).toEqual([
+      'classic',
+      'suv',
+      'boutique',
+      'nature',
+    ]);
     expect(ZAGORI_TRIP.route.stops.map((stop) => stop.name)).toEqual(
       expect.arrayContaining(['Ιωάννινα', 'Ζαγοροχώρια', 'Μέτσοβο', 'Μετέωρα']),
     );
-    expect(ZAGORI_TRIP.itinerary.every((day) => Array.isArray(day.timeline) && day.timeline.length > 0)).toBe(true);
+    expect(
+      ZAGORI_TRIP.itinerary.every(
+        (day) => Array.isArray(day.timeline) && day.timeline.length > 0,
+      ),
+    ).toBe(true);
     expect(ZAGORI_TRIP.itinerary.slice(0, -1).some((day) => day.stay)).toBe(true);
     expect(ZAGORI_TRIP.booking.priceLabel).toContain('ενδεικτικά');
     expect(ZAGORI_TRIP.agnes.quickActions).toHaveLength(6);
