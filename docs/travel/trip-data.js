@@ -1,7 +1,9 @@
-const credit = (sourceLabel = 'Wikimedia Commons', useNote = 'Local editorial asset; final source recorded during media curation.') => ({
-  sourceUrl: 'https://commons.wikimedia.org/',
-  sourceLabel,
-  useNote,
+const credit = ({ creator, license, sourceUrl }) => ({
+  creator,
+  license,
+  sourceUrl,
+  sourceLabel: 'Wikimedia Commons',
+  useNote: 'Local editorial copy used with attribution; share-alike terms apply.',
 });
 
 export const ZAGORI_TRIP = {
@@ -15,14 +17,19 @@ export const ZAGORI_TRIP = {
     eyebrow: 'ΕΛΛΑΔΑ · ΗΠΕΙΡΟΣ',
     title: 'ΖΑΓΟΡΟΧΩΡΙΑ · ΦΘΙΝΟΠΩΡΟ',
     story: 'Πέτρινα χωριά. Δρόμοι στο βουνό. Ομίχλη πάνω από το φαράγγι.',
-    image: 'assets/zagori/hero-zagori.jpg',
+    image: 'assets/zagori/papingo-autumn.jpg',
     cta: 'ΖΗΣΕ ΑΥΤΟ ΤΟ ROAD TRIP →',
   },
   facts: [
     { icon: '🍂', label: 'Καλύτερη περίοδος', value: 'Οκτ – Νοε', qualifier: 'ενδεικτικά' },
     { icon: '🌡️', label: 'Θερμοκρασία', value: '7–18°C', qualifier: 'εποχικό εύρος' },
     { icon: '🚗', label: 'Διάρκεια', value: '5 νύχτες', qualifier: 'self-drive' },
-    { icon: '✈️', label: 'Πρόσβαση', value: 'Λάρνακα → Ιωάννινα', qualifier: 'μέσω Αθήνας ή εναλλακτικά Θεσσαλονίκη' },
+    {
+      icon: '✈️',
+      label: 'Πρόσβαση',
+      value: 'Λάρνακα → Ιωάννινα',
+      qualifier: 'μέσω Αθήνας ή εναλλακτικά Θεσσαλονίκη',
+    },
     { icon: '💶', label: 'Από', value: '€1.890 / ζευγάρι', qualifier: 'ενδεικτική τιμή' },
   ],
   signatureMoments: [
@@ -38,20 +45,25 @@ export const ZAGORI_TRIP = {
       label: 'ΠΟΥ ΘΑ ΟΔΗΓΗΣΕΙΣ',
       title: 'Ζαγόρι → Μέτσοβο',
       copy: 'Ορεινές στροφές, πέτρινα γεφύρια και δάση σε φθινοπωρινό χρώμα.',
-      image: 'assets/zagori/zagori-metsovo-road.jpg',
+      image: 'assets/zagori/metsovo-autumn.jpg',
     },
     {
       id: 'meteora-light',
       label: 'Η ΣΤΙΓΜΗ ΠΟΥ ΑΞΙΖΕΙ',
       title: 'Πρωινή ομίχλη στα Μετέωρα',
       copy: 'Το φως αλλάζει τον τόπο μέσα σε λίγα λεπτά.',
-      image: 'assets/zagori/meteora-mist.jpg',
+      image: 'assets/zagori/meteora-morning.jpg',
     },
   ],
   styles: [
     { id: 'classic', title: 'Classic Drive', subtitle: 'Άνετο & ευέλικτο', icon: '🚗' },
     { id: 'suv', title: 'SUV Adventure', subtitle: 'Για περισσότερη ελευθερία', icon: '🚙' },
-    { id: 'boutique', title: 'Boutique Stays', subtitle: 'Επιλεγμένα πετρόχτιστα καταλύματα', icon: '🛏️' },
+    {
+      id: 'boutique',
+      title: 'Boutique Stays',
+      subtitle: 'Επιλεγμένα πετρόχτιστα καταλύματα',
+      icon: '🛏️',
+    },
     { id: 'nature', title: 'Nature Escape', subtitle: 'Πιο κοντά στη φύση', icon: '🌲' },
   ],
   route: {
@@ -73,11 +85,16 @@ export const ZAGORI_TRIP = {
       dayLabel: 'ΑΝΑΧΩΡΗΣΗ',
       title: 'Το ταξίδι ξεκινά',
       location: 'Λάρνακα → Ιωάννινα',
-      narrative: 'Πρωινή αναχώρηση και άφιξη στην Ήπειρο. Παραλαμβάνεις το αυτοκίνητο και μπαίνεις αμέσως στον ρυθμό του road trip.',
-      image: 'assets/zagori/departure-larnaca.jpg',
+      narrative:
+        'Πρωινή αναχώρηση και άφιξη στην Ήπειρο. Παραλαμβάνεις το αυτοκίνητο και μπαίνεις αμέσως στον ρυθμό του road trip.',
+      image: 'assets/zagori/ioannina-autumn.jpg',
       driving: { distanceKm: 8, duration: '20 λεπτά από το αεροδρόμιο' },
       timeline: [
-        { time: '06:00', title: 'Αναχώρηση από Λάρνακα', note: 'Πτήση προς Αθήνα / Ιωάννινα · ενδεικτικό πρόγραμμα' },
+        {
+          time: '06:00',
+          title: 'Αναχώρηση από Λάρνακα',
+          note: 'Πτήση προς Αθήνα / Ιωάννινα · ενδεικτικό πρόγραμμα',
+        },
         { time: '11:30', title: 'Άφιξη στα Ιωάννινα', note: 'Παραλαβή αυτοκινήτου' },
         { time: '13:00', title: 'Πρώτη βόλτα στη λίμνη', note: 'Καφές και ήρεμη αρχή' },
         { time: '16:00', title: 'Check-in', note: 'Παλιά πόλη Ιωαννίνων' },
@@ -86,9 +103,10 @@ export const ZAGORI_TRIP = {
       stay: {
         title: 'Παραδοσιακό αρχοντικό · Ιωάννινα',
         detail: 'Κοντά στην παλιά πόλη · πρωινό · parking',
-        image: 'assets/zagori/stay-ioannina.jpg',
+        image: 'assets/zagori/ioannina-autumn.jpg',
       },
-      agnes: 'Κράτησα την πρώτη μέρα ελαφριά για να μη μετατρέψουμε την άφιξη σε αγώνα δρόμου.',
+      agnes:
+        'Κράτησα την πρώτη μέρα ελαφριά για να μη μετατρέψουμε την άφιξη σε αγώνα δρόμου.',
     },
     {
       id: 'day-1',
@@ -97,22 +115,32 @@ export const ZAGORI_TRIP = {
       dayLabel: 'ΗΜΕΡΑ 1',
       title: 'Ιωάννινα → Ζαγοροχώρια',
       location: 'Κήποι · Μονοδένδρι',
-      narrative: 'Αφήνεις τη λίμνη πίσω και ανεβαίνεις στα πέτρινα χωριά. Η μέρα κινείται ανάμεσα σε γεφύρια, καλντερίμια και πρώτες θέες προς τον Βίκο.',
-      image: 'assets/zagori/day1-zagori.jpg',
+      narrative:
+        'Αφήνεις τη λίμνη πίσω και ανεβαίνεις στα πέτρινα χωριά. Η μέρα κινείται ανάμεσα σε γεφύρια, καλντερίμια και πρώτες θέες προς τον Βίκο.',
+      image: 'assets/zagori/papingo-autumn.jpg',
       driving: { distanceKm: 55, duration: '1ω 20λ οδήγηση' },
       timeline: [
         { time: '09:00', title: 'Αναχώρηση από Ιωάννινα', note: 'Ήπιος ρυθμός προς Κήπους' },
-        { time: '10:30', title: 'Πέτρινα γεφύρια', note: 'Σύντομες στάσεις για περπάτημα και φωτογραφίες' },
+        {
+          time: '10:30',
+          title: 'Πέτρινα γεφύρια',
+          note: 'Σύντομες στάσεις για περπάτημα και φωτογραφίες',
+        },
         { time: '13:00', title: 'Γεύμα στο Ζαγόρι', note: 'Τοπικές πίτες και εποχικές γεύσεις' },
-        { time: '16:30', title: 'Μονοδένδρι', note: 'Απογευματινή βόλτα πριν το φως χαμηλώσει' },
+        {
+          time: '16:30',
+          title: 'Μονοδένδρι',
+          note: 'Απογευματινή βόλτα πριν το φως χαμηλώσει',
+        },
       ],
       signature: 'Golden hour πάνω από τα πέτρινα χωριά',
       stay: {
         title: 'Stone guesthouse · Μονοδένδρι',
         detail: 'Τζάκι · τοπικό πρωινό · θέα στο βουνό',
-        image: 'assets/zagori/stay-zagori.jpg',
+        image: 'assets/zagori/papingo-autumn.jpg',
       },
-      agnes: 'Αν το φως είναι καθαρό, θα σου προτείνω viewpoint πριν το check-in. Αν έχει ομίχλη, κρατάμε τα γεφύρια για πιο ατμοσφαιρικές εικόνες.',
+      agnes:
+        'Αν το φως είναι καθαρό, θα σου προτείνω viewpoint πριν το check-in. Αν έχει ομίχλη, κρατάμε τα γεφύρια για πιο ατμοσφαιρικές εικόνες.',
     },
     {
       id: 'day-2',
@@ -121,8 +149,9 @@ export const ZAGORI_TRIP = {
       dayLabel: 'ΗΜΕΡΑ 2',
       title: 'Βίκος · Πάπιγκο · Αρίστη',
       location: 'Καρδιά του Ζαγορίου',
-      narrative: 'Η μεγάλη ημέρα του Ζαγορίου. Θέα στο φαράγγι, αργή οδήγηση ανάμεσα στα χωριά και χρόνος για να σταματήσεις όπου σε τραβάει το τοπίο.',
-      image: 'assets/zagori/day2-vikos.jpg',
+      narrative:
+        'Η μεγάλη ημέρα του Ζαγορίου. Θέα στο φαράγγι, αργή οδήγηση ανάμεσα στα χωριά και χρόνος για να σταματήσεις όπου σε τραβάει το τοπίο.',
+      image: 'assets/zagori/vikos-gorge.jpg',
       driving: { distanceKm: 78, duration: '2ω 10λ συνολικά' },
       timeline: [
         { time: '08:00', title: 'Πρωινό viewpoint', note: 'Πριν αυξηθεί η κίνηση' },
@@ -134,9 +163,10 @@ export const ZAGORI_TRIP = {
       stay: {
         title: 'Mountain hideaway · Πάπιγκο',
         detail: 'Ήσυχο δωμάτιο · πέτρα & ξύλο · mountain breakfast',
-        image: 'assets/zagori/stay-papigo.jpg',
+        image: 'assets/zagori/papingo-autumn.jpg',
       },
-      agnes: 'Αν θέλεις λιγότερη οδήγηση, μπορώ να αφαιρέσω μία από τις δύο απογευματινές στάσεις χωρίς να χάσεις τον Βίκο.',
+      agnes:
+        'Αν θέλεις λιγότερη οδήγηση, μπορώ να αφαιρέσω μία από τις δύο απογευματινές στάσεις χωρίς να χάσεις τον Βίκο.',
     },
     {
       id: 'day-3',
@@ -145,22 +175,28 @@ export const ZAGORI_TRIP = {
       dayLabel: 'ΗΜΕΡΑ 3',
       title: 'Ζαγόρι → Μέτσοβο',
       location: 'Ορεινή διαδρομή',
-      narrative: 'Αυτό είναι το κομμάτι όπου το αυτοκίνητο γίνεται μέρος της εμπειρίας. Δάση, στροφές και μικρές στάσεις πριν φτάσεις στο Μέτσοβο.',
-      image: 'assets/zagori/day3-metsovo-road.jpg',
+      narrative:
+        'Αυτό είναι το κομμάτι όπου το αυτοκίνητο γίνεται μέρος της εμπειρίας. Δάση, στροφές και μικρές στάσεις πριν φτάσεις στο Μέτσοβο.',
+      image: 'assets/zagori/metsovo-autumn.jpg',
       driving: { distanceKm: 115, duration: '2ω 30λ οδήγηση' },
       timeline: [
         { time: '09:00', title: 'Αναχώρηση από Πάπιγκο', note: 'Χωρίς βιασύνη' },
         { time: '10:30', title: 'Scenic forest stop', note: 'Καφές και φωτογραφίες' },
         { time: '13:30', title: 'Άφιξη στο Μέτσοβο', note: 'Γεύμα στο χωριό' },
-        { time: '17:00', title: 'Απογευματινή βόλτα', note: 'Πέτρινα σοκάκια και τοπικά προϊόντα' },
+        {
+          time: '17:00',
+          title: 'Απογευματινή βόλτα',
+          note: 'Πέτρινα σοκάκια και τοπικά προϊόντα',
+        },
       ],
       signature: 'Η ίδια η διαδρομή Ζαγόρι → Μέτσοβο',
       stay: {
         title: 'Boutique mountain hotel · Μέτσοβο',
         detail: 'Θέα στις πλαγιές · πρωινό · fireplace lounge',
-        image: 'assets/zagori/stay-metsovo.jpg',
+        image: 'assets/zagori/metsovo-autumn.jpg',
       },
-      agnes: 'Σήμερα δεν θα γεμίσω τη μέρα με αξιοθέατα. Η ορεινή διαδρομή είναι το αξιοθέατο.',
+      agnes:
+        'Σήμερα δεν θα γεμίσω τη μέρα με αξιοθέατα. Η ορεινή διαδρομή είναι το αξιοθέατο.',
     },
     {
       id: 'day-4',
@@ -169,22 +205,36 @@ export const ZAGORI_TRIP = {
       dayLabel: 'ΗΜΕΡΑ 4',
       title: 'Μέτσοβο → Μετέωρα',
       location: 'Καλαμπάκα · Καστράκι',
-      narrative: 'Από την Πίνδο στους βράχους των Μετεώρων. Η μέρα κορυφώνεται λίγο πριν τη δύση, όταν οι βράχοι αποκτούν χρώμα.',
-      image: 'assets/zagori/day4-meteora.jpg',
+      narrative:
+        'Από την Πίνδο στους βράχους των Μετεώρων. Η μέρα κορυφώνεται λίγο πριν τη δύση, όταν οι βράχοι αποκτούν χρώμα.',
+      image: 'assets/zagori/meteora-sunset.jpg',
       driving: { distanceKm: 70, duration: '1ω 20λ οδήγηση' },
       timeline: [
-        { time: '09:30', title: 'Αναχώρηση από Μέτσοβο', note: 'Σύντομη και ξεκούραστη μετακίνηση' },
+        {
+          time: '09:30',
+          title: 'Αναχώρηση από Μέτσοβο',
+          note: 'Σύντομη και ξεκούραστη μετακίνηση',
+        },
         { time: '11:30', title: 'Άφιξη στα Μετέωρα', note: 'Check-in / καφές' },
-        { time: '14:30', title: 'Μοναστήρια & viewpoints', note: 'Επιλογή ανάλογα με ωράρια' },
-        { time: '17:30', title: 'Golden hour', note: 'Χρονικό παράθυρο ενδεικτικό ανά ημερομηνία' },
+        {
+          time: '14:30',
+          title: 'Μοναστήρια & viewpoints',
+          note: 'Επιλογή ανάλογα με ωράρια',
+        },
+        {
+          time: '17:30',
+          title: 'Golden hour',
+          note: 'Χρονικό παράθυρο ενδεικτικό ανά ημερομηνία',
+        },
       ],
       signature: 'Golden light στους βράχους',
       stay: {
         title: 'View stay · Καστράκι',
         detail: 'Θέα στους βράχους · ήσυχη τοποθεσία · parking',
-        image: 'assets/zagori/stay-meteora.jpg',
+        image: 'assets/zagori/meteora-sunset.jpg',
       },
-      agnes: 'Αν ο ορίζοντας είναι καθαρός, κρατάμε το sunset σήμερα. Αν όχι, μεταφέρω την καλύτερη φωτογραφική στιγμή στο αυριανό πρωινό.',
+      agnes:
+        'Αν ο ορίζοντας είναι καθαρός, κρατάμε το sunset σήμερα. Αν όχι, μεταφέρω την καλύτερη φωτογραφική στιγμή στο αυριανό πρωινό.',
     },
     {
       id: 'day-5',
@@ -193,12 +243,21 @@ export const ZAGORI_TRIP = {
       dayLabel: 'ΗΜΕΡΑ 5',
       title: 'Μετέωρα · flexible scenic day',
       location: 'Μετέωρα και επιστροφή προς gateway',
-      narrative: 'Μια εσκεμμένα ευέλικτη μέρα. Αν έχει ομίχλη, κυνηγάς την ατμόσφαιρα. Αν ανοίξει ο ουρανός, κρατάς τα μεγάλα viewpoints και ξεκινάς την επιστροφή χωρίς πίεση.',
-      image: 'assets/zagori/day5-meteora-morning.jpg',
+      narrative:
+        'Μια εσκεμμένα ευέλικτη μέρα. Αν έχει ομίχλη, κυνηγάς την ατμόσφαιρα. Αν ανοίξει ο ουρανός, κρατάς τα μεγάλα viewpoints και ξεκινάς την επιστροφή χωρίς πίεση.',
+      image: 'assets/zagori/meteora-morning.jpg',
       driving: { distanceKm: 145, duration: '2ω 30λ έως το overnight gateway' },
       timeline: [
-        { time: '07:30', title: 'Πρωινό φως / ομίχλη', note: 'Weather-dependent signature moment' },
-        { time: '10:30', title: 'Slow morning', note: 'Δεύτερο viewpoint ή καφές στο Καστράκι' },
+        {
+          time: '07:30',
+          title: 'Πρωινό φως / ομίχλη',
+          note: 'Weather-dependent signature moment',
+        },
+        {
+          time: '10:30',
+          title: 'Slow morning',
+          note: 'Δεύτερο viewpoint ή καφές στο Καστράκι',
+        },
         { time: '13:00', title: 'Αναχώρηση', note: 'Προς το gateway της επιστροφής' },
         { time: '17:00', title: 'Τελευταίο check-in', note: 'Χαλαρό τελευταίο βράδυ' },
       ],
@@ -206,9 +265,10 @@ export const ZAGORI_TRIP = {
       stay: {
         title: 'Last-night comfort stay',
         detail: 'Επιλεγμένο για εύκολη αναχώρηση την επόμενη ημέρα',
-        image: 'assets/zagori/stay-last-night.jpg',
+        image: 'assets/zagori/meteora-morning.jpg',
       },
-      agnes: 'Αυτή είναι η buffer day μας. Τη χρησιμοποιώ για να προστατεύσω το καλύτερο φως του ταξιδιού από τον καιρό.',
+      agnes:
+        'Αυτή είναι η buffer day μας. Τη χρησιμοποιώ για να προστατεύσω το καλύτερο φως του ταξιδιού από τον καιρό.',
     },
     {
       id: 'return',
@@ -216,16 +276,22 @@ export const ZAGORI_TRIP = {
       dayLabel: 'ΕΠΙΣΤΡΟΦΗ',
       title: 'Ο δρόμος πίσω',
       location: 'Gateway → Λάρνακα',
-      narrative: 'Παράδοση αυτοκινήτου, πτήση επιστροφής και μία τελευταία ματιά στις εικόνες που κράτησες από την Ήπειρο.',
-      image: 'assets/zagori/return-home.jpg',
+      narrative:
+        'Παράδοση αυτοκινήτου, πτήση επιστροφής και μία τελευταία ματιά στις εικόνες που κράτησες από την Ήπειρο.',
+      image: 'assets/zagori/ioannina-autumn.jpg',
       driving: { distanceKm: 20, duration: 'ενδεικτικά έως το αεροδρόμιο' },
       timeline: [
         { time: '08:00', title: 'Πρωινό και check-out', note: 'Χωρίς πίεση' },
-        { time: '10:00', title: 'Παράδοση αυτοκινήτου', note: 'Χρόνος ασφαλείας πριν την πτήση' },
+        {
+          time: '10:00',
+          title: 'Παράδοση αυτοκινήτου',
+          note: 'Χρόνος ασφαλείας πριν την πτήση',
+        },
         { time: '12:30', title: 'Πτήση επιστροφής', note: 'Ενδεικτικό πρόγραμμα' },
       ],
       signature: 'Η στιγμή που αρχίζεις ήδη να σκέφτεσαι το επόμενο road trip',
-      agnes: 'Θα κρατήσω τη διαδρομή και τις επιλογές σου ως βάση για το επόμενο ταξίδι όταν υπάρξει συνδεδεμένο profile.',
+      agnes:
+        'Θα κρατήσω τη διαδρομή και τις επιλογές σου ως βάση για το επόμενο ταξίδι όταν υπάρξει συνδεδεμένο profile.',
     },
   ],
   booking: {
@@ -236,13 +302,18 @@ export const ZAGORI_TRIP = {
       { id: 'vehicle', label: 'Αυτοκίνητο', value: 'Self-drive · compact / SUV ανά style' },
       { id: 'stays', label: 'Διαμονές', value: '5 νύχτες · curated stays' },
       { id: 'experiences', label: 'Εμπειρίες', value: 'Signature stops & scenic routing' },
-      { id: 'insurance', label: 'Ασφάλεια', value: 'Placeholder μέχρι live booking integration' },
+      {
+        id: 'insurance',
+        label: 'Ασφάλεια',
+        value: 'Placeholder μέχρι live booking integration',
+      },
     ],
     cta: 'ΚΛΕΙΣΕ ΤΟ ROAD TRIP',
     disclaimer: 'Οι τιμές και τα δρομολόγια είναι ενδεικτικά μέχρι να συνδεθούν live πάροχοι.',
   },
   agnes: {
-    intro: 'Αν πας τέλη Οκτωβρίου, θα κυνηγήσουμε το καλύτερο φθινοπωρινό χρώμα στα Ζαγοροχώρια.',
+    intro:
+      'Αν πας τέλη Οκτωβρίου, θα κυνηγήσουμε το καλύτερο φθινοπωρινό χρώμα στα Ζαγοροχώρια.',
     quickActions: [
       'Κάν’ το 4ήμερο',
       'Θέλω λιγότερη οδήγηση',
@@ -253,23 +324,38 @@ export const ZAGORI_TRIP = {
     ],
   },
   mediaCredits: {
-    'hero-zagori.jpg': credit(),
-    'vikos-gorge.jpg': credit(),
-    'zagori-metsovo-road.jpg': credit(),
-    'meteora-mist.jpg': credit(),
-    'departure-larnaca.jpg': credit(),
-    'stay-ioannina.jpg': credit(),
-    'day1-zagori.jpg': credit(),
-    'stay-zagori.jpg': credit(),
-    'day2-vikos.jpg': credit(),
-    'stay-papigo.jpg': credit(),
-    'day3-metsovo-road.jpg': credit(),
-    'stay-metsovo.jpg': credit(),
-    'day4-meteora.jpg': credit(),
-    'stay-meteora.jpg': credit(),
-    'day5-meteora-morning.jpg': credit(),
-    'stay-last-night.jpg': credit(),
-    'return-home.jpg': credit(),
+    'papingo-autumn.jpg': credit({
+      creator: 'Aneza Palaiou',
+      license: 'CC BY-SA 4.0',
+      sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:%CE%A0%CE%B1%CF%80%CE%B9%CE%B3%CE%BA%CE%BF_%CE%96%CE%B1%CE%B3%CF%8C%CF%81%CE%B9.jpg',
+    }),
+    'vikos-gorge.jpg': credit({
+      creator: 'Apostolos Palaskas',
+      license: 'CC BY-SA 4.0',
+      sourceUrl: 'https://commons.wikimedia.org/wiki/File:VikosGorge.jpg',
+    }),
+    'metsovo-autumn.jpg': credit({
+      creator: 'DimitrisP67 (Dimitrios Patsis)',
+      license: 'CC BY-SA 4.0',
+      sourceUrl: 'https://commons.wikimedia.org/wiki/File:Metsovo_Greece.jpg',
+    }),
+    'meteora-morning.jpg': credit({
+      creator: 'Dennis David Auger',
+      license: 'CC BY-SA 4.0',
+      sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Meteora_in_the_early_morning_hours.jpg',
+    }),
+    'meteora-sunset.jpg': credit({
+      creator: 'Dimitris9444',
+      license: 'CC BY-SA 4.0',
+      sourceUrl: 'https://commons.wikimedia.org/wiki/File:Meteora_Sunset.jpg',
+    }),
+    'ioannina-autumn.jpg': credit({
+      creator: 'Philos2000',
+      license: 'CC BY-SA 3.0',
+      sourceUrl: 'https://commons.wikimedia.org/wiki/File:Lake-Ioannina.jpg',
+    }),
   },
 };
 
