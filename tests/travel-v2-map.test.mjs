@@ -35,7 +35,12 @@ describe('AGNES World V2 route map', () => {
   it('falls back to an accessible DOM route when coordinates are missing', () => {
     const journey = {
       id: 'route-text',
-      route: { stops: [{ id: 'a', name: 'Athens' }, { id: 'b', name: 'Nafplio' }] },
+      route: {
+        stops: [
+          { id: 'a', name: 'Athens' },
+          { id: 'b', name: 'Nafplio' },
+        ],
+      },
     };
     const html = renderJourneyMap(journey);
     expect(html).not.toContain('<svg');
