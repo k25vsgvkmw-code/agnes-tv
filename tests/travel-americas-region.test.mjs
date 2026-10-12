@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderDestinations } from '../docs/travel/cinematic-render.js';
+import { filterCruises } from '../docs/travel/cruise-render.js';
 import { matchesJourneyRegion } from '../docs/travel/journey-region.js';
 import { createJourneyState } from '../docs/travel/journey-state.js';
 
@@ -26,6 +27,27 @@ const sample = [
   },
 ];
 
+const americanCruises = [
+  {
+    id: 'alaska',
+    region: 'North America',
+    mode: 'sea',
+    type: 'cruise',
+    feelings: [],
+    departurePorts: ['seattle'],
+    cruise: { departurePort: 'seattle' },
+  },
+  {
+    id: 'south-sea',
+    region: 'South America',
+    mode: 'sea',
+    type: 'cruise',
+    feelings: [],
+    departurePorts: [],
+    cruise: { departurePort: '' },
+  },
+];
+
 describe('Americas region aggregation', () => {
   it('treats North and South America as the Americas collection', () => {
     expect(matchesJourneyRegion('North America', 'Americas')).toBe(true);
@@ -39,5 +61,13 @@ describe('Americas region aggregation', () => {
     const americas = html.slice(html.indexOf('<h2>Americas</h2>'));
     expect(americas).toContain('North Journey');
     expect(americas).toContain('South Journey');
+  });
+
+  it('aggregates North and South America in cruise destination filtering', () => {
+    const state = { region: 'Americas', departurePort: '' };
+    expect(filterCruises(americanCruises, state).map((journey) => journey.id)).toEqual([
+      'alaska',
+      'south-sea',
+    ]);
   });
 });
