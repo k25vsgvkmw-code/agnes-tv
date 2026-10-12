@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CATALOG, createCatalog, getDestination, getJourney, getJourneysByMode, getOrigin } from '../docs/travel/catalog.js';
+import {
+  CATALOG,
+  createCatalog,
+  getDestination,
+  getJourney,
+  getJourneysByMode,
+  getOrigin,
+} from '../docs/travel/catalog.js';
 
 describe('AGNES World V2 catalog', () => {
   it('contains all four first-class travel modes and preserves core journeys', () => {
