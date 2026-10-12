@@ -31,6 +31,7 @@ describe('AGNES World V2 ranking', () => {
       feelings: ['wild'],
       styles: ['scenic'],
     });
+
     expect(ranked[0].id).toBe('matching');
     expect(RANKING_WEIGHTS.mode).toBeGreaterThan(RANKING_WEIGHTS.editorialPriority);
   });
@@ -49,10 +50,12 @@ describe('AGNES World V2 ranking', () => {
       originIds: ['port-piraeus'],
       editorialPriority: 99,
     };
-    expect(
-      rankJourneys([cruiseB, cruiseA], { mode: 'sea', originId: 'port-limassol', month: 10 })[0]
-        .id,
-    ).toBe('cruise-a');
+    const cruiseRanked = rankJourneys([cruiseB, cruiseA], {
+      mode: 'sea',
+      originId: 'port-limassol',
+      month: 10,
+    });
+    expect(cruiseRanked[0].id).toBe('cruise-a');
 
     const railA = {
       ...base,
@@ -67,15 +70,18 @@ describe('AGNES World V2 ranking', () => {
       originIds: ['station-zurich'],
       editorialPriority: 99,
     };
-    expect(
-      rankJourneys([railB, railA], { mode: 'rail', originId: 'station-tokyo', month: 10 })[0]
-        .id,
-    ).toBe('rail-a');
+    const railRanked = rankJourneys([railB, railA], {
+      mode: 'rail',
+      originId: 'station-tokyo',
+      month: 10,
+    });
+    expect(railRanked[0].id).toBe('rail-a');
   });
 
   it('does not invent location relevance when origin is absent', () => {
     const near = { ...base, id: 'near', originIds: ['road-athens'] };
     const far = { ...base, id: 'far', originIds: ['road-reykjavik'] };
+
     expect(scoreJourney(near, { month: 10 })).toBe(scoreJourney(far, { month: 10 }));
   });
 
