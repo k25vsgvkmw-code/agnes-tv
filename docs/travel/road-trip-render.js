@@ -113,7 +113,8 @@ function renderTimeline(timeline) {
 
 function renderStay(stay, state) {
   if (!stay) return '';
-  const premium = state.stayTier === 'premium' ? '<span class="rt-premium-pill">Premium focus</span>' : '';
+  const premium =
+    state.stayTier === 'premium' ? '<span class="rt-premium-pill">Premium focus</span>' : '';
   return `<aside class="rt-stay" data-stay-card>
     ${mediaMarkup(stay.image, stay.title, 'rt-stay-media')}
     <div><p class="rt-kicker">ΠΟΥ ΜΕΝΕΙΣ ΑΠΟΨΕ</p><h4>${escapeHtml(stay.title)}</h4><p>${escapeHtml(stay.detail)}</p>${premium}</div>
@@ -140,6 +141,16 @@ function renderItineraryDay(day, state) {
   </article>`;
 }
 
+function renderItineraryAdaptation(state) {
+  if (state.weatherMode === 'rain') {
+    return `<div class="rt-itinerary-adaptation is-rain"><strong>Rain plan ενεργό</strong><span>Η AGNES κρατάμε ευέλικτα τα viewpoints και μετακινεί τις φωτογραφικές στάσεις στο καλύτερο διαθέσιμο παράθυρο.</span></div>`;
+  }
+  if (state.audience === 'family') {
+    return `<div class="rt-itinerary-adaptation"><strong>Family mode</strong><span>Πιο ήπιος ρυθμός, λιγότερες συνεχόμενες στάσεις και πρακτικότερη ροή ημέρας.</span></div>`;
+  }
+  return '';
+}
+
 export function renderItinerary(trip, state) {
   const itinerary = deriveVisibleItinerary(trip, state);
   const nav = itinerary
@@ -149,9 +160,11 @@ export function renderItinerary(trip, state) {
     })
     .join('');
   const days = itinerary.map((day) => renderItineraryDay(day, state)).join('');
+  const adaptation = renderItineraryAdaptation(state);
 
   return `<section class="rt-section rt-itinerary" data-road-trip-section="itinerary" id="itinerary">
     <div class="rt-section-heading"><div><p class="rt-kicker">ΤΟ ΠΡΟΓΡΑΜΜΑ ΣΟΥ</p><h2>Από την αναχώρηση μέχρι την επιστροφή</h2></div><p>${state.duration} νύχτες · ${escapeHtml(state.drivingPace === 'relaxed' ? 'relaxed drive' : 'balanced drive')}</p></div>
+    ${adaptation}
     <nav class="rt-day-nav" aria-label="Ημέρες ταξιδιού">${nav}</nav>
     <div class="rt-day-list">${days}</div>
   </section>`;
@@ -159,7 +172,10 @@ export function renderItinerary(trip, state) {
 
 export function renderBookingSummary(trip, state) {
   const items = trip.booking.items
-    .map((item) => `<li><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></li>`)
+    .map(
+      (item) =>
+        `<li><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></li>`,
+    )
     .join('');
   const audience = state.audience === 'family' ? 'Family version' : 'Couple version';
 
@@ -172,13 +188,17 @@ export function renderBookingSummary(trip, state) {
 
 export function renderAgnesDock(trip, state) {
   const history = state.agnesHistory
+    .slice(-2)
     .map((entry) => {
       const role = entry.role === 'agnes' ? 'agnes' : 'user';
       return `<div class="rt-agnes-message is-${role}"><strong>${role === 'agnes' ? 'AGNES' : 'Εσύ'}</strong><span>${escapeHtml(entry.text)}</span></div>`;
     })
     .join('');
   const actions = trip.agnes.quickActions
-    .map((action) => `<button type="button" data-agnes-action="${escapeHtml(action)}">${escapeHtml(action)}</button>`)
+    .map(
+      (action) =>
+        `<button type="button" data-agnes-action="${escapeHtml(action)}">${escapeHtml(action)}</button>`,
+    )
     .join('');
 
   return `<aside class="rt-agnes-dock" data-agnes-dock id="agnes">
