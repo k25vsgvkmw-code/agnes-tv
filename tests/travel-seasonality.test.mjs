@@ -33,9 +33,7 @@ describe('journey seasonality', () => {
       'off-season': 3,
     };
     expect(
-      classes.every(
-        (value, index) => index === 0 || order[value] >= order[classes[index - 1]],
-      ),
+      classes.every((value, index) => index === 0 || order[value] >= order[classes[index - 1]]),
     ).toBe(true);
     expect(getSeasonalCollections(JOURNEYS, 10).rightNow.length).toBeGreaterThan(0);
   });
