@@ -60,6 +60,15 @@ function matchesCatalog(catalog, patch) {
 
 export function planWithAgnes(message, context = {}) {
   const text = normalise(message);
+  if (/\b(guarantee|guaranteed|cheapest|lowest price|best price)\b/.test(text)) {
+    return {
+      statePatch: {},
+      reply: 'I can help narrow the route and dates, but live price claims require a connected provider.',
+      matches: [],
+      nextAction: 'clarify',
+    };
+  }
+
   const state = context.state ?? {};
   const statePatch = extractPatch(text, state);
   const matches = matchesCatalog(context.catalog ?? [], statePatch).slice(0, 6);
