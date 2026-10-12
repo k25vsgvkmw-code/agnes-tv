@@ -1,0 +1,73 @@
+.rt-itinerary-adaptation {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  margin: -8px 0 18px;
+  color: #443b2d;
+  background: #eee5d4;
+  border: 1px solid #d9cbb3;
+  border-radius: 16px;
+}
+
+.rt-itinerary-adaptation strong {
+  flex: 0 0 auto;
+  color: #75531f;
+}
+
+.rt-itinerary-adaptation.is-rain {
+  background: #e7e8e1;
+  border-color: #c5c9bf;
+}
+
+.rt-agnes-history {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 6px;
+  max-height: 84px;
+  padding: 0 2px;
+  overflow-y: auto;
+}
+
+.rt-agnes-history:empty {
+  display: none;
+}
+
+.rt-agnes-message {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 7px 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #e8decc;
+  background: #373229;
+  border-radius: 12px;
+}
+
+.rt-agnes-message strong {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #e5b860;
+}
+
+.rt-agnes-message.is-user {
+  color: #d5cbbb;
+  background: #292620;
+}
+
+@media (max-width: 640px) {
+  .rt-itinerary-adaptation {
+    display: grid;
+  }
+
+  .rt-agnes-history {
+    max-height: 66px;
+  }
+
+  .rt-agnes-message {
+    font-size: 10px;
+  }
+}
