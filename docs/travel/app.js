@@ -1,303 +1,234 @@
-/* global document, fetch */
-import { handleAgnesMessage } from './agnes-trip.js';
-import { rankDestinations } from './ranking.js';
-import { renderRoadTripDetail } from './road-trip-render.js';
-import { ZAGORI_TRIP } from './trip-data.js';
-import { applyTripStatePatch, createTripState } from './trip-state.js';
+/* global document, window, history, queueMicrotask */
+import { JOURNEYS, DEPARTURE_PORTS } from './journeys-data.js';
+import { GLOBAL_EXPANSION_JOURNEYS } from './journeys-global-expansion.js';
+import { WORLD_CATALOG_PACK_2 } from './journeys-world-pack-2.js';
+import { rankJourneysForMonth } from './seasonality.js';
+import {
+  createJourneyState,
+  applyJourneyStatePatch,
+  parseJourneyUrl,
+  serializeJourneyUrl,
+} from './journey-state.js';
+import { handleJourneyAgnesMessage } from './agnes-journey.js';
+import {
+  renderGlobalHeader,
+  renderExploreHome,
+  renderModeCollection,
+  renderDestinations,
+  renderExperiences,
+  renderAbout,
+  renderJourneyDetail,
+} from './cinematic-render.js';
+import { renderCruiseLanding, renderCruiseDetail } from './cruise-render.js';
 
-const state = { view: 'home', tripType: '', directOnly: false, search: '' };
+const ALL_JOURNEYS = [...JOURNEYS, ...GLOBAL_EXPANSION_JOURNEYS, ...WORLD_CATALOG_PACK_2];
+const getJourneyById = (id) => ALL_JOURNEYS.find((journey) => journey.id === id) ?? null;
+
+const header = document.querySelector('#site-header');
 const view = document.querySelector('#view');
-let destinations = [];
-let roadTripState = createTripState(ZAGORI_TRIP.id);
+let state = parseJourneyUrl(window.location.search, new Date());
+let notice = '';
 
-const price = (destination) =>
-  destination.liveFareEur ? `€${destination.liveFareEur}` : `score ${destination.baseScore}`;
-
-const card = (destination) => `<article class="card" data-iata="${destination.iata}">
-  <div class="photo">${destination.name}</div>
-  <div class="card-body">
-    <div class="meta"><span>${destination.country}</span><span class="score">${destination.score ?? destination.baseScore}</span></div>
-    <h3>${destination.name} · ${destination.iata}</h3>
-    <div>${destination.tripTypes
-      .slice(0, 3)
-      .map((type) => `<span class="tag">${type}</span>`)
-      .join('')}</div>
-    <p class="meta"><span>${destination.access === 'direct' ? 'Direct' : '1 stop'}</span><span>${price(destination)}</span></p>
-  </div>
-</article>`;
-
-function roadTripFeatureCard() {
-  return `<article class="featured-road-trip" data-road-trip-id="zagori-autumn">
-    <img src="${ZAGORI_TRIP.hero.image}" alt="${ZAGORI_TRIP.hero.title}">
-    <div class="featured-road-trip-scrim"></div>
-    <div class="featured-road-trip-copy">
-      <p>ΝΕΟ · ROAD TRIP ΕΛΛΑΔΑΣ</p>
-      <h2>${ZAGORI_TRIP.hero.title}</h2>
-      <span>${ZAGORI_TRIP.hero.story}</span>
-      <button type="button" data-open-road-trip>ΖΗΣΕ ΤΟ ROAD TRIP →</button>
-    </div>
-  </article>`;
+function normalizeState(next) {
+  if (next.journeyId && !getJourneyById(next.journeyId)) {
+    notice = 'Journey not found. Showing Explore instead.';
+    return applyJourneyStatePatch(createJourneyState(new Date()), {
+      month: next.month,
+      view: 'explore',
+    });
+  }
+  if (
+    next.departurePort &&
+    !DEPARTURE_PORTS.some((port) => port.id === next.departurePort)
+  ) {
+    return applyJourneyStatePatch(next, { departurePort: '' });
+  }
+  return next;
 }
 
-function filtered() {
-  return rankDestinations(destinations, {
-    tripType: state.tripType || undefined,
-    directOnly: state.directOnly,
-  }).filter((destination) => {
-    if (!state.search) return true;
-    const haystack = `${destination.name} ${destination.country} ${destination.iata}`.toLowerCase();
-    return haystack.includes(state.search.toLowerCase());
-  });
+function pushState(patch, { replace = false } = {}) {
+  state = normalizeState(applyJourneyStatePatch(state, patch));
+  const url = serializeJourneyUrl(state) || window.location.pathname;
+  if (replace) history.replaceState({}, '', url);
+  else history.pushState({}, '', url);
+  render();
 }
 
-function home() {
-  const top = filtered().slice(0, 8);
-  view.innerHTML = `<section class="hero">
-    <h1>Πού θα πάμε επόμενο ταξίδι;</h1>
-    <p>93 προορισμοί από Λάρνακα · 84 direct + 9 με 1 στάση · ranking με βάση τύπο ταξιδιού, πρόσβαση και value.</p>
-    <div class="searchbar">
-      <input value="Λάρνακα (LCA)" disabled>
-      <select id="tripType"><option value="">Όλοι οι τύποι</option><option>City</option><option>Couple</option><option>Family</option><option>Ski</option><option>Sea</option><option>Christmas</option></select>
-      <select id="access"><option value="all">Direct + 1 stop</option><option value="direct">Μόνο Direct</option></select>
-      <button class="primary" id="searchBtn">Αναζήτηση</button>
-    </div>
-  </section>
-  <section class="section road-trip-feature-section">
-    <p class="section-kicker">FLAGSHIP ΕΜΠΕΙΡΙΑ</p>
-    ${roadTripFeatureCard()}
-  </section>
-  <section class="section"><h2>Καλύτερες προτάσεις τώρα</h2><div class="grid">${top.map(card).join('')}</div></section>`;
-  wireHome();
-  wireRoadTripEntryPoints();
-}
-
-function destinationsView() {
-  const list = filtered();
-  view.innerHTML = `<section class="section"><h1>Όλοι οι προορισμοί (${list.length})</h1>
-    <div class="toolbar">
-      <input id="q" placeholder="Αναζήτηση πόλης ή IATA" value="${state.search}">
-      <select id="type"><option value="">Όλοι</option><option>City</option><option>Couple</option><option>Family</option><option>Ski</option><option>Sea</option><option>Christmas</option></select>
-      <label><input id="direct" type="checkbox" ${state.directOnly ? 'checked' : ''}> μόνο direct</label>
-    </div>
-    <div class="grid">${list.map(card).join('')}</div>
-  </section>`;
-
-  document.querySelector('#q').oninput = (event) => {
-    state.search = event.target.value;
-    destinationsView();
-  };
-  document.querySelector('#type').onchange = (event) => {
-    state.tripType = event.target.value;
-    destinationsView();
-  };
-  document.querySelector('#direct').onchange = (event) => {
-    state.directOnly = event.target.checked;
-    destinationsView();
-  };
-}
-
-function mapView() {
-  const seasons = ['Φθινόπωρο', 'Χειμώνας', 'Άνοιξη', 'Καλοκαίρι'];
-  const seasonCopy = [
-    'City breaks · Σεπ–Νοε',
-    'Ski · Δεκ–Φεβ',
-    'Nature · Μαρ–Μάι',
-    'Sea · Ιουν–Αυγ',
-  ];
-  view.innerHTML = `<section class="section"><h1>Χάρτης & Εποχές</h1><div class="map"></div><h2 style="margin-top:22px">Καλύτερη εποχή</h2><div class="grid">${seasons
-    .map(
-      (season, index) =>
-        `<div class="card"><div class="photo">${season}</div><div class="card-body"><p>${seasonCopy[index]}</p></div></div>`,
-    )
-    .join('')}</div></section>`;
-}
-
-function pricesView() {
-  const days = Array.from({ length: 30 }, (_, index) => {
-    const dayPrice = 60 + ((index * 13) % 70);
-    const priceClass = dayPrice < 85 ? 'good' : dayPrice < 110 ? 'mid' : 'high';
-    return `<div class="day ${priceClass}"><b>${index + 1}</b><br>€${dayPrice}</div>`;
-  }).join('');
-  view.innerHTML = `<section class="section"><h1>Ημερολόγιο Τιμών</h1><p>Παράδειγμα price calendar για γρήγορη σύγκριση ημερών.</p><div class="calendar">${days}</div></section>`;
-}
-
-function compareView() {
-  const top = filtered().slice(0, 5);
-  view.innerHTML = `<section class="section compare"><h1>Σύγκριση & Φίλτρα</h1><table><thead><tr><th>Προορισμός</th><th>Score</th><th>Access</th><th>Νύχτες</th><th>Fare</th><th>Τύποι</th></tr></thead><tbody>${top
-    .map(
-      (destination) =>
-        `<tr><td>${destination.name}</td><td>${destination.score}</td><td>${destination.access === 'direct' ? 'Direct' : '1 stop'}</td><td>${destination.suggestedNights}</td><td>${destination.liveFareEur ? `€${destination.liveFareEur}` : '—'}</td><td>${destination.tripTypes.slice(0, 3).join(', ')}</td></tr>`,
-    )
-    .join('')}</tbody></table></section>`;
-}
-
-function readyView() {
-  const picks = filtered().slice(0, 6);
-  view.innerHTML = `<section class="section"><h1>Έτοιμα ταξίδια για εσάς</h1>${roadTripFeatureCard()}<div class="ready-list">${picks
-    .map(
-      (destination) =>
-        `<div class="ready-item"><div class="thumb"></div><div><b>${destination.suggestedNights} νύχτες στη ${destination.name}</b><div class="meta">${destination.tripTypes.slice(0, 3).join(' · ')} · ${destination.access === 'direct' ? 'Direct' : '1 stop'}</div></div><div class="price"><b>${destination.liveFareEur ? `από €${destination.liveFareEur}` : `Score ${destination.score}`}</b></div></div>`,
-    )
-    .join('')}</div></section>`;
-  wireRoadTripEntryPoints();
-}
-
-function detail(destination) {
-  view.innerHTML = `<section class="hero"><h1>${destination.name}</h1><p>${destination.country} · ${destination.iata} · ${destination.access === 'direct' ? 'Direct από LCA' : '1 stop'}</p></section><section class="section"><div class="grid"><div class="card"><div class="card-body"><h2>AGNES Score ${destination.score ?? destination.baseScore}</h2><p>Προτεινόμενες νύχτες: ${destination.suggestedNights}</p><p>Availability: ${destination.availability}</p>${destination.hub ? `<p>Καλύτερο hub: ${destination.hub}</p>` : ''}</div></div><div class="card"><div class="card-body"><h2>Γιατί να πάμε</h2>${destination.tripTypes.map((type) => `<span class="tag">${type}</span>`).join('')}</div></div></div></section>`;
-}
-
-function appendAgnesExchange(message, reply, patch) {
-  const history = [
-    ...roadTripState.agnesHistory,
-    { role: 'user', text: message },
-    { role: 'agnes', text: reply },
-  ];
-  roadTripState = applyTripStatePatch(roadTripState, { ...patch, agnesHistory: history });
-}
-
-function runAgnes(message) {
-  const cleaned = String(message ?? '').trim();
-  if (!cleaned) return;
-  const result = handleAgnesMessage(cleaned, ZAGORI_TRIP, roadTripState);
-  appendAgnesExchange(cleaned, result.reply, result.statePatch);
-  mountRoadTrip(result.focusTarget);
+function pageHtml() {
+  if (state.view === 'cruises') {
+    return renderCruiseLanding(ALL_JOURNEYS, state, DEPARTURE_PORTS);
+  }
+  if (state.view === 'mode') {
+    return renderModeCollection(rankJourneysForMonth(ALL_JOURNEYS, state.month), state);
+  }
+  if (state.view === 'destinations') return renderDestinations(ALL_JOURNEYS, state);
+  if (state.view === 'experiences') return renderExperiences(ALL_JOURNEYS, state);
+  if (state.view === 'about') return renderAbout(state);
+  if (state.view === 'journey') {
+    const journey = getJourneyById(state.journeyId);
+    if (!journey) return renderExploreHome(ALL_JOURNEYS, state);
+    return journey.type === 'cruise'
+      ? renderCruiseDetail(journey, state)
+      : renderJourneyDetail(journey, state);
+  }
+  return renderExploreHome(ALL_JOURNEYS, state);
 }
 
 function applyImageFallbacks() {
-  document.querySelectorAll('[data-road-trip-image]').forEach((image) => {
+  document.querySelectorAll('[data-world-image]').forEach((image) => {
     image.onerror = () => {
-      const media = image.closest('.rt-media');
-      if (media) {
-        media.dataset.imageFallback = 'true';
-        media.classList.add('rt-media-fallback');
+      const wrap = image.closest('.journey-media');
+      if (wrap) {
+        wrap.dataset.imageFallback = 'true';
+        wrap.classList.add('journey-media-fallback');
       }
       image.remove();
     };
   });
 }
 
-function wireRoadTrip() {
-  document.querySelectorAll('[data-trip-style]').forEach((button) => {
-    button.onclick = () => {
-      roadTripState = applyTripStatePatch(roadTripState, { style: button.dataset.tripStyle });
-      mountRoadTrip('trip-style');
-    };
-  });
-
-  document.querySelectorAll('[data-day-select]').forEach((button) => {
-    button.onclick = () => {
-      roadTripState = applyTripStatePatch(roadTripState, { selectedDay: button.dataset.daySelect });
-      mountRoadTrip('itinerary');
-    };
-  });
-
-  document.querySelectorAll('[data-agnes-action]').forEach((button) => {
-    button.onclick = () => runAgnes(button.dataset.agnesAction);
-  });
-
-  const agnesForm = document.querySelector('[data-agnes-form]');
-  if (agnesForm) {
-    agnesForm.onsubmit = (event) => {
-      event.preventDefault();
-      const input = agnesForm.querySelector('[data-agnes-input]');
-      runAgnes(input?.value);
-    };
-  }
-
-  const heroCta = document.querySelector('[data-road-trip-primary]');
-  if (heroCta) {
-    heroCta.onclick = () => document.querySelector('#itinerary')?.scrollIntoView({ behavior: 'smooth' });
-  }
-
-  const bookingCta = document.querySelector('[data-booking-cta]');
-  if (bookingCta) {
-    bookingCta.onclick = () => {
-      const message = 'Θέλω να προχωρήσω στο booking-inquiry';
-      const reply =
-        'Το κόστος και η διαθεσιμότητα είναι ενδεικτικά σε αυτή την έκδοση. Μπορώ να κρατήσω τις επιλογές του ταξιδιού σου έτοιμες για το επόμενο βήμα κράτησης.';
-      appendAgnesExchange(message, reply, {});
-      mountRoadTrip('agnes');
-    };
-  }
-
+function render() {
+  state = normalizeState(state);
+  header.innerHTML = renderGlobalHeader(state);
+  const banner = notice ? `<div class="world-notice" role="status">${notice}</div>` : '';
+  notice = '';
+  view.innerHTML = `${banner}${pageHtml()}`;
   applyImageFallbacks();
 }
 
-function mountRoadTrip(focusTarget = '') {
-  document.querySelectorAll('#tabs button').forEach((button) => button.classList.remove('active'));
-  view.innerHTML = renderRoadTripDetail(ZAGORI_TRIP, roadTripState);
-  wireRoadTrip();
-
-  const focusMap = {
-    itinerary: '#itinerary',
-    'trip-style': '#trip-style',
-    stays: '[data-stay-card]',
-    agnes: '#agnes',
-    'booking-inquiry': '#booking',
-  };
-  const selector = focusMap[focusTarget];
-  if (selector) document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function wireRoadTripEntryPoints() {
-  document.querySelectorAll('[data-open-road-trip]').forEach((button) => {
-    button.onclick = () => mountRoadTrip();
+function appendAgnes(message, reply, patch) {
+  const historyEntries = [
+    ...(state.agnesHistory ?? []),
+    { role: 'user', text: message },
+    { role: 'agnes', text: reply },
+  ];
+  const navigationPatch = patch.view && patch.view !== 'journey' ? { journeyId: '' } : {};
+  state = applyJourneyStatePatch(state, {
+    ...patch,
+    ...navigationPatch,
+    agnesHistory: historyEntries,
   });
 }
 
-function render() {
-  document.querySelectorAll('#tabs button').forEach((button) => {
-    button.classList.toggle('active', button.dataset.view === state.view);
+function runAgnes(message) {
+  const cleaned = String(message ?? '').trim();
+  if (!cleaned) return;
+  const journey = state.journeyId ? getJourneyById(state.journeyId) : null;
+  const result = handleJourneyAgnesMessage(cleaned, {
+    journey,
+    journeys: ALL_JOURNEYS,
+    state,
   });
-
-  const views = {
-    home: home,
-    destinations: destinationsView,
-    map: mapView,
-    prices: pricesView,
-    compare: compareView,
-    ready: readyView,
-  };
-  (views[state.view] || home)();
-
-  document.querySelectorAll('.card[data-iata]').forEach((element) => {
-    element.onclick = () => {
-      const destination = filtered().find((item) => item.iata === element.dataset.iata);
-      if (destination) detail(destination);
-    };
-  });
+  appendAgnes(cleaned, result.reply, result.statePatch);
+  const url = serializeJourneyUrl(state) || window.location.pathname;
+  history.pushState({}, '', url);
+  render();
 }
 
-function wireHome() {
-  const tripType = document.querySelector('#tripType');
-  const access = document.querySelector('#access');
-  const searchButton = document.querySelector('#searchBtn');
-  if (!searchButton) return;
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('button, [data-journey-id]');
+  if (!button) return;
 
-  searchButton.onclick = () => {
-    state.tripType = tripType.value;
-    state.directOnly = access.value === 'direct';
-    state.view = 'destinations';
-    render();
-  };
-}
+  if (button.matches('[data-nav-view]')) {
+    const target = button.dataset.navView;
+    if (target === 'travel-by') {
+      pushState({ view: 'explore', mode: '', journeyId: '' });
+      queueMicrotask(() =>
+        document.querySelector('.travel-by')?.scrollIntoView({ behavior: 'smooth' }),
+      );
+      return;
+    }
+    if (target === 'cruises') {
+      pushState({ view: 'cruises', mode: 'sea', journeyId: '' });
+      return;
+    }
+    pushState({ view: target, journeyId: '', detailLayer: null });
+    return;
+  }
 
-document.querySelectorAll('#tabs button').forEach((button) => {
-  button.onclick = () => {
-    state.view = button.dataset.view;
-    render();
-  };
+  if (button.matches('[data-mode]')) {
+    pushState({ view: 'mode', mode: button.dataset.mode, journeyId: '' });
+    return;
+  }
+  if (button.matches('[data-region]')) {
+    pushState({ view: 'destinations', region: button.dataset.region, journeyId: '' });
+    return;
+  }
+  if (button.matches('[data-feeling]')) {
+    pushState({ view: 'experiences', feeling: button.dataset.feeling, journeyId: '' });
+    return;
+  }
+  if (button.matches('[data-journey-id]')) {
+    pushState({
+      view: 'journey',
+      journeyId: button.dataset.journeyId,
+      detailLayer: null,
+    });
+    return;
+  }
+  if (button.matches('[data-departure-port]')) {
+    pushState({
+      view: 'cruises',
+      mode: 'sea',
+      departurePort: button.dataset.departurePort,
+      journeyId: '',
+    });
+    return;
+  }
+  if (button.matches('[data-reset-port]')) {
+    pushState({ departurePort: '' });
+    return;
+  }
+  if (button.matches('[data-open-layer]')) {
+    pushState({
+      detailLayer: button.dataset.openLayer,
+      selectedChapter: button.dataset.chapter || state.selectedChapter,
+    });
+    return;
+  }
+  if (button.matches('[data-detail-close]')) {
+    pushState({ detailLayer: null });
+    return;
+  }
+  if (button.matches('[data-agnes-open]')) {
+    document.querySelector('#agnes [data-agnes-input]')?.focus();
+    return;
+  }
+  if (button.matches('[data-agnes-action]')) {
+    runAgnes(button.dataset.agnesAction);
+  }
 });
 
-Promise.all(
-  ['data-1.json', 'data-2.json', 'data-3.json', 'data-4.json'].map((file) =>
-    fetch(file).then((response) => response.json()),
-  ),
-)
-  .then((parts) => {
-    destinations = parts.flat();
-    render();
-  })
-  .catch(() => {
-    view.innerHTML = '<section class="section"><h1>Δεν φορτώθηκαν οι προορισμοί.</h1></section>';
-  });
+document.addEventListener('change', (event) => {
+  const element = event.target;
+  if (element.matches('[data-port-select]')) {
+    pushState({
+      view: 'cruises',
+      mode: 'sea',
+      departurePort: element.value,
+      journeyId: '',
+    });
+  }
+  if (element.matches('[data-month-select]')) {
+    pushState({ month: Number(element.value) });
+  }
+  if (element.matches('[data-region-select]')) {
+    pushState({ region: element.value });
+  }
+});
+
+document.addEventListener('submit', (event) => {
+  const form = event.target.closest('[data-agnes-form]');
+  if (!form) return;
+  event.preventDefault();
+  runAgnes(form.querySelector('[data-agnes-input]')?.value);
+});
+
+window.addEventListener('popstate', () => {
+  state = normalizeState(parseJourneyUrl(window.location.search, new Date()));
+  render();
+});
+
+state = normalizeState(state);
+history.replaceState({}, '', serializeJourneyUrl(state) || window.location.pathname);
+render();

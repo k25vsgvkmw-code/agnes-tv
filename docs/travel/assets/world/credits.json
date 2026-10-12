@@ -1,0 +1,30 @@
+{
+  "air.svg": {
+    "creator": "AGNES editorial system",
+    "license": "Internal generated editorial asset",
+    "sourceUrl": "",
+    "sourceLabel": "AGNES generated editorial asset",
+    "useNote": "Generated cinematic mode artwork for By Air; not evidence of a specific hotel, ship, cabin or commercial product."
+  },
+  "sea.svg": {
+    "creator": "AGNES editorial system",
+    "license": "Internal generated editorial asset",
+    "sourceUrl": "",
+    "sourceLabel": "AGNES generated editorial asset",
+    "useNote": "Generated cinematic mode artwork for By Sea; not evidence of a specific hotel, ship, cabin or commercial product."
+  },
+  "rail.svg": {
+    "creator": "AGNES editorial system",
+    "license": "Internal generated editorial asset",
+    "sourceUrl": "",
+    "sourceLabel": "AGNES generated editorial asset",
+    "useNote": "Generated cinematic mode artwork for By Rail; not evidence of a specific hotel, ship, cabin or commercial product."
+  },
+  "road.svg": {
+    "creator": "AGNES editorial system",
+    "license": "Internal generated editorial asset",
+    "sourceUrl": "",
+    "sourceLabel": "AGNES generated editorial asset",
+    "useNote": "Generated cinematic mode artwork for By Road; not evidence of a specific hotel, ship, cabin or commercial product."
+  }
+}
