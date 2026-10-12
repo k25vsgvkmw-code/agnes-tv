@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 const css = await readFile(new URL('../docs/travel/photo-pack.css', import.meta.url), 'utf8');
 const credits = JSON.parse(
-  await readFile(new URL('../docs/travel/assets/world/photo-credits.json', import.meta.url), 'utf8'),
+  await readFile(
+    new URL('../docs/travel/assets/world/photo-credits.json', import.meta.url),
+    'utf8',
+  ),
 );
 
 describe('AGNES World photo pack', () => {
