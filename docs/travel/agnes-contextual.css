@@ -1,0 +1,128 @@
+.agnes-dock,
+.agnes-dock.is-contextual {
+  left: auto;
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: none;
+  width: min(320px, calc(100% - 32px));
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(92, 71, 54, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 253, 250, 0.96);
+  color: #241d18;
+  box-shadow: 0 16px 44px rgba(55, 39, 28, 0.16);
+  backdrop-filter: blur(18px);
+  transition: width 180ms ease, padding 180ms ease, box-shadow 180ms ease;
+}
+
+.agnes-dock .agnes-dock-head {
+  min-height: 48px;
+  cursor: default;
+}
+
+.agnes-dock .agnes-dock-head > span {
+  background: var(--season-rust, #aa4b28);
+  color: #fffaf4;
+}
+
+.agnes-dock .agnes-dock-head strong {
+  color: #241d18;
+}
+
+.agnes-dock .agnes-dock-head small {
+  color: #82766c;
+}
+
+.agnes-dock .agnes-history,
+.agnes-dock .agnes-actions,
+.agnes-dock form {
+  max-height: 0;
+  margin: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: max-height 180ms ease, opacity 140ms ease, margin 180ms ease;
+}
+
+.agnes-dock:focus-within,
+.agnes-dock:hover,
+.agnes-dock.is-expanded {
+  width: min(420px, calc(100% - 32px));
+  padding: 14px;
+  box-shadow: 0 20px 56px rgba(55, 39, 28, 0.2);
+}
+
+.agnes-dock:focus-within .agnes-history,
+.agnes-dock:hover .agnes-history,
+.agnes-dock.is-expanded .agnes-history {
+  max-height: 110px;
+  margin-top: 8px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.agnes-dock:focus-within .agnes-actions,
+.agnes-dock:hover .agnes-actions,
+.agnes-dock.is-expanded .agnes-actions {
+  max-height: 92px;
+  margin-top: 8px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.agnes-dock:focus-within form,
+.agnes-dock:hover form,
+.agnes-dock.is-expanded form {
+  max-height: 58px;
+  margin-top: 8px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.agnes-dock .agnes-actions button {
+  border-color: rgba(74, 58, 47, 0.14);
+  background: #f4eee7;
+  color: #3d3128;
+}
+
+.agnes-dock input {
+  border-color: rgba(74, 58, 47, 0.14);
+  background: #fbf8f4;
+  color: #241d18;
+}
+
+.agnes-dock input::placeholder {
+  color: #93877c;
+}
+
+.agnes-dock form button {
+  background: var(--season-rust, #aa4b28);
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .agnes-dock,
+  .agnes-dock.is-contextual {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: min(290px, calc(100% - 24px));
+  }
+
+  .agnes-dock:focus-within,
+  .agnes-dock:hover,
+  .agnes-dock.is-expanded {
+    width: calc(100% - 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agnes-dock,
+  .agnes-dock .agnes-history,
+  .agnes-dock .agnes-actions,
+  .agnes-dock form {
+    transition: none !important;
+  }
+}
