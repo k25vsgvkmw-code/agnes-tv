@@ -58,7 +58,7 @@ function pageHtml() {
   }
   if (state.view === 'destinations') return renderDestinations(JOURNEYS, state);
   if (state.view === 'experiences') return renderExperiences(JOURNEYS, state);
-  if (state.view === 'about') return renderAbout();
+  if (state.view === 'about') return renderAbout(state);
   if (state.view === 'journey') {
     const journey = getJourneyById(state.journeyId);
     if (!journey) return renderExploreHome(JOURNEYS, state);
@@ -97,7 +97,12 @@ function appendAgnes(message, reply, patch) {
     { role: 'user', text: message },
     { role: 'agnes', text: reply },
   ];
-  state = applyJourneyStatePatch(state, { ...patch, agnesHistory: historyEntries });
+  const navigationPatch = patch.view && patch.view !== 'journey' ? { journeyId: '' } : {};
+  state = applyJourneyStatePatch(state, {
+    ...patch,
+    ...navigationPatch,
+    agnesHistory: historyEntries,
+  });
 }
 
 function runAgnes(message) {
@@ -118,14 +123,14 @@ document.addEventListener('click', (event) => {
   if (button.matches('[data-nav-view]')) {
     const target = button.dataset.navView;
     if (target === 'travel-by') {
-      pushState({ view: 'explore', mode: '' });
+      pushState({ view: 'explore', mode: '', journeyId: '' });
       queueMicrotask(() =>
         document.querySelector('.travel-by')?.scrollIntoView({ behavior: 'smooth' }),
       );
       return;
     }
     if (target === 'cruises') {
-      pushState({ view: 'cruises', mode: 'sea' });
+      pushState({ view: 'cruises', mode: 'sea', journeyId: '' });
       return;
     }
     pushState({ view: target, journeyId: '', detailLayer: null });
@@ -137,11 +142,11 @@ document.addEventListener('click', (event) => {
     return;
   }
   if (button.matches('[data-region]')) {
-    pushState({ view: 'destinations', region: button.dataset.region });
+    pushState({ view: 'destinations', region: button.dataset.region, journeyId: '' });
     return;
   }
   if (button.matches('[data-feeling]')) {
-    pushState({ view: 'experiences', feeling: button.dataset.feeling });
+    pushState({ view: 'experiences', feeling: button.dataset.feeling, journeyId: '' });
     return;
   }
   if (button.matches('[data-journey-id]')) {
@@ -157,6 +162,7 @@ document.addEventListener('click', (event) => {
       view: 'cruises',
       mode: 'sea',
       departurePort: button.dataset.departurePort,
+      journeyId: '',
     });
     return;
   }
@@ -187,7 +193,12 @@ document.addEventListener('click', (event) => {
 document.addEventListener('change', (event) => {
   const element = event.target;
   if (element.matches('[data-port-select]')) {
-    pushState({ view: 'cruises', mode: 'sea', departurePort: element.value });
+    pushState({
+      view: 'cruises',
+      mode: 'sea',
+      departurePort: element.value,
+      journeyId: '',
+    });
   }
   if (element.matches('[data-month-select]')) {
     pushState({ month: Number(element.value) });
