@@ -48,9 +48,9 @@ describe('cinematic world renderers', () => {
 
   it('keeps content readable without hero media and labels dialog', () => {
     const journey = getJourneyById('zagori-metsovo-meteora');
-    expect(renderJourneyDetail({ ...journey, hero: { ...journey.hero, image: '' } }, state)).toContain(
-      'data-image-fallback="true"',
-    );
+    expect(
+      renderJourneyDetail({ ...journey, hero: { ...journey.hero, image: '' } }, state),
+    ).toContain('data-image-fallback="true"');
     const layer = renderOperationalLayer(journey, { ...state, detailLayer: 'day-plan' });
     expect(layer).toContain('aria-labelledby="operational-layer-title"');
     expect(layer).toContain('data-detail-close');
