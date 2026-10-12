@@ -4,10 +4,6 @@ import { getSeasonalCollections } from './seasonality.js';
 import { renderJourneyMap } from './map-render.js';
 import { resolveTravelImage } from './journey-photo-resolver.js';
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 const MONTHS_GREEK = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μάι', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
 
 const escapeHtml = (value) =>
