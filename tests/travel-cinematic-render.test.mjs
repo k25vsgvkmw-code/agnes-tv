@@ -10,7 +10,7 @@ import {
 const state = createJourneyState(new Date('2026-10-12T12:00:00Z'));
 
 describe('cinematic world renderers', () => {
-  it('renders global Explore without legacy dashboard copy', () => {
+  it('renders global Explore without legacy dashboard copy and keeps AGNES available', () => {
     const html = renderExploreHome(JOURNEYS, state);
     for (const text of [
       'AGNES WORLD',
@@ -30,6 +30,8 @@ describe('cinematic world renderers', () => {
     for (const mode of ['air', 'sea', 'rail', 'road']) {
       expect(html).toContain(`data-mode="${mode}"`);
     }
+    expect(html).toContain('class="agnes-dock"');
+    expect(html).toContain('data-agnes-input');
     expect(html).not.toContain('93 προορισμοί από Λάρνακα');
     expect(html).not.toContain('AGNES Live');
   });
