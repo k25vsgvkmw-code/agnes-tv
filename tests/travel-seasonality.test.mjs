@@ -37,8 +37,6 @@ describe('journey seasonality', () => {
         (value, index) => index === 0 || order[value] >= order[classes[index - 1]],
       ),
     ).toBe(true);
-    expect(getSeasonalCollections(JOURNEYS, 10).rightNow.length).toBeGreaterThan(
-      0,
-    );
+    expect(getSeasonalCollections(JOURNEYS, 10).rightNow.length).toBeGreaterThan(0);
   });
 });
