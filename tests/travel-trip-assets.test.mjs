@@ -34,8 +34,10 @@ describe('Zagori local photography assets', () => {
         license: expect.stringMatching(/CC/),
         sourceUrl: expect.stringMatching(/^https:\/\/commons\.wikimedia\.org\//),
         sourceLabel: 'Wikimedia Commons',
+        useNote: expect.stringMatching(/derivative|original/i),
       });
       expect(credit.creator.length).toBeGreaterThan(1);
+      expect(ZAGORI_TRIP.mediaCredits[filename]).toEqual(credit);
     }
   });
 });
