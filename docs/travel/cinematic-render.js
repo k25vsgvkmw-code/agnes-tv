@@ -2,6 +2,7 @@ import { filterJourneys } from './journeys-data.js';
 import { matchesJourneyRegion } from './journey-region.js';
 import { getSeasonalCollections } from './seasonality.js';
 import { renderJourneyMap } from './map-render.js';
+import { resolveTravelImage } from './journey-photo-resolver.js';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -16,10 +17,12 @@ const escapeHtml = (value) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
 
-const media = (image, alt, className = '') =>
-  image
-    ? `<div class="journey-media ${className}" data-image-fallback="false"><img src="${escapeHtml(image)}" alt="${escapeHtml(alt)}" loading="lazy" data-world-image></div>`
+const media = (image, alt, className = '') => {
+  const resolvedImage = resolveTravelImage(image, alt);
+  return resolvedImage
+    ? `<div class="journey-media ${className}" data-image-fallback="false"><img src="${escapeHtml(resolvedImage)}" alt="${escapeHtml(alt)}" loading="lazy" data-world-image></div>`
     : `<div class="journey-media journey-media-fallback ${className}" data-image-fallback="true" aria-label="${escapeHtml(alt)}"></div>`;
+};
 
 export function renderGlobalHeader(state) {
   const nav = [
