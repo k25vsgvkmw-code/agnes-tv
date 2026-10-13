@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JOURNEYS, getJourneyById } from '../docs/travel/journeys-data.js';
 import { createJourneyState } from '../docs/travel/journey-state.js';
+import { APPROVED_AUTUMN_HOME } from '../docs/travel/homepage-curation.js';
 import {
   renderExploreHome,
   renderJourneyDetail,
@@ -10,6 +11,37 @@ import {
 const state = createJourneyState(new Date('2026-10-12T12:00:00Z'));
 
 describe('cinematic world renderers', () => {
+  it('defines the approved curated autumn homepage independent of catalog ranking', () => {
+    expect(APPROVED_AUTUMN_HOME.activeMonth).toBe(10);
+    expect(APPROVED_AUTUMN_HOME.cards).toHaveLength(10);
+    expect(APPROVED_AUTUMN_HOME.cards.map((card) => card.role)).toEqual([
+      'hero',
+      'tall',
+      'wide',
+      'narrow',
+      'narrow',
+      'bottom',
+      'bottom',
+      'bottom',
+      'bottom',
+      'bottom',
+    ]);
+    expect(APPROVED_AUTUMN_HOME.cards.map((card) => card.title)).toEqual([
+      'Καταρράκτες του Φθινοπώρου',
+      'Τρόμσο',
+      'Άλπεις',
+      'Ελβετία',
+      'Δολομίτες',
+      'Λίμνη Κόμο',
+      'Πλίτβιτσε',
+      'Ζερμάτ',
+      'Αμάλφι',
+      'Λοφότεν',
+    ]);
+    expect(APPROVED_AUTUMN_HOME.cards.every((card) => card.image)).toBe(true);
+    expect(APPROVED_AUTUMN_HOME.cards.some((card) => card.image.includes('/zagori/'))).toBe(false);
+  });
+
   it('renders the approved autumn editorial homepage reference', () => {
     const html = renderExploreHome(JOURNEYS, state);
     for (const text of [
