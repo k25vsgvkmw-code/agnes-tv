@@ -15,94 +15,53 @@ describe('cinematic world renderers', () => {
     expect(APPROVED_AUTUMN_HOME.activeMonth).toBe(10);
     expect(APPROVED_AUTUMN_HOME.cards).toHaveLength(10);
     expect(APPROVED_AUTUMN_HOME.cards.map((card) => card.role)).toEqual([
-      'hero',
-      'tall',
-      'wide',
-      'narrow',
-      'narrow',
-      'bottom',
-      'bottom',
-      'bottom',
-      'bottom',
-      'bottom',
+      'hero', 'tall', 'wide', 'narrow', 'narrow',
+      'bottom', 'bottom', 'bottom', 'bottom', 'bottom',
     ]);
     expect(APPROVED_AUTUMN_HOME.cards.map((card) => card.title)).toEqual([
-      'Καταρράκτες του Φθινοπώρου',
-      'Τρόμσο',
-      'Άλπεις',
-      'Ελβετία',
-      'Δολομίτες',
-      'Λίμνη Κόμο',
-      'Πλίτβιτσε',
-      'Ζερμάτ',
-      'Αμάλφι',
-      'Λοφότεν',
+      'Καταρράκτες του Φθινοπώρου', 'Τρόμσο', 'Άλπεις', 'Ελβετία', 'Δολομίτες',
+      'Λίμνη Κόμο', 'Πλίτβιτσε', 'Ζερμάτ', 'Αμάλφι', 'Λοφότεν',
     ]);
     expect(APPROVED_AUTUMN_HOME.cards.every((card) => card.image)).toBe(true);
     expect(APPROVED_AUTUMN_HOME.cards.some((card) => card.image.includes('/zagori/'))).toBe(false);
   });
 
-  it('renders the approved autumn editorial homepage reference', () => {
+  it('renders exactly the approved ten-card editorial homepage with existing navigation hooks', () => {
     const html = renderExploreHome(JOURNEYS, state);
-    for (const text of [
-      'ΑΝΑΚΑΛΥΨΕ ΤΟΝ ΚΟΣΜΟ',
-      'Φθινόπωρο',
-      'Ζήσε την ομορφιά της εποχής.',
-      'Καταρράκτες',
-      'Άλπεις',
-      'Road Trips',
-      'Προτεινόμενα ταξίδια',
-    ]) {
-      expect(html).toContain(text);
+    expect(html.match(/class="editorial-destination-card /g) ?? []).toHaveLength(10);
+    for (const card of APPROVED_AUTUMN_HOME.cards) {
+      expect(html).toContain(`data-journey-id="${card.journeyId}"`);
+      expect(html).toContain(card.title);
     }
-    for (const month of [
-      'Ιαν',
-      'Φεβ',
-      'Μαρ',
-      'Απρ',
-      'Μάι',
-      'Ιουν',
-      'Ιουλ',
-      'Αυγ',
-      'Σεπ',
-      'Οκτ',
-      'Νοε',
-      'Δεκ',
-    ]) {
+    for (const month of ['Ιαν','Φεβ','Μαρ','Απρ','Μάι','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ']) {
       expect(html).toContain(month);
     }
-    expect(html).toContain('class="seasonal-mosaic"');
-    expect(html).toContain('class="seasonal-card seasonal-card-hero"');
-    expect(html).toContain('class="seasonal-card seasonal-card-tall"');
+    expect(html).toContain('Φθινόπωρο');
+    expect(html).toContain('Ζήσε την ομορφιά της εποχής.');
     expect(html).toContain('data-global-search-form');
+    expect(html).toContain('data-nav-view="destinations"');
+    expect(html).toContain('data-nav-view="experiences"');
+    expect(html).toContain('data-nav-view="saved"');
+    expect(html).toContain('data-agnes-open');
     expect(html).toContain('data-month-jump="10"');
-    expect(html).toContain('class="agnes-dock"');
-    expect(html).not.toContain('Right Now · October');
-    expect(html).not.toContain('Featured journeys');
-    expect(html).not.toContain('AGNES Live');
+    expect(html).not.toContain('Προτεινόμενα ταξίδια');
+    expect(html).not.toContain('recommended-journeys');
+    expect(html).not.toContain('recommended-grid');
   });
 
-  it('shows a dense editorial mosaic plus recommended journeys', () => {
-    const sample = Array.from({ length: 14 }, (_, index) => ({
-      id: `sample-${index}`,
-      mode: ['air', 'sea', 'rail', 'road'][index % 4],
-      type: 'journey',
-      title: `Journey ${index}`,
-      subtitle: 'Seasonal journey',
-      region: 'Europe',
-      duration: '7 days',
-      editorialPriority: 100 - index,
-      bestMonths: [10],
-      shoulderMonths: [],
-      availableMonths: [10],
-      yearRound: false,
-      feelings: ['seasonal'],
-      hero: { image: 'assets/zagori/vikos-overlook.jpg' },
-      pricing: { indicative: true, label: 'Plan with AGNES' },
-    }));
-    const html = renderExploreHome(sample, state);
-    expect(html.match(/class="seasonal-card /g) ?? []).toHaveLength(10);
-    expect(html.match(/class="recommended-card"/g) ?? []).toHaveLength(5);
+  it('changes active month without changing curated card order or inventing live semantics', () => {
+    const november = renderExploreHome(JOURNEYS, { ...state, month: 11 });
+    expect(november).toContain('data-month-jump="11" class="is-active"');
+    for (let index = 0; index < APPROVED_AUTUMN_HOME.cards.length; index += 1) {
+      expect(november).toContain(`data-card-index="${index}"`);
+      if (index > 0) {
+        expect(november.indexOf(`data-card-index="${index - 1}"`)).toBeLessThan(
+          november.indexOf(`data-card-index="${index}"`),
+        );
+      }
+    }
+    expect(november).toContain('editorial-card-badge" aria-hidden="true"');
+    expect(november).not.toContain('editorial-card-badge" aria-live');
   });
 
   it('renders emotional-to-operational journey detail', () => {
@@ -117,9 +76,9 @@ describe('cinematic world renderers', () => {
 
   it('keeps content readable without hero media and labels dialog', () => {
     const journey = getJourneyById('zagori-metsovo-meteora');
-    expect(
-      renderJourneyDetail({ ...journey, hero: { ...journey.hero, image: '' } }, state),
-    ).toContain('data-image-fallback="true"');
+    expect(renderJourneyDetail({ ...journey, hero: { ...journey.hero, image: '' } }, state)).toContain(
+      'data-image-fallback="true"',
+    );
     const layer = renderOperationalLayer(journey, { ...state, detailLayer: 'day-plan' });
     expect(layer).toContain('aria-labelledby="operational-layer-title"');
     expect(layer).toContain('data-detail-close');
