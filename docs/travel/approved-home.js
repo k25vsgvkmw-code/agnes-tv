@@ -1,4 +1,4 @@
-const REFERENCE_CHUNKS = Array.from({ length: 8 }, (_, index) => `assets/reference/chunk${index}.txt`);
+const REFERENCE_PAYLOAD = 'assets/reference/autumn-reference.b64';
 
 export const APPROVED_HOME_HOTSPOTS = [
   { label: 'Iceland autumn waterfalls', journeyId: 'iceland-ring-road', x: 38.6, y: 5.7, w: 59.1, h: 32.7 },
@@ -21,14 +21,10 @@ export async function hydrateApprovedReferenceHome(root = document) {
   const image = root.querySelector('[data-approved-reference-image]');
   if (!image || image.dataset.loaded === 'true') return;
   try {
-    const chunks = await Promise.all(
-      REFERENCE_CHUNKS.map(async (url) => {
-        const response = await fetch(url, { cache: 'force-cache' });
-        if (!response.ok) throw new Error(`Reference asset ${url} failed: ${response.status}`);
-        return (await response.text()).trim();
-      }),
-    );
-    image.src = `data:image/webp;base64,${chunks.join('')}`;
+    const response = await fetch(REFERENCE_PAYLOAD, { cache: 'force-cache' });
+    if (!response.ok) throw new Error(`Reference asset failed: ${response.status}`);
+    const payload = (await response.text()).trim();
+    image.src = `data:image/jpeg;base64,${payload}`;
     image.dataset.loaded = 'true';
   } catch {
     image.classList.add('is-missing');
