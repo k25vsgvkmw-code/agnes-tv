@@ -1,7 +1,6 @@
-import Fastify from 'fastify';
 import { UnavailableModelGateway } from '../intelligence/unavailable-model-gateway.js';
-import { registerHealthRoutes } from '../transport/health-routes.js';
 import { buildApp } from './build-app.js';
+import { createHttpApp } from './create-http-app.js';
 
 async function main(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
@@ -13,9 +12,7 @@ async function main(): Promise<void> {
     databaseUrl,
     modelGateway: new UnavailableModelGateway(),
   });
-  const app = Fastify({ logger: true });
-  app.addHook('onClose', () => services.close());
-  await registerHealthRoutes(app);
+  const app = await createHttpApp(services, { logger: true });
 
   const port = Number.parseInt(process.env.PORT ?? '3000', 10);
   await app.listen({ host: '0.0.0.0', port });
